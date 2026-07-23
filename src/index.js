@@ -170,14 +170,17 @@ async function trouverExpert(args = {}) {
     return true;
   });
 
-  // ville inconnue telle quelle → tentative en correspondance partielle sur le secteur
+  // Pas de correspondance exacte → repli en inclusion BIDIRECTIONNELLE (les slugs
+  // omettent souvent l'article : « Le Plateau-Mont-Royal » vs `plateau-mont-royal`).
   if (!matches.length && (ville || secteur)) {
-    const needle = secteur || ville;
-    matches = experts.filter(
-      (e) =>
-        (!profession || e.profession === profession) &&
-        (strip(e.sectorName).includes(needle) || strip(e.cityName).includes(needle)),
-    );
+    const near = (hay, needle) => Boolean(hay) && (hay.includes(needle) || needle.includes(hay));
+    matches = experts.filter((e) => {
+      if (profession && e.profession !== profession) return false;
+      if (province && e.province !== province) return false;
+      if (ville && !(near(strip(e.cityName), ville) || near(strip(e.city), ville))) return false;
+      if (secteur && !(near(strip(e.sectorName), secteur) || near(strip(e.sector), secteur))) return false;
+      return true;
+    });
   }
 
   matches.sort((a, b) => (b.score?.total ?? 0) - (a.score?.total ?? 0));
