@@ -1,0 +1,17 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.Payotte-com/payotte-mcp",
+  "description": "Verified Canadian real-estate experts: find a vetted pro, verify a licence, city market stats.",
+  "websiteUrl": "https://payotte.com",
+  "repository": {
+    "url": "https://github.com/Payotte-com/payotte-mcp",
+    "source": "github"
+  },
+  "version": "1.0.0",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://payotte-mcp.payotte.workers.dev/mcp"
+    }
+  ]
+}
