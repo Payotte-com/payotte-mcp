@@ -1,0 +1,6 @@
+name = "payotte-mcp"
+main = "src/index.js"
+compatibility_date = "2026-07-01"
+
+# Palier gratuit Cloudflare Workers : 100 000 requêtes/jour — largement suffisant.
+# URL après déploiement : https://payotte-mcp.<sous-domaine>.workers.dev/mcp
