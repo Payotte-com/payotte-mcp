@@ -4,3 +4,14 @@ compatibility_date = "2026-07-01"
 
 # Palier gratuit Cloudflare Workers : 100 000 requêtes/jour — largement suffisant.
 # URL après déploiement : https://payotte-mcp.<sous-domaine>.workers.dev/mcp
+
+# Compteurs anti-abus + comptage « leads IA » (agrégats seulement, jamais de contenu).
+[[kv_namespaces]]
+binding = "COUNTERS"
+id = "773969ab7f814cdf8985b2f0e7edaf8d"
+
+# Secrets attendus (wrangler secret put …) :
+#   CONTACTS_TOKEN  — jeton du fichier /api/cx/{token}.json (src/lib/contactsToken.ts côté site)
+#   RESEND_API_KEY  — clé API Resend ; ABSENTE = mode répétition (aucun envoi, réponse simulée)
+[vars]
+MAIL_FROM = "Payotte <relais@payotte.com>"

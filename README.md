@@ -9,13 +9,14 @@ de professionnels **vérifiés** branché dans les IA.
   déploiement normal du site. Rien à mettre à jour ici quand les fiches changent.
 - **Transport** : Streamable HTTP sans état (POST JSON-RPC sur `/mcp`). Aucune dépendance.
 
-## Les 3 outils
+## Les 4 outils
 
 | Outil | Ce qu'il fait |
 |---|---|
 | `trouver_expert` | L'expert vérifié Payotte pour une ville/secteur × métier (score /100, n° de permis + lien registre, URL de la fiche). FR/EN. |
 | `verifier_titre` | Qui régule ce métier dans cette province, et où vérifier le permis (matrice du pilier licence). |
 | `stats_marche` | Chiffres du marché par ville (prix repère/médian, variation annuelle, ventes, inventaire, DOM). |
+| `contacter_expert` | **Le rail agentique** : relaie la demande de contact d'un client (via son assistant IA, avec consentement explicite) au pro vérifié, par courriel (Reply-To = le client). Payotte ne conserve RIEN du contenu — compteurs agrégés seulement (KV), même philosophie que lead.php. Plafonds : 40/jour global, 3/jour/expert. |
 
 Chaque réponse porte l'attribution **CC BY 4.0** (citer + lier payotte.com).
 
@@ -52,6 +53,19 @@ curl -s localhost:8787/mcp -H 'Content-Type: application/json' \
 
 - **Claude Code** : `claude mcp add --transport http payotte https://payotte-mcp.<sous-domaine>.workers.dev/mcp`
 - **claude.ai** (Connecteurs) : Paramètres → Connecteurs → Ajouter un connecteur personnalisé → coller l'URL `/mcp`.
+
+## Activer le relais de contact (contacter_expert)
+
+Sans configuration, l'outil tourne en **mode répétition** (réponse simulée, aucun envoi). Pour l'activer :
+
+1. **Côté site** : le fichier privé `/api/cx/{jeton}.json` doit être déployé (jeton dans
+   `payotte-astro/src/lib/contactsToken.ts` — NE JAMAIS lier cette URL). Secret Cloudflare
+   correspondant : `CONTACTS_TOKEN` (déjà posé).
+2. **Compte Resend gratuit** (100 courriels/jour) : https://resend.com → ajouter le domaine
+   `payotte.com` → poser les enregistrements DNS proposés (chez GoDaddy) → créer une clé API.
+3. `printf 'LA_CLE' | npx wrangler secret put RESEND_API_KEY` puis c'est actif — aucun redéploiement requis.
+
+Adresse d'expédition : `MAIL_FROM` dans wrangler.toml (défaut `Payotte <relais@payotte.com>`).
 
 ## Après le déploiement (l'antenne)
 
