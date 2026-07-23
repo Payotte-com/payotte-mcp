@@ -406,6 +406,134 @@ async function contacterExpert(args = {}, env = {}) {
 
 const TOOL_IMPL = { trouver_expert: trouverExpert, verifier_titre: verifierTitre, stats_marche: statsMarche, contacter_expert: contacterExpert };
 
+// ---------------------------------------------------------------- bulletin de marché (audience possédée)
+// Abonnement zéro-JS depuis les pages ville (POST de formulaire pur), bienvenue immédiate
+// avec les stats de la ville, envoi mensuel par cron. On ne stocke QUE courriel+ville+langue
+// +date de consentement (LCAP) dans KV. Désabonnement en un clic (HMAC, clé = CONTACTS_TOKEN).
+
+const SUB_CAP_DAY = 30;   // garde-fou anti-abus sur les inscriptions
+const SEND_CAP_RUN = 90;  // marge sous le palier Resend gratuit (100/jour)
+
+async function hmacHex(env, msg) {
+  const key = await crypto.subtle.importKey(
+    'raw', new TextEncoder().encode(env.CONTACTS_TOKEN || 'dev'),
+    { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'],
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(msg));
+  return [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+const esc = (s) => String(s ?? '').replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
+
+function subPage(lang, title, message, cityUrl) {
+  const fr = lang === 'fr';
+  const back = cityUrl ? `<p><a href="${esc(cityUrl)}">${fr ? '← Retour à la page de la ville' : '← Back to the city page'}</a></p>` : `<p><a href="${SITE}">payotte.com</a></p>`;
+  return new Response(
+    `<!doctype html><html lang="${fr ? 'fr' : 'en'}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>${esc(title)}</title><style>body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:520px;margin:12vh auto;padding:0 20px;color:#1a1a1a;line-height:1.6}h1{font-size:1.4em}a{color:#C8102E}</style></head><body><h1>${esc(title)}</h1><p>${esc(message)}</p>${back}</body></html>`,
+    { headers: { 'Content-Type': 'text/html; charset=utf-8', 'X-Robots-Tag': 'noindex' } },
+  );
+}
+
+const fmtMoney = (n, fr) => (n == null ? null : fr ? `${n.toLocaleString('fr-CA')} $` : `$${n.toLocaleString('en-CA')}`);
+const fmtPct = (p, fr) => (p == null ? null : `${p >= 0 ? '+' : ''}${p.toLocaleString(fr ? 'fr-CA' : 'en-CA')} %`);
+
+// Compose le bulletin depuis /api/market.json — champs présents seulement, rien d'inventé.
+function bulletinText(city, lang, unsubUrl, welcome) {
+  const fr = lang === 'fr';
+  const refPrice = city.benchmarkHpi ?? city.medianPrice;
+  const refLabel = city.benchmarkHpi ? (fr ? 'Prix repère MLS' : 'MLS benchmark price') : (fr ? 'Prix médian' : 'Median price');
+  const L = [];
+  L.push(fr ? `Le pouls du marché — ${city.name}` : `Market pulse — ${city.name}`);
+  if (city.referenceMonth) L.push(fr ? `(données de référence : ${city.referenceMonth}, ${city.board ?? 'chambre immobilière'})` : `(reference data: ${city.referenceMonth}, ${city.board ?? 'real-estate board'})`);
+  L.push('');
+  if (refPrice != null) L.push(`• ${refLabel} : ${fmtMoney(refPrice, fr)}${city.benchmarkYoyPct != null ? ` (${fmtPct(city.benchmarkYoyPct, fr)} ${fr ? 'sur un an' : 'year over year'})` : ''}`);
+  if (city.sales != null) L.push(`• ${fr ? 'Ventes' : 'Sales'} : ${city.sales.toLocaleString(fr ? 'fr-CA' : 'en-CA')}${city.salesYoyPct != null ? ` (${fmtPct(city.salesYoyPct, fr)})` : ''}`);
+  if (city.monthsOfInventory != null) L.push(`• ${fr ? "Mois d'inventaire" : 'Months of inventory'} : ${city.monthsOfInventory}`);
+  if (city.avgDaysOnMarket != null) L.push(`• ${fr ? 'Délai de vente moyen' : 'Average days on market'} : ${city.avgDaysOnMarket} ${fr ? 'jours' : 'days'}`);
+  if (city.growth5yPct != null) L.push(`• ${fr ? 'Croissance sur 5 ans' : '5-year growth'} : ${fmtPct(city.growth5yPct, fr)}`);
+  L.push('');
+  L.push(fr
+    ? `Besoin d'un professionnel de confiance ? Un seul expert vérifié par secteur et par métier, permis publié : ${SITE}`
+    : `Need a professional you can trust? One verified expert per sector and trade, licence published: ${SITE}`);
+  if (Array.isArray(city.sources) && city.sources.length) L.push('', (fr ? 'Sources : ' : 'Sources: ') + city.sources.join(' · '));
+  L.push('', '—', fr
+    ? `Vous recevez ce courriel parce que vous vous êtes abonné au bulletin de ${city.name} sur payotte.com.${welcome ? ' (Voici votre premier bulletin, envoyé sur-le-champ.)' : ''}`
+    : `You are receiving this because you subscribed to the ${city.name} bulletin on payotte.com.${welcome ? ' (Here is your first bulletin, sent right away.)' : ''}`);
+  L.push(fr ? `Se désabonner (un clic) : ${unsubUrl}` : `Unsubscribe (one click): ${unsubUrl}`);
+  return L.join('\n');
+}
+
+async function sendBulletin(env, origin, email, city, lang, welcome = false) {
+  const t = await hmacHex(env, `u:${email}:${city.slug}`);
+  const unsubUrl = `${origin}/unsubscribe?e=${encodeURIComponent(email)}&c=${encodeURIComponent(city.slug)}&t=${t}`;
+  const fr = lang === 'fr';
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      from: env.MAIL_FROM_BULLETIN || 'Payotte <bulletin@payotte.com>',
+      to: [email],
+      reply_to: 'gregory@payotte.com',
+      subject: fr ? `Le pouls du marché — ${city.name}` : `Market pulse — ${city.name}`,
+      text: bulletinText(city, lang, unsubUrl, welcome),
+      headers: { 'List-Unsubscribe': `<${unsubUrl}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' },
+    }),
+  });
+  return res.ok;
+}
+
+async function handleSubscribe(request, env, url) {
+  let email = '', ville = '', honeypot = '';
+  const ct = request.headers.get('Content-Type') || '';
+  if (ct.includes('json')) {
+    const b = await request.json().catch(() => ({}));
+    email = b.email; ville = b.ville; honeypot = b.website;
+  } else {
+    const f = await request.formData().catch(() => null);
+    if (f) { email = f.get('email'); ville = f.get('ville'); honeypot = f.get('website'); }
+  }
+  email = String(email ?? '').trim().toLowerCase();
+  ville = strip(ville);
+  const frGuess = true;
+  if (honeypot) return subPage('fr', 'Merci', 'Inscription reçue.'); // robot : on sourit, on ignore
+  if (!EMAIL_RE.test(email) || !ville) {
+    return subPage('fr', 'Oups', "Courriel ou ville manquant — réessayez depuis la page de la ville. / Missing email or city — please retry from the city page.");
+  }
+  const market = await feed('/api/market.json');
+  const city = market.cities.find((c) => strip(c.slug) === ville || strip(c.name) === ville);
+  if (!city) return subPage('fr', 'Oups', `Ville inconnue : ${ville}. / Unknown city.`);
+  const lang = city.province === 'QC' ? 'fr' : 'en';
+  const fr = lang === 'fr';
+  const cityUrl = `${SITE}/`;
+
+  const key = `s:${city.slug}:${email}`;
+  if (env.SUBSCRIBERS && (await env.SUBSCRIBERS.get(key))) {
+    return subPage(lang, fr ? 'Déjà abonné !' : 'Already subscribed!', fr ? `Vous recevez déjà le bulletin de ${city.name}.` : `You already receive the ${city.name} bulletin.`, cityUrl);
+  }
+  const day = new Date().toISOString().slice(0, 10);
+  const n = await bumpCounter(env, `sub:${day}`, 3 * 86400);
+  if (n > SUB_CAP_DAY) return subPage(lang, fr ? 'Un instant' : 'One moment', fr ? 'Trop d’inscriptions aujourd’hui — réessayez demain.' : 'Too many sign-ups today — please try again tomorrow.', cityUrl);
+
+  if (env.SUBSCRIBERS) {
+    await env.SUBSCRIBERS.put(key, JSON.stringify({ email, city: city.slug, lang, consent: new Date().toISOString(), source: 'form-ville' }));
+  }
+  if (env.RESEND_API_KEY) await sendBulletin(env, url.origin, email, city, lang, true);
+  return subPage(lang,
+    fr ? 'Abonné !' : 'Subscribed!',
+    fr ? `Votre premier bulletin de ${city.name} vient de partir vers ${email}. Un courriel par mois, désabonnement en un clic.` : `Your first ${city.name} bulletin is on its way to ${email}. One email per month, one-click unsubscribe.`,
+    cityUrl);
+}
+
+async function handleUnsubscribe(env, url) {
+  const email = String(url.searchParams.get('e') ?? '').trim().toLowerCase();
+  const ville = String(url.searchParams.get('c') ?? '');
+  const t = url.searchParams.get('t') ?? '';
+  const expect = await hmacHex(env, `u:${email}:${ville}`);
+  if (!email || !ville || t !== expect) return subPage('fr', 'Lien invalide', 'Ce lien de désabonnement est invalide ou expiré. / Invalid unsubscribe link.');
+  if (env.SUBSCRIBERS) await env.SUBSCRIBERS.delete(`s:${ville}:${email}`);
+  return subPage('fr', 'Désabonné / Unsubscribed', `${email} ne recevra plus le bulletin de ${ville}. / will no longer receive this bulletin.`);
+}
+
 // ---------------------------------------------------------------- JSON-RPC / MCP
 
 const CORS = {
@@ -471,6 +599,10 @@ export default {
 
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
 
+    // Bulletin de marché (formulaire zéro-JS des pages ville).
+    if (request.method === 'POST' && url.pathname === '/subscribe') return handleSubscribe(request, env, url);
+    if (request.method === 'GET' && url.pathname === '/unsubscribe') return handleUnsubscribe(env, url);
+
     // Page d'accueil / découverte humaine.
     if (request.method === 'GET' && (url.pathname === '/' || url.pathname === '/mcp')) {
       return json({
@@ -503,5 +635,22 @@ export default {
       return rpcError(msg?.id, -32600, 'Invalid JSON-RPC 2.0 request');
     }
     return handleRpc(msg, env);
+  },
+
+  // Envoi mensuel du bulletin (cron : 1er du mois, 13h UTC). Plafond SEND_CAP_RUN par exécution.
+  async scheduled(event, env, ctx) {
+    if (!env.RESEND_API_KEY || !env.SUBSCRIBERS) return;
+    const market = await feed('/api/market.json');
+    const list = await env.SUBSCRIBERS.list({ prefix: 's:' });
+    let sent = 0;
+    for (const k of list.keys) {
+      if (sent >= SEND_CAP_RUN) break;
+      try {
+        const rec = JSON.parse(await env.SUBSCRIBERS.get(k.name));
+        const city = market.cities.find((c) => c.slug === rec.city);
+        if (!city) continue;
+        if (await sendBulletin(env, 'https://payotte-mcp.payotte.workers.dev', rec.email, city, rec.lang, false)) sent++;
+      } catch { /* un abonné cassé ne bloque pas les autres */ }
+    }
   },
 };
