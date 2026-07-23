@@ -599,6 +599,22 @@ export default {
 
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
 
+    // Statistiques publiques agrégées (aucune donnée personnelle) — pour le rapport hebdo.
+    if (request.method === 'GET' && url.pathname === '/stats') {
+      let subscribers = 0, relaysMonth = 0, relaysTotal = 0;
+      if (env.SUBSCRIBERS) subscribers = (await env.SUBSCRIBERS.list({ prefix: 's:' })).keys.length;
+      if (env.COUNTERS) {
+        const month = new Date().toISOString().slice(0, 7);
+        const l = await env.COUNTERS.list({ prefix: 'm:' });
+        for (const k of l.keys) {
+          const v = parseInt((await env.COUNTERS.get(k.name)) ?? '0', 10);
+          relaysTotal += v;
+          if (k.name.endsWith(month)) relaysMonth += v;
+        }
+      }
+      return json({ generated: new Date().toISOString().slice(0, 10), bulletinSubscribers: subscribers, aiContactRelays: { thisMonth: relaysMonth, total: relaysTotal } });
+    }
+
     // Bulletin de marché (formulaire zéro-JS des pages ville).
     if (request.method === 'POST' && url.pathname === '/subscribe') return handleSubscribe(request, env, url);
     if (request.method === 'GET' && url.pathname === '/unsubscribe') return handleUnsubscribe(env, url);
