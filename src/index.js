@@ -547,6 +547,126 @@ async function sendBulletin(env, origin, email, city, lang, welcome = false) {
   return res.ok;
 }
 
+// ================================================================
+// MACHINE DU BULLETIN — segmentation prospect/expert + étape + rendu HTML
+// ================================================================
+// S'ADAPTE AUX MODIFS DU MOIS : la machine lit l'état VIVANT à chaque envoi —
+// /api/market.json (marché) et /api/experts/{prov}.json (score.color, ownerVerified,
+// badgeExchange). Un prix rafraîchi, une fiche confirmée, un badge posé ou un score
+// monté pendant le mois est donc reflété automatiquement au prochain 1er. Aucun état
+// figé n'est mémorisé. Données = champs PRÉSENTS seulement, jamais d'analyse inventée (Règle #3).
+
+const LOGO = 'https://payotte.com/payotte-logo-transparent.png';
+const PERSO_COPY = 'gpayotte@gmail.com';   // copie perso de CHAQUE envoi (demande du proprio)
+
+// Étape d'un expert d'après son état vivant. subscribed=false → premier contact ⓪ (opt-in).
+function expertStage(expert, subscribed) {
+  const c = expert?.score?.color;
+  if (!c || c === 'red') return null;          // rouge = non publié → pas de bulletin
+  if (!subscribed) return 'intro';             // ⓪ présentation + consentement
+  if (c === 'yellow') return 'yellow';         // ① monter vers le vert
+  if (!expert.ownerVerified) return 'green';   // ② confirmer → Recommandé
+  if (!expert.badgeExchange) return 'reco';    // ③ poser le badge
+  return 'partner';                            // ④ rien à demander
+}
+
+// La donnée manquante la plus payante d'un expert (coup de coude ①/⓪), tirée du feed.
+function missingAsk(expert, fr) {
+  if (!expert.licence?.number && expert.licence?.body)
+    return fr ? `votre numéro de permis ${expert.licence.body}` : `your ${expert.licence.body} licence number`;
+  if (!expert.experience) return fr ? `l'année où vous avez commencé à exercer` : `the year you began practising`;
+  if (!expert.google) return fr ? `le lien de votre profil Google` : `your Google profile link`;
+  return fr ? `une distinction vérifiable (prix du secteur, mention presse)` : `a verifiable distinction (award, press mention)`;
+}
+
+const S = (label, val) => `<td width="50%" style="padding:14px 0;border-bottom:1px solid #f1ecec;font-family:Arial,Helvetica,sans-serif;"><span style="font-size:13px;color:#8a8284;">${label}</span><br><span style="font-size:16px;color:#211c1e;font-weight:bold;">${val}</span></td>`;
+
+// Cœur commun : logo + repère + grille + source. eyebrow = texte à droite du logo.
+function marketCore(city, fr, eyebrow) {
+  const ref = city.benchmarkHpi ?? city.medianPrice;
+  const refYoy = city.benchmarkYoyPct;
+  const grn = (t) => `<span style="font-size:12px;color:#1f7a44;font-weight:normal;">${t}</span>`;
+  const cells = [];
+  if (city.averagePrice != null) cells.push([fr ? 'Prix moyen' : 'Average price', fmtMoney(city.averagePrice, fr) + (city.averageYoyPct != null ? ' ' + grn(fmtPct(city.averageYoyPct, fr)) : '')]);
+  if (city.sales != null) cells.push([fr ? 'Ventes du mois' : 'Sales', city.sales.toLocaleString(fr ? 'fr-CA' : 'en-CA') + (city.salesYoyPct != null ? ' ' + grn(fmtPct(city.salesYoyPct, fr)) : '')]);
+  if (city.monthsOfInventory != null) cells.push([fr ? "Mois d'inventaire" : 'Months of inventory', String(city.monthsOfInventory)]);
+  if (city.avgDaysOnMarket != null) cells.push([fr ? 'Délai de vente' : 'Days on market', city.avgDaysOnMarket + (fr ? ' jours' : ' days')]);
+  let gridRows = '';
+  for (let i = 0; i < cells.length; i += 2) gridRows += `<tr>${S(cells[i][0], cells[i][1])}${cells[i + 1] ? S(cells[i + 1][0], cells[i + 1][1]) : '<td width="50%"></td>'}</tr>`;
+  const refLine = ref != null
+    ? `<div style="font-family:Georgia,'Times New Roman',serif;font-size:34px;color:#211c1e;line-height:1;">${fmtMoney(ref, fr)}</div>
+       <div style="font-size:13px;color:#6f6769;margin:9px 0 22px 0;">${fr ? 'Prix de référence' : 'Reference price'} (${city.benchmarkHpi ? (fr ? 'repère MLS' : 'MLS benchmark') : (fr ? 'médiane' : 'median')})${refYoy != null ? ` &middot; <span style="color:#1f7a44;font-weight:bold;">${fmtPct(refYoy, fr)} ${fr ? 'sur un an' : 'YoY'}</span>` : ''}</div>`
+    : '';
+  const src = Array.isArray(city.sources) && city.sources.length ? city.sources[0] : city.board;
+  return `<tr><td style="padding:26px 32px 22px 32px;border-bottom:1px solid #f1ecec;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td valign="middle"><a href="${SITE}"><img src="${LOGO}" width="140" height="29" alt="Payotte" style="display:block;border:0;"></a></td><td align="right" valign="middle" style="font-size:11px;letter-spacing:.5px;color:#9a9294;line-height:1.5;">${eyebrow}</td></tr></table></td></tr>
+    <tr><td style="padding:28px 32px 6px 32px;">
+      <div style="font-family:Georgia,'Times New Roman',serif;font-size:21px;line-height:1.3;color:#211c1e;margin-bottom:20px;">${fr ? 'Le pouls du marché' : 'The market pulse'} &mdash; ${city.name}</div>
+      ${refLine}
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid #f1ecec;">${gridRows}</table>
+      <div style="font-size:11.5px;color:#a49c9e;margin-top:14px;">${fr ? 'Source' : 'Source'} : ${src ?? 'chambre immobilière'}${city.referenceMonth ? ` &middot; ${city.referenceMonth}` : ''}</div>
+    </td></tr>`;
+}
+
+const CLOSE = (bg, border, inner) => `<tr><td style="padding:20px 32px 4px 32px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${bg};border:1px solid ${border};border-radius:12px;"><tr><td style="padding:22px 24px;">${inner}</td></tr></table></td></tr>`;
+const BTN = (href, txt) => `<a href="${href}" style="display:inline-block;background:#c8102e;color:#ffffff;font-size:14px;font-weight:bold;text-decoration:none;padding:11px 20px;border-radius:9px;">${txt}</a>`;
+const H3 = (t) => `<div style="font-family:Georgia,'Times New Roman',serif;font-size:19px;line-height:1.25;color:#211c1e;margin-bottom:10px;">${t}</div>`;
+const P = (t) => `<div style="font-size:14px;line-height:1.6;color:#443e40;margin-bottom:14px;">${t}</div>`;
+const FOOT = (why, unsubUrl, unsubTxt) => `<tr><td style="padding:22px 32px 26px 32px;"><div style="border-top:1px solid #f1ecec;padding-top:16px;font-size:11.5px;line-height:1.6;color:#a49c9e;">${why} <a href="${unsubUrl}" style="color:#8a8284;">${unsubTxt}</a> &middot; payotte.com</div></td></tr>`;
+
+// Rendu complet d'un courriel : {subject, html}. segment='prospect'|'expert' ; stage pour les experts.
+function renderPulse({ segment, stage, city, expert, lang, unsubUrl }) {
+  const fr = lang !== 'en';
+  const url = expert?.url || `${SITE}`;
+  const eyebrow = `${fr ? 'Le pouls du marché' : 'Market pulse'}<br><span style="color:#c8102e;letter-spacing:1px;">${city.name}${city.referenceMonth ? ' &middot; ' + city.referenceMonth : ''}</span>`;
+  let subject, close, foot;
+  if (segment === 'prospect') {
+    subject = fr ? `${city.name} : le pouls du marché` : `${city.name}: your market pulse`;
+    close = CLOSE('#eef3f0', '#cfe4d7', `${H3(fr ? `Un projet à ${city.name} ?` : `Planning a move in ${city.name}?`)}${P(fr ? `Payotte a vérifié <b>un seul</b> expert de référence par secteur et par métier — sans commission, sans publicité.` : `Payotte verified <b>one</b> reference expert per sector and trade — no commission, no ads.`)}${BTN(`${SITE}/canada`, fr ? 'Trouver mon expert vérifié →' : 'Find my verified expert →')}`);
+    foot = FOOT(fr ? `Vous recevez le pouls de ${city.name}, une fois par mois.` : `You get the ${city.name} pulse once a month.`, unsubUrl, fr ? 'Se désabonner' : 'Unsubscribe');
+  } else {
+    const ask = expert ? missingAsk(expert, fr) : '';
+    const proWho = fr ? `l'expert vérifié en ${expert?.professionLabel ?? ''} pour ${city.name}` : `the verified ${expert?.professionLabel ?? ''} for ${city.name}`;
+    if (stage === 'intro') {
+      subject = fr ? `Pourquoi je vous ai retenu comme référence à ${city.name}` : `Why I chose you as the reference in ${city.name}`;
+      close = CLOSE('#faf8f7', '#eee9e8', `${P(fr ? `Je m'appelle Grégory Payotte. J'ai bâti <b>Payotte</b>, un annuaire indépendant qui recommande un seul expert vérifié par ville et par métier — gratuit, sans commission. Pour ${proWho}, c'est vous que j'ai retenu, sur la foi de données publiques. Le pouls ci-dessus, je le publie chaque mois.` : `I'm Grégory Payotte. I built <b>Payotte</b>, an independent directory recommending one verified expert per city and trade — free, no commission. For ${proWho}, I chose you, based on public data. I publish the pulse above every month.`)}${P(fr ? `Vous le voulez chaque mois ? <b>Répondez « oui »</b> et je vous l'envoie. Sinon, aucune suite.` : `Want it monthly? <b>Reply "yes"</b> and I'll send it. Otherwise, no follow-up.`)}${BTN(url, fr ? 'Voir votre fiche →' : 'See your profile →')}`);
+      foot = FOOT(fr ? `Courriel unique de présentation, parce que vous êtes ${proWho}. Aucune suite sans votre accord.` : `One-time introduction, because you are ${proWho}. No follow-up without your consent.`, url, fr ? 'Ne rien recevoir' : 'Opt out');
+    } else if (stage === 'yellow') {
+      subject = fr ? `Votre marché à ${city.name} — et la donnée qui vous ferait monter` : `Your ${city.name} market — and the data that would lift you`;
+      close = CLOSE('#fdf6e9', '#f2e4c4', `${H3(fr ? 'Pendant qu\'on y est : votre fiche.' : 'While we\'re at it: your profile.')}${P(fr ? `Votre fiche Payotte est à <b>${expert?.score?.total ?? ''}/100</b>. La donnée la plus payante qui vous manque : <b>${ask}</b>. Répondez à ce courriel avec — je mets à jour le jour même.` : `Your profile is at <b>${expert?.score?.total ?? ''}/100</b>. The most valuable missing piece: <b>${ask}</b>. Reply with it — I update the same day.`)}${BTN(url, fr ? 'Voir ma fiche →' : 'See my profile →')}`);
+      foot = FOOT(fr ? `Vous recevez ce courriel parce que vous êtes ${proWho}.` : `You get this because you are ${proWho}.`, unsubUrl, fr ? 'Ne plus recevoir' : 'Unsubscribe');
+    } else if (stage === 'green') {
+      subject = fr ? `Vous êtes la référence vérifiée de ${city.name} — une dernière étape` : `You're the verified reference in ${city.name} — one last step`;
+      close = CLOSE('#eef5f0', '#cfe4d7', `${H3(fr ? 'Vous êtes déjà au vert.' : 'You\'re already in the green.')}${P(fr ? `Une seule étape pour le plus haut niveau du site : <b>confirmer votre fiche</b> et devenir <b style="color:#1f7a44;">Recommandé N&ordm; 1</b>. Deux minutes, par réponse à ce courriel.` : `One step to the top tier: <b>confirm your profile</b> and become <b style="color:#1f7a44;">Recommended #1</b>. Two minutes, just reply.`)}${BTN(url, fr ? 'Confirmer ma fiche →' : 'Confirm my profile →')}`);
+      foot = FOOT(fr ? `Vous recevez ce courriel parce que vous êtes ${proWho}.` : `You get this because you are ${proWho}.`, unsubUrl, fr ? 'Ne plus recevoir' : 'Unsubscribe');
+    } else if (stage === 'reco') {
+      subject = fr ? `Vous êtes Recommandé N° 1 à ${city.name} — rendez-le visible` : `You're Recommended #1 in ${city.name} — make it visible`;
+      close = CLOSE('#fbedef', '#f0d3d9', `<div style="font-size:11px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;color:#c8102e;margin-bottom:8px;">&#10003; ${fr ? 'Recommandé par Payotte' : 'Recommended by Payotte'}</div>${H3(fr ? 'Rendez-le visible sur votre site.' : 'Show it on your site.')}${P(fr ? `Affichez le badge « Recommandé » : un <b>lien réciproque dofollow</b> — bon pour votre référencement, et un signal de confiance. Je fournis le code (ou je m'arrange avec votre webmestre).` : `Display the "Recommended" badge: a <b>reciprocal dofollow link</b> — good for your SEO and a trust signal. I provide the code (or work with your webmaster).`)}${BTN(`${SITE}/badge/${expert?.slug ?? ''}`, fr ? 'Obtenir mon badge →' : 'Get my badge →')}`);
+      foot = FOOT(fr ? `Vous recevez ce courriel parce que vous êtes Recommandé à ${city.name}.` : `You get this because you are Recommended in ${city.name}.`, unsubUrl, fr ? 'Ne plus recevoir' : 'Unsubscribe');
+    } else { // partner
+      subject = fr ? `Votre marché à ${city.name} ce mois-ci` : `Your ${city.name} market this month`;
+      close = `<tr><td style="padding:18px 32px 4px 32px;"><div style="border-top:1px solid #f1ecec;padding-top:18px;font-size:14px;line-height:1.62;color:#443e40;">${fr ? `Tout est en place : vous êtes Recommandé et votre badge est en ligne. Rien à demander — juste votre marché, chaque mois.` : `All set: you're Recommended and your badge is live. Nothing to ask — just your market, monthly.`}<div style="margin-top:14px;font-size:13px;color:#6f6769;">${fr ? `Un confrère d'un secteur voisin mériterait d'être vérifié ? <b>Transmettez-lui ce courriel.</b>` : `Know a peer worth verifying? <b>Forward this email.</b>`}</div></div></td></tr>`;
+      foot = FOOT(fr ? `Vous êtes Recommandé et partenaire vérifié à ${city.name}.` : `You are Recommended and a verified partner in ${city.name}.`, unsubUrl, fr ? 'Ne plus recevoir' : 'Unsubscribe');
+    }
+  }
+  const html = `<div style="background:#f5f3f2;margin:0;padding:28px 12px;font-family:Arial,Helvetica,sans-serif;"><table role="presentation" width="580" cellpadding="0" cellspacing="0" border="0" align="center" style="max-width:580px;width:100%;background:#ffffff;border:1px solid #eae5e5;border-radius:8px;">${marketCore(city, fr, eyebrow)}${close}${foot}</table></div>`;
+  return { subject, html };
+}
+
+// Envoi générique avec COPIE PERSO systématique (bcc) — demande du proprio.
+async function sendPulse(env, { to, subject, html, replyTo }) {
+  if (!env.RESEND_API_KEY) return { simulated: true, to, subject };
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      from: env.MAIL_FROM_BULLETIN || 'Payotte <bulletin@payotte.com>',
+      to: [to], bcc: [PERSO_COPY], reply_to: replyTo || 'gregory@payotte.com',
+      subject, html,
+    }),
+  });
+  return { ok: res.ok };
+}
+
 async function handleSubscribe(request, env, url) {
   let email = '', ville = '', honeypot = '';
   const ct = request.headers.get('Content-Type') || '';
@@ -678,6 +798,30 @@ export default {
         }
       }
       return json({ generated: new Date().toISOString().slice(0, 10), bulletinSubscribers: subscribers, aiContactRelays: { thisMonth: relaysMonth, total: relaysTotal } });
+    }
+
+    // Aperçu d'un numéro (aucun envoi) — pour valider le rendu de la machine en direct.
+    // Ex. /preview?segment=expert&stage=yellow&city=laval&lang=fr
+    if (request.method === 'GET' && url.pathname === '/preview') {
+      const q = url.searchParams;
+      const segment = q.get('segment') || 'prospect';
+      const stage = q.get('stage') || 'intro';
+      const citySlug = strip(q.get('city') || 'laval');
+      const lang = q.get('lang') || 'fr';
+      const market = await feed('/api/market.json').catch(() => ({ cities: [] }));
+      const city = market.cities.find((c) => strip(c.slug) === citySlug) || market.cities.find((c) => strip(c.name) === citySlug);
+      if (!city) return json({ error: `Ville inconnue : ${citySlug}`, villes: (market.cities || []).map((c) => c.slug) }, 404);
+      // Pour un expert : on prend un expert réel de la ville si possible, sinon un gabarit.
+      let expert = null;
+      if (segment === 'expert') {
+        try {
+          const all = await allExperts();
+          expert = all.find((e) => strip(e.cityName) === citySlug || strip(e.city) === citySlug) || all[0] || null;
+        } catch { /* gabarit ci-dessous */ }
+        if (!expert) expert = { name: 'Exemple', professionLabel: 'courtier immobilier', score: { total: 64, color: 'yellow' }, licence: { body: 'OACIQ', number: null }, url: `${SITE}` };
+      }
+      const { subject, html } = renderPulse({ segment, stage, city, expert, lang, unsubUrl: '#preview' });
+      return new Response(`<!--${subject}-->\n${html}`, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'X-Robots-Tag': 'noindex' } });
     }
 
     // Bulletin de marché (formulaire zéro-JS des pages ville).
