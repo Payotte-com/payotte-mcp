@@ -667,6 +667,63 @@ async function sendPulse(env, { to, subject, html, replyTo }) {
   return { ok: res.ok };
 }
 
+// Villes ACTIVES du bulletin. Lot test dès le 1er août : Laval + Montréal.
+// Élargir = ajouter des slugs ici (puis redéployer).
+const ACTIVE_CITIES = ['laval', 'montreal'];
+
+// Orchestration mensuelle. dryRun=true → aucun envoi, renvoie seulement le rapport d'audience.
+// Prospects (abonnés du formulaire) + experts des villes actives. Un expert FROID reçoit ⓪
+// (présentation) et est marqué `intro:` pour ne JAMAIS le re-présenter sans son accord
+// (`sub:` posé à la main quand il répond « oui » → il entre alors dans l'escalier ①②③④).
+async function runBulletin(env, { dryRun = false } = {}) {
+  const origin = 'https://payotte-mcp.payotte.workers.dev';
+  const report = { dryRun, activeCities: ACTIVE_CITIES, prospects: 0, experts: { intro: 0, yellow: 0, green: 0, reco: 0, partner: 0 }, sent: 0, cap: SEND_CAP_RUN, skipped: [], recipients: [] };
+  const market = await feed('/api/market.json').catch(() => ({ cities: [] }));
+  const cityBySlug = Object.fromEntries((market.cities || []).map((c) => [c.slug, c]));
+
+  // ---- Prospects des villes actives ----
+  if (env.SUBSCRIBERS) {
+    const subs = await env.SUBSCRIBERS.list({ prefix: 's:' });
+    for (const k of subs.keys) {
+      if (report.sent >= SEND_CAP_RUN) break;
+      const rec = JSON.parse((await env.SUBSCRIBERS.get(k.name)) || '{}');
+      if (!ACTIVE_CITIES.includes(rec.city)) continue;
+      const city = cityBySlug[rec.city]; if (!city) continue;
+      const unsub = `${origin}/unsubscribe?e=${encodeURIComponent(rec.email)}&c=${encodeURIComponent(rec.city)}&t=${await hmacHex(env, `u:${rec.email}:${rec.city}`)}`;
+      const { subject, html } = renderPulse({ segment: 'prospect', city, lang: rec.lang, unsubUrl: unsub });
+      report.prospects++; report.recipients.push({ to: rec.email, kind: 'prospect', city: rec.city });
+      if (!dryRun) { await sendPulse(env, { to: rec.email, subject, html }); report.sent++; }
+    }
+  }
+
+  // ---- Experts des villes actives ----
+  let all = [];
+  try { all = await allExperts(); } catch { /* feed indispo */ }
+  const lm = all.filter((e) => ACTIVE_CITIES.includes(e.city) && e.score?.color && e.score.color !== 'red');
+  let dir = {};
+  if (env.CONTACTS_TOKEN) { try { dir = (await feed(`/api/cx/${env.CONTACTS_TOKEN}.json`)).contacts || {}; } catch { /* annuaire indispo */ } }
+  for (const e of lm) {
+    if (report.sent >= SEND_CAP_RUN) { report.skipped.push(`${e.slug} (cap)`); continue; }
+    const contact = dir[e.slug];
+    if (!contact?.email) { report.skipped.push(`${e.slug} (pas de courriel)`); continue; }
+    const introduced = env.SUBSCRIBERS ? await env.SUBSCRIBERS.get(`intro:${e.slug}`) : null;
+    const subscribed = env.SUBSCRIBERS ? await env.SUBSCRIBERS.get(`sub:${e.slug}`) : null;
+    if (introduced && !subscribed) { report.skipped.push(`${e.slug} (présenté, pas d'accord)`); continue; }
+    const stage = expertStage(e, !!subscribed);
+    if (!stage) continue;
+    const city = cityBySlug[e.city]; if (!city) { report.skipped.push(`${e.slug} (ville sans marché)`); continue; }
+    report.experts[stage] = (report.experts[stage] || 0) + 1;
+    report.recipients.push({ to: contact.email, kind: `expert:${stage}`, slug: e.slug });
+    if (!dryRun) {
+      const { subject, html } = renderPulse({ segment: 'expert', stage, city, expert: e, lang: contact.lang || e.lang, unsubUrl: e.url });
+      await sendPulse(env, { to: contact.email, subject, html });
+      if (stage === 'intro' && env.SUBSCRIBERS) await env.SUBSCRIBERS.put(`intro:${e.slug}`, new Date().toISOString());
+      report.sent++;
+    }
+  }
+  return report;
+}
+
 async function handleSubscribe(request, env, url) {
   let email = '', ville = '', honeypot = '';
   const ct = request.headers.get('Content-Type') || '';
@@ -824,6 +881,13 @@ export default {
       return new Response(`<!--${subject}-->\n${html}`, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'X-Robots-Tag': 'noindex' } });
     }
 
+    // Dry-run du bulletin (aucun envoi) — rapport d'audience. Protégé par le jeton privé.
+    if (request.method === 'GET' && url.pathname === '/bulletin-dryrun') {
+      if (!env.CONTACTS_TOKEN || url.searchParams.get('key') !== env.CONTACTS_TOKEN) return json({ error: 'unauthorized' }, 401);
+      const report = await runBulletin(env, { dryRun: true });
+      return json(report);
+    }
+
     // Bulletin de marché (formulaire zéro-JS des pages ville).
     if (request.method === 'POST' && url.pathname === '/subscribe') return handleSubscribe(request, env, url);
     if (request.method === 'GET' && url.pathname === '/unsubscribe') return handleUnsubscribe(env, url);
@@ -862,20 +926,9 @@ export default {
     return handleRpc(msg, env);
   },
 
-  // Envoi mensuel du bulletin (cron : 1er du mois, 13h UTC). Plafond SEND_CAP_RUN par exécution.
+  // Envoi mensuel du bulletin (cron : 1er du mois, 13h UTC). Villes actives = ACTIVE_CITIES.
   async scheduled(event, env, ctx) {
-    if (!env.RESEND_API_KEY || !env.SUBSCRIBERS) return;
-    const market = await feed('/api/market.json');
-    const list = await env.SUBSCRIBERS.list({ prefix: 's:' });
-    let sent = 0;
-    for (const k of list.keys) {
-      if (sent >= SEND_CAP_RUN) break;
-      try {
-        const rec = JSON.parse(await env.SUBSCRIBERS.get(k.name));
-        const city = market.cities.find((c) => c.slug === rec.city);
-        if (!city) continue;
-        if (await sendBulletin(env, 'https://payotte-mcp.payotte.workers.dev', rec.email, city, rec.lang, false)) sent++;
-      } catch { /* un abonné cassé ne bloque pas les autres */ }
-    }
+    if (!env.RESEND_API_KEY) return;   // sans clé : aucun envoi (le dry-run reste dispo par route)
+    await runBulletin(env, { dryRun: false });
   },
 };
