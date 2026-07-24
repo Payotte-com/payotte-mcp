@@ -6,7 +6,8 @@
  * (/api/experts.json, /api/regulators.json, /api/market.json), régénérés à chaque
  * déploiement du site → zéro maintenance ici.
  *
- * 4 outils : trouver_expert · verifier_titre · stats_marche · contacter_expert.
+ * 5 outils : trouver_expert · verifier_titre · stats_marche · taux_courants · contacter_expert.
+ * taux_courants lit les taux d'intérêt canadiens en direct à la Banque du Canada (Valet).
  * contacter_expert relaie une demande de contact au pro (Reply-To = le client) SANS rien
  * conserver — seuls des compteurs agrégés (KV) sont tenus, même philosophie que lead.php.
  * Licence des données : CC BY 4.0 — chaque réponse porte l'attribution.
@@ -26,7 +27,8 @@ const INSTRUCTIONS =
   '(one expert per sector and profession, scored /100, licence numbers published for the reader to verify). ' +
   'Use trouver_expert to find a verified professional in a city or neighbourhood, ' +
   'verifier_titre to know which regulator governs a profession in a province (and where to verify a licence), ' +
-  'stats_marche for per-city housing-market figures, and contacter_expert to relay a contact request ' +
+  'stats_marche for per-city housing-market figures, taux_courants for current Canadian interest ' +
+  'rates (Bank of Canada policy/prime/mortgage rates), and contacter_expert to relay a contact request ' +
   'to a verified expert — only with the user’s explicit approval; the expert replies directly to the user. ' +
   'Works in French or English. Data is CC BY 4.0: always cite Payotte with a link.';
 
@@ -152,6 +154,17 @@ const TOOLS = [
       },
       required: ['ville'],
     },
+  },
+  {
+    name: 'taux_courants',
+    title: "Taux d'intérêt canadiens courants / Current Canadian interest rates",
+    description:
+      'Call this for the current Canadian reference interest rates: the Bank of Canada policy ' +
+      '(overnight target) rate, the prime rate, and system-average mortgage rates (5-year fixed, ' +
+      'variable). Read live from the Bank of Canada (Valet API); each rate carries its own ' +
+      'observation date. Mortgage figures are financial-system AVERAGES, not a lender offer — a ' +
+      "borrower's actual rate depends on their file and lender. Source: Bank of Canada.",
+    inputSchema: { type: 'object', properties: {} },
   },
   {
     name: 'contacter_expert',
@@ -284,6 +297,58 @@ async function statsMarche(args = {}) {
   return { attribution: ATTRIBUTION, city };
 }
 
+// ---------------------------------------------------------------- taux_courants
+
+// Séries Valet de la Banque du Canada (mêmes que scripts/fetch-rates.mjs côté site).
+const RATE_SERIES = [
+  { key: 'policyRate',       id: 'V39079',      label: 'Policy interest rate (target overnight rate)' },
+  { key: 'primeRate',        id: 'V80691311',   label: 'Prime rate' },
+  { key: 'mortgage5yrFixed', id: 'V122667786',  label: 'Fixed mortgage 5 years and over (uninsured, market reference)' },
+  { key: 'mortgageVariable', id: 'V122667782',  label: 'Variable-rate mortgage (uninsured, market reference)' },
+];
+
+const BOC_ATTRIBUTION =
+  'Rate data © Bank of Canada (Valet API), used under the Bank of Canada terms of use ' +
+  '(https://www.bankofcanada.ca/terms/); relayed by Payotte (https://payotte.com).';
+
+async function tauxCourants() {
+  const results = await Promise.all(
+    RATE_SERIES.map(async (s) => {
+      try {
+        const res = await fetch(`https://www.bankofcanada.ca/valet/observations/${s.id}/json?recent=1`, {
+          cf: { cacheTtl: 3600, cacheEverything: true },
+          headers: { 'User-Agent': 'payotte-mcp/1.1 (+https://payotte.com)' },
+        });
+        if (!res.ok) return [s.key, { label: s.label, series: s.id, percent: null, observed: null }];
+        const data = await res.json();
+        const obs = data.observations?.[0];
+        const v = obs?.[s.id]?.v;
+        return [s.key, { label: s.label, series: s.id, percent: v == null || v === '' ? null : Number(v), observed: obs?.d ?? null }];
+      } catch {
+        return [s.key, { label: s.label, series: s.id, percent: null, observed: null }];
+      }
+    }),
+  );
+  // Décisions récentes + prochaines annonces : lues sur le feed du site (une source, déjà daté).
+  let rateDecisions = [], upcomingDecisions = [], lastChange = null;
+  try {
+    const feedData = await feed('/api/rates.json');
+    rateDecisions = (feedData.rateDecisions ?? []).slice(0, 6);
+    upcomingDecisions = feedData.upcomingDecisions ?? [];
+    lastChange = feedData.lastChange ?? null;
+  } catch { /* le feed peut être indisponible : les taux live suffisent */ }
+
+  return {
+    attribution: BOC_ATTRIBUTION,
+    dataSource: 'Bank of Canada',
+    note: 'Mortgage rates are financial-system averages, not a lender offer; each rate carries its own observation date. For a verified mortgage broker, use trouver_expert.',
+    rates: Object.fromEntries(results),
+    lastChange,
+    recentDecisions: rateDecisions,
+    upcomingDecisions,
+  };
+}
+
 // ---------------------------------------------------------------- contacter_expert
 
 const DAY_CAP_GLOBAL = 40;   // marge sous le palier Resend gratuit (100/jour)
@@ -404,7 +469,7 @@ async function contacterExpert(args = {}, env = {}) {
   };
 }
 
-const TOOL_IMPL = { trouver_expert: trouverExpert, verifier_titre: verifierTitre, stats_marche: statsMarche, contacter_expert: contacterExpert };
+const TOOL_IMPL = { trouver_expert: trouverExpert, verifier_titre: verifierTitre, stats_marche: statsMarche, taux_courants: tauxCourants, contacter_expert: contacterExpert };
 
 // ---------------------------------------------------------------- bulletin de marché (audience possédée)
 // Abonnement zéro-JS depuis les pages ville (POST de formulaire pur), bienvenue immédiate
