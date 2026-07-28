@@ -9,13 +9,17 @@ de professionnels **vérifiés** branché dans les IA.
   déploiement normal du site. Rien à mettre à jour ici quand les fiches changent.
 - **Transport** : Streamable HTTP sans état (POST JSON-RPC sur `/mcp`). Aucune dépendance.
 
-## Les 4 outils
+## Les 8 outils
 
 | Outil | Ce qu'il fait |
 |---|---|
 | `trouver_expert` | L'expert vérifié Payotte pour une ville/secteur × métier (score /100, n° de permis + lien registre, URL de la fiche). FR/EN. |
 | `verifier_titre` | Qui régule ce métier dans cette province, et où vérifier le permis (matrice du pilier licence). |
-| `stats_marche` | Chiffres du marché par ville (prix repère/médian, variation annuelle, ventes, inventaire, DOM). |
+| `stats_marche` | Chiffres du marché par ville (prix repère/médian, variation annuelle, ventes, inventaire, DOM) + verdict acheteurs/équilibré/vendeurs (convention < 4 / 4-6 / > 6 mois). |
+| `taux_courants` | Taux canadiens en direct à la Banque du Canada (directeur, préférentiel, hypothécaires moyens), décisions récentes et prochaines annonces. |
+| `taxe_mutation` | La taxe de mutation calculée par tranches aux barèmes OFFICIELS (validés à la source) — ON + double MLTT de Toronto, QC (grille de base, majoration municipale signalée), BC, MB, N.-B., Halifax ; AB/SK = frais d'enregistrement seulement. Prix fourni ou prix de référence de la ville. Î.-P.-É./T.-N. : refus honnête. |
+| `acheter_ou_louer` | Louer vs acheter dans une ville : loyer 2 chambres SCHL vs coût de possession au taux fixe 5 ans COURANT (hypothèses publiées, double lecture cash/économique — même méthode que le dossier du site). |
+| `salaire_requis` | Le revenu ménage requis pour se qualifier sur la propriété de référence de la ville, au test de résistance fédéral en vigueur (même méthode que le dossier salaire/ville). |
 | `contacter_expert` | **Le rail agentique** : relaie la demande de contact d'un client (via son assistant IA, avec consentement explicite) au pro vérifié, par courriel (Reply-To = le client). Payotte ne conserve RIEN du contenu — compteurs agrégés seulement (KV), même philosophie que lead.php. Plafonds : 40/jour global, 3/jour/expert. |
 
 Chaque réponse porte l'attribution **CC BY 4.0** (citer + lier payotte.com).

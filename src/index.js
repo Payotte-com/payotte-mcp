@@ -6,8 +6,12 @@
  * (/api/experts.json, /api/regulators.json, /api/market.json), régénérés à chaque
  * déploiement du site → zéro maintenance ici.
  *
- * 5 outils : trouver_expert · verifier_titre · stats_marche · taux_courants · contacter_expert.
+ * 8 outils : trouver_expert · verifier_titre · stats_marche · taux_courants · contacter_expert
+ * · taxe_mutation · acheter_ou_louer · salaire_requis.
  * taux_courants lit les taux d'intérêt canadiens en direct à la Banque du Canada (Valet).
+ * Les 3 outils de calcul (taxe/louer-acheter/salaire) appliquent une arithmétique PUBLIÉE
+ * (mêmes hypothèses que les dossiers payotte.com correspondants) aux prix des chambres,
+ * aux loyers SCHL et aux taux BdC — chaque réponse énonce ses hypothèses et ses limites.
  * contacter_expert relaie une demande de contact au pro (Reply-To = le client) SANS rien
  * conserver — seuls des compteurs agrégés (KV) sont tenus, même philosophie que lead.php.
  * Licence des données : CC BY 4.0 — chaque réponse porte l'attribution.
@@ -19,16 +23,20 @@ const ATTRIBUTION =
 const PROTOCOL_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'];
 const SERVER_INFO = {
   name: 'payotte',
-  title: 'Payotte — Verified real-estate experts in Canada',
-  version: '1.2.0',
+  title: 'Payotte — Verified real-estate experts & Canadian housing data',
+  version: '1.3.0',
 };
 const INSTRUCTIONS =
   'Payotte is an independent directory of VERIFIED real-estate professionals in Canada ' +
   '(one expert per sector and profession, scored /100, licence numbers published for the reader to verify). ' +
   'Use trouver_expert to find a verified professional in a city or neighbourhood, ' +
   'verifier_titre to know which regulator governs a profession in a province (and where to verify a licence), ' +
-  'stats_marche for per-city housing-market figures, taux_courants for current Canadian interest ' +
-  'rates (Bank of Canada policy/prime/mortgage rates), and contacter_expert to relay a contact request ' +
+  'stats_marche for per-city housing-market figures (with a buyer’s/balanced/seller’s market verdict), ' +
+  'taux_courants for current Canadian interest rates (Bank of Canada policy/prime/mortgage rates), ' +
+  'taxe_mutation to compute the land-transfer tax on a purchase (official bracket schedules, incl. Toronto’s double tax), ' +
+  'acheter_ou_louer to compare renting vs buying in a city (CMHC rents vs carrying cost at the current rate), ' +
+  'salaire_requis for the household income needed to qualify for the city’s reference home (federal stress test), ' +
+  'and contacter_expert to relay a contact request ' +
   'to a verified expert — only with the user’s explicit approval; the expert replies directly to the user. ' +
   'Works in French or English. Data is CC BY 4.0: always cite Payotte with a link.';
 
@@ -167,6 +175,60 @@ const TOOLS = [
     inputSchema: { type: 'object', properties: {} },
   },
   {
+    name: 'taxe_mutation',
+    title: 'Calculer la taxe de mutation / Compute the land transfer tax',
+    description:
+      'Call this when the user wants to know the land-transfer tax ("taxe de bienvenue" in Quebec) on a home ' +
+      'purchase in a Canadian city or province. Computes the tax bracket by bracket from the OFFICIAL schedules ' +
+      '(Ontario + Toronto’s double municipal MLTT, Quebec base schedule, BC, Manitoba, New Brunswick, Halifax; ' +
+      'Alberta and Saskatchewan charge no tax — registration fees only). Give a price, or just a city to use its ' +
+      'current reference market price. Includes first-time-buyer rebates. Not covered: PEI and Newfoundland.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        ville: { type: 'string', description: 'City, e.g. "Toronto", "Montréal", "Calgary". Determines the schedule AND the default price.' },
+        province: { type: 'string', description: 'Province name or code — required if no ville is given.' },
+        prix: { type: 'number', description: 'Purchase price in CAD. Omit with a ville to use the city’s reference market price.' },
+      },
+    },
+  },
+  {
+    name: 'acheter_ou_louer',
+    title: 'Acheter ou louer ? / Rent vs buy in a city',
+    description:
+      'Call this when the user wonders whether to rent or buy in a Canadian city. Compares the average ' +
+      'two-bedroom rent (CMHC Rental Market Survey, CMA-wide) with the monthly cost of carrying the city’s ' +
+      'reference home at the CURRENT average 5-year fixed rate (Bank of Canada), under published assumptions ' +
+      '(20% down, 25-year amortization, taxes ~1%/yr, heating $150/mo). Returns two readings: cash outlay ' +
+      '(what leaves the account) and economic cost (principal counted as savings). Only cities inside a ' +
+      'CMHC-covered metro have rent data.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        ville: { type: 'string', description: 'City, e.g. "Montréal", "Toronto", "Winnipeg".' },
+      },
+      required: ['ville'],
+    },
+  },
+  {
+    name: 'salaire_requis',
+    title: 'Salaire requis pour acheter / Income needed to buy in a city',
+    description:
+      'Call this when the user asks what income is needed to buy a home in a Canadian city. Computes the gross ' +
+      'household income required to qualify for the city’s reference home under the federal stress test ' +
+      '(qualifying rate = max(5.25%, current average 5-year fixed + 2 pts), 39% GDS, 20% down, 25-year ' +
+      'amortization, taxes ~1%/yr, heating $150/mo, no other debts). Same published methodology as ' +
+      'payotte.com/salaire-pour-acheter-une-maison-canada. A theoretical qualification threshold, not a loan offer.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        ville: { type: 'string', description: 'City, e.g. "Montréal", "Vancouver", "Halifax".' },
+        prix: { type: 'number', description: 'Optional price in CAD to test instead of the city’s reference price.' },
+      },
+      required: ['ville'],
+    },
+  },
+  {
     name: 'contacter_expert',
     title: "Contacter l'expert vérifié / Contact the verified expert",
     description:
@@ -294,7 +356,199 @@ async function statsMarche(args = {}) {
       availableCities: data.cities.map((c) => c.name),
     };
   }
-  return { attribution: ATTRIBUTION, city };
+  // Verdict acheteur/équilibré/vendeur — convention standard des chambres (ACI) :
+  // < 4 mois d'inventaire = vendeurs, 4-6 = équilibré, > 6 = acheteurs.
+  const moi = city.monthsOfInventory;
+  const marketBalance = moi == null ? null : {
+    verdict: moi < 4 ? "seller's market" : moi <= 6 ? 'balanced market' : "buyer's market",
+    monthsOfInventory: moi,
+    convention: 'Standard board convention: under 4 months of inventory = seller’s, 4-6 = balanced, over 6 = buyer’s.',
+  };
+  return { attribution: ATTRIBUTION, city, marketBalance };
+}
+
+// ---------------------------------------------------------------- outils de calcul
+// Arithmétique PUBLIÉE (mêmes hypothèses que les dossiers payotte.com) sur des données
+// sourcées — jamais d'estimation cachée. Chaque réponse énonce hypothèses et limites.
+
+const PROV_CODE_TO_SLUG = {
+  QC: 'quebec', ON: 'ontario', AB: 'alberta', BC: 'british-columbia', MB: 'manitoba',
+  NS: 'nova-scotia', SK: 'saskatchewan', NB: 'new-brunswick', NL: 'newfoundland-and-labrador', PE: 'prince-edward-island',
+};
+
+// Ville du feed marché (même tolérance que stats_marche).
+async function findMarketCity(ville) {
+  const v = strip(ville);
+  if (!v) return { error: 'Parameter "ville" is required.' };
+  const data = await feed('/api/market.json');
+  let city = data.cities.find((c) => strip(c.slug) === v || strip(c.name) === v);
+  if (!city) city = data.cities.find((c) => strip(c.name).includes(v) || v.includes(strip(c.slug)));
+  if (!city) return { error: `No market data for "${ville}".`, availableCities: data.cities.map((c) => c.name) };
+  return { city, all: data.cities };
+}
+
+const refPriceOf = (city) => city.benchmarkHpi ?? city.medianPrice ?? city.averagePrice ?? null;
+
+// Taux fixe 5 ans moyen, en direct (série Valet V122667786 — la même que le site).
+async function fetchFixed5() {
+  const res = await fetch('https://www.bankofcanada.ca/valet/observations/V122667786/json?recent=1', {
+    cf: { cacheTtl: 3600, cacheEverything: true },
+    headers: { 'User-Agent': 'payotte-mcp/1.3 (+https://payotte.com)' },
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  const obs = data.observations?.[0];
+  const v = obs?.V122667786?.v;
+  return v == null || v === '' ? null : { percent: Number(v), observed: obs?.d ?? null };
+}
+
+// Mensualité hypothécaire canadienne (composition SEMESTRIELLE) — même formule que le site.
+const monthlyEffRate = (annualPct) => Math.pow(1 + annualPct / 200, 1 / 6) - 1;
+const monthlyFactor = (annualPct, years) => {
+  const i = monthlyEffRate(annualPct);
+  const n = years * 12;
+  return i / (1 - Math.pow(1 + i, -n));
+};
+
+// ---- taxe_mutation : barèmes OFFICIELS (identiques au dossier /taxe-mutation-canada,
+// validés à la source le 2026-06-26). Taxe par tranches, comme l'impôt.
+const bracketTax = (price, brackets) => {
+  let tax = 0, prev = 0;
+  for (const [cap, rate] of brackets) {
+    if (price <= prev) break;
+    tax += (Math.min(price, cap) - prev) * rate;
+    prev = cap;
+  }
+  return tax;
+};
+const LTT_ON = [[55000, 0.005], [250000, 0.01], [400000, 0.015], [2000000, 0.02], [Infinity, 0.025]];
+const LTT_QC_BASE = [[62900, 0.005], [315000, 0.01], [Infinity, 0.015]];   // grille de base 2026 (indexée)
+const LTT_BC = [[200000, 0.01], [2000000, 0.02], [3000000, 0.03], [Infinity, 0.05]];
+const LTT_MB = [[30000, 0], [90000, 0.005], [150000, 0.01], [200000, 0.015], [Infinity, 0.02]];
+
+async function taxeMutation(args = {}) {
+  // 1. Résoudre ville (prix par défaut) et/ou province (barème).
+  let city = null, provSlug = null, price = args.prix != null ? Number(args.prix) : null;
+  if (args.ville) {
+    const r = await findMarketCity(args.ville);
+    if (r.error) return r;
+    city = r.city;
+    provSlug = PROV_CODE_TO_SLUG[city.province] ?? null;
+    if (price == null) price = refPriceOf(city);
+  }
+  if (!provSlug && args.province) provSlug = resolveAlias(PROVINCE_ALIASES, args.province) ?? (strip(args.province) === 'prince-edward-island' || strip(args.province) === 'pe' || strip(args.province) === 'ile-du-prince-edouard' ? 'prince-edward-island' : null);
+  if (!provSlug) return { error: 'Give a "ville" (city) or a "province" so the right schedule applies.' };
+  if (price == null || !(price > 0)) return { error: 'Give a "prix" (price in CAD), or a "ville" whose reference market price can be used.' };
+
+  const citySlug = city ? strip(city.slug) : '';
+  const rebates = {
+    ontario: 'First-time buyers: provincial rebate up to $4,000 (covers the full tax up to ~$368,000). In Toronto, an additional municipal rebate up to $4,475 (combined up to $8,475).',
+    'british-columbia': 'First-Time Home Buyers’ Program: full exemption up to $500,000 (max ~$8,000 saved), partial to $525,000.',
+    quebec: 'Refundable provincial credit up to $1,400 (TP-752.HA); Montreal has the targeted Accès Habitation program. Federal HBTC adds up to $1,500 everywhere.',
+  };
+  const common = {
+    attribution: ATTRIBUTION,
+    price,
+    priceSource: city && args.prix == null ? `Reference market price of ${city.name} (${city.board ?? 'board'}${city.referenceMonth ? ', ' + city.referenceMonth : ''})` : 'Price provided by the caller',
+    methodology: 'Official bracket schedules (validated at source 2026-06-26), computed bracket by bracket — the tax is NOT top-rate × price. Payable in cash after closing; it cannot be financed in the mortgage. Full dossier: https://payotte.com/taxe-mutation-canada (EN: https://payotte.com/en/land-transfer-tax-canada).',
+  };
+
+  switch (provSlug) {
+    case 'ontario': {
+      const prov = Math.round(bracketTax(price, LTT_ON));
+      if (citySlug === 'toronto') {
+        const mltt = Math.round(bracketTax(price, LTT_ON)); // MLTT = mêmes tranches que la provinciale jusqu'à 2 M$
+        return { ...common, province: 'Ontario', city: 'Toronto', tax: prov + mltt, breakdown: { provincialLTT: prov, torontoMLTT: mltt }, note: 'Toronto is the only Canadian city where the tax is paid TWICE: provincial LTT + municipal MLTT (same schedule up to $2M).', firstTimeBuyerRebate: rebates.ontario };
+      }
+      return { ...common, province: 'Ontario', city: city?.name ?? null, tax: prov, note: 'Provincial land transfer tax only (the municipal MLTT applies only inside the City of Toronto).', firstTimeBuyerRebate: rebates.ontario };
+    }
+    case 'quebec': {
+      const base = Math.round(bracketTax(price, LTT_QC_BASE));
+      return { ...common, province: 'Québec', city: city?.name ?? null, tax: base, note: 'Quebec 2026 BASE schedule (0.5% / 1% / 1.5%, indexed brackets). Municipalities may charge up to 3% on the portion above $500,000 (Laval does; Montreal has its own upper tiers) — above $500,000 this amount is a FLOOR; the exact bill belongs to the municipality and the notary. Detailed calculator: https://payotte.com/taxe-de-bienvenue-quebec', firstTimeBuyerRebate: rebates.quebec, municipalSurchargePossible: price > 500000 };
+    }
+    case 'british-columbia':
+      return { ...common, province: 'British Columbia', city: city?.name ?? null, tax: Math.round(bracketTax(price, LTT_BC)), note: 'BC Property Transfer Tax (1% / 2% / 3%, +2% above $3M on residential).', firstTimeBuyerRebate: rebates['british-columbia'] };
+    case 'manitoba':
+      return { ...common, province: 'Manitoba', city: city?.name ?? null, tax: Math.round(bracketTax(price, LTT_MB)), note: 'Manitoba Land Transfer Tax (0% to 2% in brackets). No major provincial first-time-buyer rebate; federal HBTC up to $1,500.' };
+    case 'new-brunswick':
+      return { ...common, province: 'New Brunswick', city: city?.name ?? null, tax: Math.round(price * 0.01), note: 'Flat 1.0% Real Property Transfer Tax, on the greater of the sale price or the assessed value (Act R-2.1). No provincial rebate; federal HBTC up to $1,500.' };
+    case 'nova-scotia': {
+      if (citySlug === 'halifax' || !city) {
+        return { ...common, province: 'Nova Scotia', city: city?.name ?? 'Halifax (HRM rate shown)', tax: Math.round(price * 0.015), note: 'Deed Transfer Tax is MUNICIPAL in Nova Scotia (~0.5% to 1.5%). Amount shown uses the Halifax (HRM) rate of 1.5% — the highest. Other municipalities set their own rate by by-law.' };
+      }
+      return { ...common, province: 'Nova Scotia', city: city.name, tax: null, note: `Nova Scotia's Deed Transfer Tax is set by each municipality (~0.5% to 1.5%) and Payotte has only validated the Halifax (HRM) rate at source. Check ${city.name}'s municipal by-law, or ask again for Halifax.` };
+    }
+    case 'alberta': {
+      const fees = Math.round(50 + Math.ceil(price / 5000) * 2 + 50 + Math.ceil((price * 0.8) / 5000) * 1.5);
+      return { ...common, province: 'Alberta', city: city?.name ?? null, tax: fees, isRegistrationFeesOnly: true, note: 'Alberta charges NO land transfer tax — only modest land-title and mortgage registration fees (computed here with a 20% down payment). One of only two such provinces, with Saskatchewan.' };
+    }
+    case 'saskatchewan': {
+      const fees = Math.round(price * 0.003 + 160);
+      return { ...common, province: 'Saskatchewan', city: city?.name ?? null, tax: fees, isRegistrationFeesOnly: true, note: 'Saskatchewan charges NO land transfer tax — only title fees (0.30% above $8,400) and a $160 mortgage registration fee.' };
+    }
+    default:
+      return { error: `Payotte has not source-validated the transfer-tax schedule for "${provSlug}" (PEI, Newfoundland). Refusing to guess — check the provincial registry, or see https://payotte.com/en/home-closing-costs-canada for the provinces covered.` };
+  }
+}
+
+// ---- acheter_ou_louer : loyers SCHL vs coût de possession au taux courant.
+async function acheterOuLouer(args = {}) {
+  const r = await findMarketCity(args.ville);
+  if (r.error) return r;
+  const { city } = r;
+  const price = refPriceOf(city);
+  if (price == null) return { error: `No reference price on file for ${city.name} yet.` };
+  if (city.rent2Br == null) {
+    const withRent = r.all.filter((c) => c.rent2Br != null).map((c) => c.name);
+    return { error: `${city.name} is outside the metros covered by CMHC's Rental Market Survey — no comparable rent on file. Cities with rent data: ${withRent.join(', ')}.` };
+  }
+  const rate = await fetchFixed5();
+  if (!rate) return { error: 'Bank of Canada rate feed unavailable right now — try again shortly.' };
+
+  const DOWN = 0.2, YEARS = 25, TAX = 0.01, HEAT = 150;
+  const loan = price * (1 - DOWN);
+  const buyMonthly = Math.round(loan * monthlyFactor(rate.percent, YEARS) + (price * TAX) / 12 + HEAT);
+  const ecoMonthly = Math.round(loan * monthlyEffRate(rate.percent) + (price * TAX) / 12 + HEAT);
+  const rent = city.rent2Br;
+
+  return {
+    attribution: ATTRIBUTION,
+    city: city.name,
+    referenceHome: { price, source: `${city.board ?? 'board'}${city.referenceMonth ? ', ' + city.referenceMonth : ''}` },
+    rentMonthly: { amount: rent, what: 'Average two-bedroom purpose-built apartment rent, CMA-wide', zone: city.rentZone, source: 'CMHC Rental Market Survey' },
+    cashOutlay: { buyMonthly, gapVsRent: buyMonthly - rent, meaning: 'Full mortgage payment + estimated taxes + heating, minus the rent. What actually leaves the account each month.' },
+    economicCost: { buyMonthly: ecoMonthly, gapVsRent: ecoMonthly - rent, meaning: 'Interest + taxes + heating only — the principal portion repays the buyer’s own loan (forced savings, not a cost).' },
+    assumptions: `20% down · 25-year amortization · ${rate.percent}% (average 5-year fixed, Bank of Canada, observed ${rate.observed}) · property taxes ~1%/yr · heating $150/mo · Canadian semi-annual compounding`,
+    caveats: 'Compares an average rental APARTMENT with the market’s reference HOME — different dwellings (the only two published, verifiable figures). Excludes maintenance (~1%/yr is a common estimate), insurance, closing costs, condo fees, rent increases and the return the down payment would earn invested — add your own numbers. Full dossier: https://payotte.com/acheter-ou-louer-canada (EN: https://payotte.com/en/rent-vs-buy-canada).',
+  };
+}
+
+// ---- salaire_requis : test de résistance fédéral sur le prix de référence de la ville.
+async function salaireRequis(args = {}) {
+  const r = await findMarketCity(args.ville);
+  if (r.error) return r;
+  const { city } = r;
+  const price = args.prix != null ? Number(args.prix) : refPriceOf(city);
+  if (price == null || !(price > 0)) return { error: `No reference price on file for ${city.name} yet — pass a "prix".` };
+  const rate = await fetchFixed5();
+  if (!rate) return { error: 'Bank of Canada rate feed unavailable right now — try again shortly.' };
+
+  const FLOOR = 5.25, GDS = 0.39, DOWN = 0.2, YEARS = 25, TAX = 0.01, HEAT = 150;
+  const qualRate = Math.max(FLOOR, rate.percent + 2);
+  const loan = price * (1 - DOWN);
+  const mortgage = loan * monthlyFactor(qualRate, YEARS);
+  const monthlyHousing = mortgage + (price * TAX) / 12 + HEAT;
+  const income = Math.round((monthlyHousing * 12) / GDS / 1000) * 1000;
+
+  return {
+    attribution: ATTRIBUTION,
+    city: city.name,
+    price: { amount: price, source: args.prix != null ? 'Price provided by the caller' : `Reference market price (${city.board ?? 'board'}${city.referenceMonth ? ', ' + city.referenceMonth : ''})` },
+    requiredHouseholdIncome: income,
+    qualifyingRate: { percent: qualRate, how: `max(5.25% regulatory floor, ${rate.percent}% average 5-year fixed + 2 pts) — Bank of Canada, observed ${rate.observed}` },
+    assumptions: '20% down · 25-year amortization · 39% GDS (insured-loan standard) · property taxes ~1%/yr · heating $150/mo · NO other debts · Canadian semi-annual compounding. Rounded to the nearest $1,000.',
+    caveats: 'A theoretical qualification threshold, not a loan offer: real taxes, debts (TDS ~44%) and lender grids change the result — a verified mortgage broker runs it with the user’s numbers (use trouver_expert). A 30-year amortization (first-time buyers/new builds on insured loans, or 20%+ down) lowers the required income by roughly 8-10%. Methodology: https://payotte.com/salaire-pour-acheter-une-maison-canada (EN: https://payotte.com/en/income-needed-to-buy-a-house-canada).',
+  };
 }
 
 // ---------------------------------------------------------------- taux_courants
@@ -469,7 +723,16 @@ async function contacterExpert(args = {}, env = {}) {
   };
 }
 
-const TOOL_IMPL = { trouver_expert: trouverExpert, verifier_titre: verifierTitre, stats_marche: statsMarche, taux_courants: tauxCourants, contacter_expert: contacterExpert };
+const TOOL_IMPL = {
+  trouver_expert: trouverExpert,
+  verifier_titre: verifierTitre,
+  stats_marche: statsMarche,
+  taux_courants: tauxCourants,
+  taxe_mutation: taxeMutation,
+  acheter_ou_louer: acheterOuLouer,
+  salaire_requis: salaireRequis,
+  contacter_expert: contacterExpert,
+};
 
 // ---------------------------------------------------------------- bulletin de marché (audience possédée)
 // Abonnement zéro-JS depuis les pages ville (POST de formulaire pur), bienvenue immédiate
