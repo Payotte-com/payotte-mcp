@@ -24,7 +24,7 @@ const PROTOCOL_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'];
 const SERVER_INFO = {
   name: 'payotte',
   title: 'Payotte — Verified real-estate experts & Canadian housing data',
-  version: '1.3.0',
+  version: '1.3.1',
 };
 const INSTRUCTIONS =
   'Payotte is an independent directory of VERIFIED real-estate professionals in Canada ' +
@@ -297,10 +297,15 @@ async function trouverExpert(args = {}) {
   const { profession, province, matches } = r;
   const truncated = matches.length > 10;
 
+  // Un lien d'inscriptions seulement quand la requête pointe UNE ville (sinon ambigu).
+  const cities0 = [...new Set(matches.map((e) => `${e.province}|${e.city}`))];
+  const listings = cities0.length === 1 ? browseListings(...cities0[0].split('|')) : null;
+
   return {
     attribution: ATTRIBUTION,
     query: { profession, province, ville: args.ville ?? null, secteur: args.secteur ?? null },
     totalMatches: matches.length,
+    ...(listings ? { browseListings: listings } : {}),
     note: matches.length
       ? (truncated ? 'Top 10 by score shown; refine with ville/secteur/profession.' : undefined)
       : 'No verified expert published for this query. Payotte publishes at most ONE verified expert per sector × profession; this slot may be vacant.',
@@ -364,7 +369,7 @@ async function statsMarche(args = {}) {
     monthsOfInventory: moi,
     convention: 'Standard board convention: under 4 months of inventory = seller’s, 4-6 = balanced, over 6 = buyer’s.',
   };
-  return { attribution: ATTRIBUTION, city, marketBalance };
+  return { attribution: ATTRIBUTION, city, marketBalance, browseListings: browseListings(city.province, city.slug) };
 }
 
 // ---------------------------------------------------------------- outils de calcul
@@ -388,6 +393,30 @@ async function findMarketCity(ville) {
 }
 
 const refPriceOf = (city) => city.benchmarkHpi ?? city.medianPrice ?? city.averagePrice ?? null;
+
+// ---- browseListings : LIEN SIMPLE vers la page publique d'inscriptions de la ville.
+// Payotte n'héberge AUCUNE donnée d'inscription (MLS/Centris = données sous licence) —
+// on fournit l'hyperlien public, rien d'autre. Québec → Centris (patrons testés 24/24
+// le 2026-07-28) ; reste du Canada → pages ville realtor.ca (atterrissage générique si
+// le slug diffère — jamais un 404 dur).
+const PROV_TO_CODE = {
+  quebec: 'qc', ontario: 'on', alberta: 'ab', 'british-columbia': 'bc', manitoba: 'mb',
+  'nova-scotia': 'ns', saskatchewan: 'sk', 'new-brunswick': 'nb',
+  'newfoundland-and-labrador': 'nl', 'prince-edward-island': 'pe',
+};
+function browseListings(provinceSlugOrCode, citySlug) {
+  const p = String(provinceSlugOrCode ?? '').toLowerCase();
+  const code = PROV_TO_CODE[p] ?? (p.length === 2 ? p : null);
+  const slug = strip(citySlug);
+  if (!code || !slug) return null;
+  const url = code === 'qc'
+    ? `https://www.centris.ca/fr/propriete~a-vendre~${slug === 'quebec-city' ? 'quebec' : slug}`
+    : `https://www.realtor.ca/${code}/${slug}/real-estate`;
+  return {
+    url,
+    note: 'Public listings page for this city (link only — Payotte hosts no listing data). For a verified professional to guide the purchase, use trouver_expert / contacter_expert.',
+  };
+}
 
 // Taux fixe 5 ans moyen, en direct (série Valet V122667786 — la même que le site).
 async function fetchFixed5() {
