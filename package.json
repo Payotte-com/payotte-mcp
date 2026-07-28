@@ -1,6 +1,6 @@
 {
   "name": "payotte-mcp",
-  "version": "1.3.1",
+  "version": "1.4.0",
   "private": true,
   "type": "module",
   "description": "Serveur MCP de Payotte — annuaire d'experts immobiliers vérifiés au Canada (lit les feeds statiques de payotte.com).",

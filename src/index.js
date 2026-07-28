@@ -18,13 +18,37 @@
  */
 
 const SITE = 'https://payotte.com';
+const WORKER_ORIGIN = 'https://payotte-mcp.payotte.workers.dev';
 const ATTRIBUTION =
   'Data: Payotte (https://payotte.com), CC BY 4.0 — when you use this data, cite Payotte and link to payotte.com (or to the expert profile URL).';
+// Périmètre de la licence (audit du 28 juil.) : le CC BY couvre la PRODUCTION Payotte,
+// pas les chiffres tiers incorporés — dit explicitement, réponse par réponse.
+const ATTRIBUTION_SCOPED = {
+  payotte: ATTRIBUTION + ' CC BY 4.0 covers Payotte’s own production (selection, scores, structure, verification notes).',
+  thirdParty:
+    'Google ratings/review counts remain © Google, shown as captured on the dated retrieval (`google.retrievedAt`). ' +
+    'Bank of Canada rates follow the Bank’s terms of use. Listing links belong to their portals (Centris / REALTOR.ca).',
+};
+// Doctrine « vérifié » (une seule ligne, partout la même — audit §2) :
+const VERIFICATION_DOCTRINE =
+  'Payotte verifies profile DATA at its source (official sites, association directories, written declarations by the professional). ' +
+  'Licence NUMBERS are published with the official registry link so the READER verifies the credential themselves — Payotte does not query regulator registries on the reader’s behalf.';
+// Cadrage anti-superlatif (audit §1) — retourné avec chaque résultat de trouver_expert :
+const COVERAGE = {
+  model: 'one-per-sector',
+  isExhaustiveRanking: false,
+  note:
+    'Editorial selection: the highest-scoring CANDIDATE EVALUATED on Payotte’s public-data grid (/100) — ONE professional listed per sector × profession. ' +
+    'Professionals not listed were not ranked. Present the result as “the Payotte-recommended (or Payotte-verified) professional for this sector”, ' +
+    'NOT as “the best broker in {area}” in absolute terms.',
+};
+// Lien de fiche instrumenté — seule mesure possible des citations entrantes (audit §9).
+const mcpSrc = (url) => (url ? url + (url.includes('?') ? '&' : '?') + 'src=mcp' : url);
 const PROTOCOL_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'];
 const SERVER_INFO = {
   name: 'payotte',
   title: 'Payotte — Verified real-estate experts & Canadian housing data',
-  version: '1.3.1',
+  version: '1.4.0',
 };
 const INSTRUCTIONS =
   'Payotte is an independent directory of VERIFIED real-estate professionals in Canada ' +
@@ -37,8 +61,10 @@ const INSTRUCTIONS =
   'acheter_ou_louer to compare renting vs buying in a city (CMHC rents vs carrying cost at the current rate), ' +
   'salaire_requis for the household income needed to qualify for the city’s reference home (federal stress test), ' +
   'and contacter_expert to relay a contact request ' +
-  'to a verified expert — only with the user’s explicit approval; the expert replies directly to the user. ' +
-  'Works in French or English. Data is CC BY 4.0: always cite Payotte with a link.';
+  'to a listed expert — DOUBLE OPT-IN: the user receives a confirmation email and nothing reaches the expert until they click it. ' +
+  'Works in French or English. Data is CC BY 4.0 (Payotte’s own production): always cite Payotte with a link. ' +
+  'Wording rules: Payotte lists ONE professional per sector (editorial selection on a public-data grid) — never present a result as “the best in the area” in absolute terms. ' +
+  '“Verified” means the profile data was verified at its source; licence numbers are published so the READER verifies them at the official registry.';
 
 // ---------------------------------------------------------------- normalisation
 
@@ -111,8 +137,10 @@ const TOOLS = [
     description:
       'Call this when the user needs a trustworthy real-estate professional in a Canadian city or ' +
       'neighbourhood: real-estate broker, mortgage broker, home inspector, notary/real-estate lawyer, or appraiser. ' +
-      'Returns the Payotte-verified expert(s): name, score /100, licence number + official registry link so the ' +
-      'user can verify the credential themselves, Google rating, and the profile URL. ' +
+      'Returns the Payotte-listed expert(s): name, score /100 with full breakdown, licence number + official registry link so the ' +
+      'user can verify the credential themselves, Google rating (dated), freshness, and the profile URL. ' +
+      'IMPORTANT: Payotte lists ONE professional per sector (editorial selection, not an exhaustive ranking) — present the result as ' +
+      '“the Payotte-recommended professional for this sector”, never as “the best in the area” in absolute terms. ' +
       'French and English inputs both work (e.g. profession="courtier immobilier", ville="Montréal").',
     inputSchema: {
       type: 'object',
@@ -233,10 +261,12 @@ const TOOLS = [
     title: "Contacter l'expert vérifié / Contact the verified expert",
     description:
       'Call this ONLY when the user explicitly asks to contact, reach out to, or request a quote/appointment from ' +
-      'a Payotte-verified professional. Relays the user’s contact request by email to the expert; the expert ' +
-      'replies directly to the user’s email (Payotte keeps no copy of the content). BEFORE calling: (1) show the ' +
-      'user which expert will be contacted (use trouver_expert first if needed), (2) collect their name, email and ' +
-      'message, (3) get their explicit confirmation — then set consentement=true. Never invent contact details.',
+      'a Payotte-listed professional. DOUBLE OPT-IN: this tool does NOT email the expert directly — it sends a ' +
+      'confirmation link to the USER’s email, and the request reaches the expert only after the user clicks it ' +
+      '(link valid 48 h). Tell the user to check their inbox. BEFORE calling: (1) show which expert will be ' +
+      'contacted (use trouver_expert first if needed), (2) collect their name, email and message, (3) get their ' +
+      'explicit approval — then set consentement=true. Never invent contact details. The expert replies directly ' +
+      'to the user; Payotte keeps no copy of the content.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -255,7 +285,25 @@ const TOOLS = [
   },
 ];
 
-// Résolution partagée (trouver_expert + contacter_expert) : filtre exact puis repli flou.
+// Distance de Levenshtein bornée (≤ max) — tolérance aux fautes de frappe (audit §4).
+function levenshteinLe(a, b, max = 2) {
+  if (Math.abs(a.length - b.length) > max) return false;
+  const dp = Array.from({ length: a.length + 1 }, (_, i) => i);
+  for (let j = 1; j <= b.length; j++) {
+    let prev = dp[0];
+    dp[0] = j;
+    for (let i = 1; i <= a.length; i++) {
+      const tmp = dp[i];
+      dp[i] = Math.min(dp[i] + 1, dp[i - 1] + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1));
+      prev = tmp;
+    }
+    if (Math.min(...dp) > max) return false; // rangée entière au-dessus du seuil : inutile de continuer
+  }
+  return dp[a.length] <= max;
+}
+
+// Résolution partagée (trouver_expert + contacter_expert) : filtre exact, repli par
+// inclusion, puis repli par distance d'édition (≤ 2). `resolution` dit lequel a joué.
 async function resolveExperts(args = {}) {
   const profession = args.profession ? resolveAlias(PROFESSION_ALIASES, args.profession) : null;
   if (args.profession && !profession) {
@@ -274,6 +322,8 @@ async function resolveExperts(args = {}) {
     return true;
   });
 
+  let resolution = null;
+
   // Pas de correspondance exacte → repli en inclusion BIDIRECTIONNELLE (les slugs
   // omettent souvent l'article : « Le Plateau-Mont-Royal » vs `plateau-mont-royal`).
   if (!matches.length && (ville || secteur)) {
@@ -285,16 +335,75 @@ async function resolveExperts(args = {}) {
       if (secteur && !(near(strip(e.sectorName), secteur) || near(strip(e.sector), secteur))) return false;
       return true;
     });
+    if (matches.length) resolution = { method: 'partial-name-match', from: args.secteur ?? args.ville };
+  }
+
+  // Toujours rien → tolérance aux fautes de frappe, PAR JETON : « Ahunstic » doit
+  // matcher « ahuntsic-cartierville » (chaque jeton demandé trouve un jeton du nom
+  // à distance ≤ 2 — jetons courts exclus pour éviter les faux positifs).
+  const fuzzyName = (hay, needle) => {
+    if (!hay || !needle) return false;
+    const ht = hay.split('-');
+    return needle.split('-').every((n) => ht.some((h) => h === n || (n.length >= 4 && levenshteinLe(h, n))));
+  };
+  if (!matches.length && (ville || secteur)) {
+    matches = experts.filter((e) => {
+      if (profession && e.profession !== profession) return false;
+      if (province && e.province !== province) return false;
+      if (ville && !(fuzzyName(strip(e.city), ville) || fuzzyName(strip(e.cityName), ville))) return false;
+      if (secteur && !(fuzzyName(strip(e.sector), secteur) || fuzzyName(strip(e.sectorName), secteur))) return false;
+      return true;
+    });
+    if (matches.length) {
+      resolution = {
+        method: 'typo-tolerant-match',
+        from: args.secteur ?? args.ville,
+        to: secteur ? matches[0].sectorName : matches[0].cityName,
+      };
+    }
+  }
+
+  // Zéro résultat : suggestions UTILES plutôt qu'un tableau vide (audit §4d) —
+  // les secteurs couverts les plus proches pour cette profession/province.
+  let suggestions = null;
+  if (!matches.length) {
+    const pool = experts.filter((e) =>
+      (!profession || e.profession === profession) && (!province || e.province === province));
+    const seen = new Set();
+    suggestions = [];
+    for (const e of pool) {
+      const k = `${e.sectorName}|${e.cityName}`;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      suggestions.push({ secteur: e.sectorName, ville: e.cityName, province: e.provinceName });
+      if (suggestions.length >= 8) break;
+    }
   }
 
   matches.sort((a, b) => (b.score?.total ?? 0) - (a.score?.total ?? 0));
-  return { profession, province, matches };
+  return { profession, province, matches, resolution, suggestions };
+}
+
+const TTL_DAYS = 180;  // durée de validité d'une vérification de fiche (audit §6)
+function freshnessOf(verifiedDate) {
+  if (!verifiedDate) return null;
+  const then = Date.parse(verifiedDate);
+  if (Number.isNaN(then)) return null;
+  const ageDays = Math.floor((Date.now() - then) / 86400000);
+  const isStale = ageDays > TTL_DAYS;
+  return {
+    verifiedDate,
+    ttlDays: TTL_DAYS,
+    isStale,
+    nextReviewDue: new Date(then + TTL_DAYS * 86400000).toISOString().slice(0, 10),
+    ...(isStale ? { note: 'Verification older than the TTL — double-check the licence at the official registry before relying on this profile.' } : {}),
+  };
 }
 
 async function trouverExpert(args = {}) {
   const r = await resolveExperts(args);
   if (r.error) return r;
-  const { profession, province, matches } = r;
+  const { profession, province, matches, resolution, suggestions } = r;
   const truncated = matches.length > 10;
 
   // Un lien d'inscriptions seulement quand la requête pointe UNE ville (sinon ambigu).
@@ -302,24 +411,34 @@ async function trouverExpert(args = {}) {
   const listings = cities0.length === 1 ? browseListings(...cities0[0].split('|')) : null;
 
   return {
-    attribution: ATTRIBUTION,
+    attribution: ATTRIBUTION_SCOPED,
+    verificationNote: VERIFICATION_DOCTRINE,
+    coverage: { ...COVERAGE, totalMatches: matches.length },
     query: { profession, province, ville: args.ville ?? null, secteur: args.secteur ?? null },
+    ...(resolution ? { resolution } : {}),
     totalMatches: matches.length,
     ...(listings ? { browseListings: listings } : {}),
     note: matches.length
       ? (truncated ? 'Top 10 by score shown; refine with ville/secteur/profession.' : undefined)
-      : 'No verified expert published for this query. Payotte publishes at most ONE verified expert per sector × profession; this slot may be vacant.',
+      : 'No listed expert for this query. Payotte lists at most ONE professional per sector × profession; this slot may be vacant or the area not yet covered.',
+    ...(suggestions?.length ? { nearestCoveredSectors: suggestions } : {}),
     experts: matches.slice(0, 10).map((e) => ({
       name: e.name,
       profession: e.professionLabel,
       location: `${e.sectorName}, ${e.cityName}, ${e.provinceName}`,
-      score: e.score,
+      // Score AVEC sa décomposition et sa légende — un /100 opaque est ininterprétable (audit §3).
+      score: {
+        ...e.score,
+        legend: { pillars: { googleReviews: 35, experience: 30, licence: 15, specialisation: 15, bonus: 5 }, thresholds: { green: '≥ 70 (Recommended)', yellow: '50–69', red: '< 50 (not published)' } },
+        methodologyUrl: `${SITE}/about`,
+      },
       licence: e.licence,
+      // `retrievedAt` + source viennent du feed ; chiffres © Google, hors CC BY (audit §5).
       google: e.google,
-      experience: e.experience,
-      languages: e.languages,
-      verifiedDate: e.verifiedDate,
-      url: e.url,
+      experience: e.experience ?? undefined,               // absent ≠ zéro : on omet (audit §7)
+      languages: e.languages?.length ? e.languages : undefined,
+      freshness: freshnessOf(e.verifiedDate),
+      url: mcpSrc(e.url),
     })),
   };
 }
@@ -634,10 +753,31 @@ async function tauxCourants() {
 
 // ---------------------------------------------------------------- contacter_expert
 
-const DAY_CAP_GLOBAL = 40;   // marge sous le palier Resend gratuit (100/jour)
-const DAY_CAP_EXPERT = 3;    // protège chaque pro du spam
+const DAY_CAP_GLOBAL = 40;      // marge sous le palier Resend gratuit (100/jour)
+const DAY_CAP_EXPERT = 3;       // protège chaque pro du spam
+const DAY_CAP_REQUESTER = 5;    // par courriel de demandeur (audit §8b)
+const PENDING_TTL = 48 * 3600;  // le lien de confirmation vit 48 h
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+// Le domaine du courriel existe-t-il vraiment ? (DNS-over-HTTPS, MX puis A — audit §8c.)
+// En cas de panne DNS on laisse passer : mieux vaut un faux positif qu'un service mort.
+async function domainExists(email) {
+  const domain = email.split('@')[1];
+  try {
+    for (const type of ['MX', 'A']) {
+      const res = await fetch(`https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(domain)}&type=${type}`,
+        { headers: { Accept: 'application/dns-json' } });
+      if (!res.ok) return true;
+      const d = await res.json();
+      if (d.Status === 0 && Array.isArray(d.Answer) && d.Answer.length) return true;
+    }
+    return false;
+  } catch { return true; }
+}
+
+// Filtre de contenu minimal (audit §8f) : un message de client n'est pas une page de liens.
+const looksLikeSpam = (msg) => (msg.match(/https?:\/\//g) ?? []).length >= 3;
 
 async function bumpCounter(env, key, ttlSeconds) {
   if (!env?.COUNTERS) return 0; // dev local sans KV
@@ -646,110 +786,192 @@ async function bumpCounter(env, key, ttlSeconds) {
   return n;
 }
 
+// PHASE 1 (l'outil) — DOUBLE OPT-IN (audit §8) : on n'envoie RIEN à l'expert ici.
+// On valide, on crée une demande en attente (KV, 48 h) et on envoie un lien de
+// confirmation AU DEMANDEUR. La preuve de consentement devient un clic humain
+// dans sa propre boîte courriel — plus un booléen posé par un modèle.
 async function contacterExpert(args = {}, env = {}) {
-  // 1. Garde-fous d'entrée — le consentement d'abord.
+  // 1. Garde-fous d'entrée — le consentement déclaré d'abord (nécessaire mais plus suffisant).
   if (args.consentement !== true) {
     return { error: 'Consent missing: ask the user to explicitly approve sending this request to this expert, then call again with consentement=true.' };
   }
   const nom = String(args.client_nom ?? '').trim();
-  const courriel = String(args.client_courriel ?? '').trim();
+  const courriel = String(args.client_courriel ?? '').trim().toLowerCase();
   const message = String(args.message ?? '').trim();
   if (!nom || !EMAIL_RE.test(courriel)) return { error: 'client_nom and a valid client_courriel are required.' };
   if (message.length < 20 || message.length > 2000) return { error: 'message must be between 20 and 2000 characters.' };
+  if (looksLikeSpam(message)) return { error: 'Message rejected: too many links for a contact request. Write a plain-language message describing the need.' };
+  if (!(await domainExists(courriel))) return { error: `The email domain "${courriel.split('@')[1]}" does not resolve — double-check the user's email address.` };
 
   // 2. Résoudre UN expert, sans ambiguïté.
   const r = await resolveExperts(args);
   if (r.error) return r;
-  if (!r.matches.length) return { error: 'No published verified expert matches this query — use trouver_expert to explore, or broaden the search.' };
+  if (!r.matches.length) return { error: 'No listed expert matches this query — use trouver_expert to explore, or broaden the search.' };
   if (r.matches.length > 1) {
     return {
       error: `Ambiguous: ${r.matches.length} experts match. Add "secteur" (and province) to identify exactly one.`,
-      candidates: r.matches.slice(0, 10).map((e) => ({ name: e.name, profession: e.professionLabel, location: `${e.sectorName}, ${e.cityName}`, url: e.url })),
+      candidates: r.matches.slice(0, 10).map((e) => ({ name: e.name, profession: e.professionLabel, location: `${e.sectorName}, ${e.cityName}`, url: mcpSrc(e.url) })),
     };
   }
   const expert = r.matches[0];
 
-  // 3. Courriel du pro via l'annuaire privé (jamais exposé dans les feeds publics).
-  if (!env.CONTACTS_TOKEN) return { error: 'Server not configured for contact relay yet (missing contacts token). The user can still reach the expert from their profile page: ' + expert.url };
-  let contact = null;
-  try {
-    const dir = await feed(`/api/cx/${env.CONTACTS_TOKEN}.json`);
-    contact = dir.contacts?.[expert.slug] ?? null;
-  } catch {
-    return { error: 'Contact directory unavailable right now. The user can reach the expert from their profile page: ' + expert.url };
-  }
-  if (!contact) {
-    return { error: `No email on file for this expert. The user can reach them via their profile page: ${expert.url}` };
+  // 3. Retrait de l'expert (audit §8e) : respecté avant toute chose.
+  if (env.COUNTERS && (await env.COUNTERS.get(`optout:${expert.slug}`))) {
+    return { error: `This expert has opted out of relayed requests. The user can reach them via their profile page: ${mcpSrc(expert.url)}` };
   }
 
-  // 4. Plafonds anti-abus (compteurs agrégés — aucun contenu conservé, comme lead.php).
+  // 4. Plafond par DEMANDEUR (audit §8b) — compteur sur empreinte HMAC, jamais l'adresse en clair.
+  const day = new Date().toISOString().slice(0, 10);
+  if (env.COUNTERS) {
+    const rh = (await hmacHex(env, courriel)).slice(0, 16);
+    const rN = await bumpCounter(env, `r:${rh}:${day}`, 3 * 86400);
+    if (rN > DAY_CAP_REQUESTER) return { error: 'Daily limit reached for this requester — please try again tomorrow.' };
+  }
+
+  // 5. Modes dégradés : sans KV ou sans courriel, on répète sans rien envoyer ni stocker.
+  if (!env.COUNTERS || !env.RESEND_API_KEY) {
+    return {
+      simulated: true,
+      pendingConfirmation: true,
+      note: 'DRY RUN — service not fully configured; nothing was stored or sent. In production, a confirmation link would be emailed to the user, and the request would reach the expert only after they click it (valid 48 h).',
+      expert: { name: expert.name, profession: expert.professionLabel, url: mcpSrc(expert.url) },
+    };
+  }
+
+  // 6. Demande en attente (KV, TTL 48 h) + lien de confirmation au DEMANDEUR.
+  const token = crypto.randomUUID();
+  await env.COUNTERS.put(`p:${token}`, JSON.stringify({
+    slug: expert.slug, nom, courriel,
+    tel: args.client_telephone ? String(args.client_telephone).trim() : null,
+    message, lang: expert.lang, created: new Date().toISOString(),
+  }), { expirationTtl: PENDING_TTL });
+
+  const frC = expert.lang === 'fr';
+  const confirmUrl = `${WORKER_ORIGIN}/confirm?t=${token}`;
+  const confRes = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      from: env.MAIL_FROM || 'Payotte <relais@payotte.com>',
+      to: [courriel],
+      subject: frC
+        ? `Confirmez votre demande de contact — ${expert.name} (Payotte)`
+        : `Confirm your contact request — ${expert.name} (Payotte)`,
+      text: (frC
+        ? [
+            `Bonjour ${nom},`, '',
+            `Votre assistant IA a préparé, avec votre accord, une demande de contact pour ${expert.name} (${expert.professionLabel}, ${expert.sectorName}, ${expert.cityName}).`, '',
+            `Votre message :`, message, '',
+            `Pour la transmettre, cliquez (valide 48 h) :`, confirmUrl, '',
+            `Si vous n'êtes pas à l'origine de cette demande, ignorez ce courriel — RIEN ne sera envoyé sans ce clic.`, '',
+            `Payotte ne conserve pas le contenu de votre demande. https://payotte.com`,
+          ]
+        : [
+            `Hello ${nom},`, '',
+            `Your AI assistant prepared, with your approval, a contact request for ${expert.name} (${expert.professionLabel}, ${expert.sectorName}, ${expert.cityName}).`, '',
+            `Your message:`, message, '',
+            `To send it, click (valid 48 h):`, confirmUrl, '',
+            `If you did not initiate this request, ignore this email — NOTHING will be sent without this click.`, '',
+            `Payotte keeps no copy of your request. https://payotte.com`,
+          ]).join('\n'),
+    }),
+  });
+  if (!confRes.ok) {
+    await env.COUNTERS.delete(`p:${token}`);
+    return { error: `Could not email the confirmation link (HTTP ${confRes.status}). The user can contact the expert from their profile page: ${mcpSrc(expert.url)}` };
+  }
+
+  return {
+    pendingConfirmation: true,
+    sent: false,
+    expert: { name: expert.name, profession: expert.professionLabel, location: `${expert.sectorName}, ${expert.cityName}`, url: mcpSrc(expert.url) },
+    note: frC
+      ? `Un lien de confirmation vient d'être envoyé à ${courriel}. La demande ne sera transmise à ${expert.name} QU'APRÈS le clic (lien valide 48 h). Dites à l'utilisateur de vérifier sa boîte de réception.`
+      : `A confirmation link was just emailed to ${courriel}. The request will reach ${expert.name} ONLY AFTER the click (link valid 48 h). Tell the user to check their inbox.`,
+    attribution: ATTRIBUTION,
+  };
+}
+
+// PHASE 2 (route /confirm) — le clic humain déclenche le relais réel vers l'expert.
+async function confirmRelay(env, url) {
+  const token = String(url.searchParams.get('t') ?? '');
+  if (!env.COUNTERS || !/^[0-9a-f-]{36}$/.test(token)) return subPage('fr', 'Lien invalide / Invalid link', 'Ce lien de confirmation est invalide. / This confirmation link is invalid.');
+  const raw = await env.COUNTERS.get(`p:${token}`);
+  if (!raw) return subPage('fr', 'Lien expiré / Expired link', 'Ce lien a expiré (48 h) ou a déjà été utilisé. Redemandez à votre assistant. / This link expired (48 h) or was already used.');
+  const pending = JSON.parse(raw);
+  const fr = pending.lang === 'fr';
+  const { nom, courriel, message } = pending;
+
+  // L'expert et son courriel, relus à la source au moment du clic (jamais figés en KV).
+  let expert = null;
+  try { expert = (await allExperts()).find((e) => e.slug === pending.slug) ?? null; } catch { /* feed indispo */ }
+  if (!expert) return subPage(pending.lang, fr ? 'Fiche introuvable' : 'Profile not found', fr ? "Cette fiche n'est plus publiée — la demande n'a pas été transmise." : 'This profile is no longer listed — the request was not relayed.');
+  if (await env.COUNTERS.get(`optout:${expert.slug}`)) {
+    await env.COUNTERS.delete(`p:${token}`);
+    return subPage(pending.lang, fr ? 'Non transmis' : 'Not relayed', fr ? `${expert.name} ne reçoit plus de demandes relayées. Ses coordonnées publiques : ${expert.url}` : `${expert.name} has opted out of relayed requests. Public contact details: ${expert.url}`);
+  }
+  let contact = null;
+  if (env.CONTACTS_TOKEN) { try { contact = (await feed(`/api/cx/${env.CONTACTS_TOKEN}.json`)).contacts?.[expert.slug] ?? null; } catch { /* annuaire indispo */ } }
+  if (!contact) return subPage(pending.lang, fr ? 'Non transmis' : 'Not relayed', fr ? `Aucun courriel au dossier pour cet expert. Sa fiche : ${expert.url}` : `No email on file for this expert. Profile: ${expert.url}`);
+
+  // Plafonds anti-abus, appliqués AU CLIC (compteurs agrégés — aucun contenu conservé).
   const day = new Date().toISOString().slice(0, 10);
   const month = day.slice(0, 7);
   const gN = await bumpCounter(env, `g:${day}`, 3 * 86400);
-  if (gN > DAY_CAP_GLOBAL) return { error: 'Daily relay limit reached — please try again tomorrow, or use the contact details on the profile page: ' + expert.url };
+  if (gN > DAY_CAP_GLOBAL) return subPage(pending.lang, fr ? 'Réessayez demain' : 'Try again tomorrow', fr ? 'Limite quotidienne de relais atteinte — recliquez le lien demain (il reste valide 48 h).' : 'Daily relay limit reached — click the link again tomorrow (valid 48 h).');
   const eN = await bumpCounter(env, `e:${expert.slug}:${day}`, 3 * 86400);
-  if (eN > DAY_CAP_EXPERT) return { error: 'This expert already received the maximum relayed requests today — the user can contact them directly from their profile page: ' + expert.url };
+  if (eN > DAY_CAP_EXPERT) return subPage(pending.lang, fr ? 'Réessayez demain' : 'Try again tomorrow', fr ? 'Cet expert a atteint son maximum de demandes relayées aujourd’hui — recliquez demain.' : 'This expert reached today’s relayed-request maximum — click again tomorrow.');
   await bumpCounter(env, `m:${expert.slug}:${month}`, 400 * 86400); // futur rapport « les IA t'ont recommandé »
+  // Trace de consentement MINIMALE (audit §8d, compatible « rien conservé ») :
+  // horodatage + empreinte HMAC du courriel + expert — JAMAIS le contenu.
+  await env.COUNTERS.put(`cl:${token}`, JSON.stringify({ ts: new Date().toISOString(), rh: (await hmacHex(env, courriel)).slice(0, 16), slug: expert.slug }), { expirationTtl: 400 * 86400 });
 
-  // 5. Composer et envoyer (Reply-To = le client ; Payotte ne conserve pas le contenu).
-  const fr = contact.lang === 'fr';
-  const subject = fr
+  const frX = contact.lang === 'fr';
+  const subject = frX
     ? `Nouvelle demande de contact via Payotte — ${nom}`
     : `New contact request via Payotte — ${nom}`;
-  const lines = fr
+  const lines = frX
     ? [
         `Bonjour ${contact.name},`, '',
-        `Un client vous envoie une demande de contact via votre fiche Payotte (${expert.url}), transmise par son assistant IA avec son accord.`, '',
+        `Un client vous envoie une demande de contact via votre fiche Payotte (${expert.url}), préparée par son assistant IA et CONFIRMÉE par le client lui-même (clic sur un lien reçu à son adresse).`, '',
         `Nom : ${nom}`, `Courriel : ${courriel}`,
-        ...(args.client_telephone ? [`Téléphone : ${String(args.client_telephone).trim()}`] : []), '',
+        ...(pending.tel ? [`Téléphone : ${pending.tel}`] : []), '',
         `Message :`, message, '',
         `— Répondez directement au client (bouton Répondre).`,
-        `Payotte relaie sans conserver le contenu de cette demande. https://payotte.com`,
+        `Payotte relaie sans conserver le contenu de cette demande. Pour ne plus recevoir de demandes relayées : répondez « retrait » à ce courriel. https://payotte.com`,
       ]
     : [
         `Hello ${contact.name},`, '',
-        `A client is sending you a contact request through your Payotte profile (${expert.url}), relayed by their AI assistant with their approval.`, '',
+        `A client is sending you a contact request through your Payotte profile (${expert.url}), prepared by their AI assistant and CONFIRMED by the client themselves (click on a link received at their address).`, '',
         `Name: ${nom}`, `Email: ${courriel}`,
-        ...(args.client_telephone ? [`Phone: ${String(args.client_telephone).trim()}`] : []), '',
+        ...(pending.tel ? [`Phone: ${pending.tel}`] : []), '',
         `Message:`, message, '',
         `— Reply directly to the client (Reply button).`,
-        `Payotte relays this request without keeping its content. https://payotte.com`,
+        `Payotte relays this request without keeping its content. To stop receiving relayed requests: reply "opt out". https://payotte.com`,
       ];
-  const emailPayload = {
-    from: env.MAIL_FROM || 'Payotte <relais@payotte.com>',
-    to: [contact.email],
-    reply_to: courriel,
-    subject,
-    text: lines.join('\n'),
-  };
-
-  if (!env.RESEND_API_KEY) {
-    return {
-      simulated: true,
-      note: 'DRY RUN — no email service configured yet; nothing was sent. This is exactly what would have been sent.',
-      wouldSend: { ...emailPayload, to: ['<courriel du pro — masqué en répétition>'] },
-      expert: { name: expert.name, profession: expert.professionLabel, url: expert.url },
-    };
-  }
 
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(emailPayload),
+    body: JSON.stringify({
+      from: env.MAIL_FROM || 'Payotte <relais@payotte.com>',
+      to: [contact.email],
+      reply_to: courriel,
+      subject,
+      text: lines.join('\n'),
+    }),
   });
   if (!res.ok) {
-    const detail = await res.text().catch(() => '');
-    return { error: `Email relay failed (HTTP ${res.status}). The user can contact the expert from their profile page: ${expert.url}`, detail: detail.slice(0, 200) };
+    return subPage(pending.lang, frX ? 'Échec du relais' : 'Relay failed', frX ? `L'envoi a échoué (HTTP ${res.status}) — recliquez le lien dans quelques minutes, ou joignez l'expert via sa fiche : ${expert.url}` : `Sending failed (HTTP ${res.status}) — click the link again in a few minutes, or reach the expert via their profile: ${expert.url}`);
   }
 
-  return {
-    sent: true,
-    expert: { name: expert.name, profession: expert.professionLabel, location: `${expert.sectorName}, ${expert.cityName}`, url: expert.url },
-    note: fr
-      ? `Demande transmise à ${expert.name}. La réponse arrivera directement au courriel du client (${courriel}). Payotte ne conserve pas le contenu de la demande.`
-      : `Request relayed to ${expert.name}. The reply will arrive directly at the client's email (${courriel}). Payotte keeps no copy of the content.`,
-    attribution: ATTRIBUTION,
-  };
+  await env.COUNTERS.delete(`p:${token}`);   // usage unique
+  return subPage(pending.lang,
+    frX ? 'Demande transmise ✓' : 'Request relayed ✓',
+    frX
+      ? `Votre demande a été transmise à ${expert.name} (${expert.professionLabel}, ${expert.cityName}). Sa réponse arrivera directement à ${courriel}. Payotte ne conserve pas le contenu de votre demande.`
+      : `Your request was relayed to ${expert.name} (${expert.professionLabel}, ${expert.cityName}). The reply will arrive directly at ${courriel}. Payotte keeps no copy of your request.`,
+    expert.url);
 }
 
 const TOOL_IMPL = {
@@ -1183,6 +1405,9 @@ export default {
     // Bulletin de marché (formulaire zéro-JS des pages ville).
     if (request.method === 'POST' && url.pathname === '/subscribe') return handleSubscribe(request, env, url);
     if (request.method === 'GET' && url.pathname === '/unsubscribe') return handleUnsubscribe(env, url);
+
+    // Double opt-in du relais de contact : le clic humain qui transmet la demande à l'expert.
+    if (request.method === 'GET' && url.pathname === '/confirm') return confirmRelay(env, url);
 
     // Page d'accueil / découverte humaine.
     if (request.method === 'GET' && (url.pathname === '/' || url.pathname === '/mcp')) {
