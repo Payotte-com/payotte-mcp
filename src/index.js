@@ -114,7 +114,11 @@ function resolveAlias(table, value) {
 
 async function feed(path) {
   const res = await fetch(`${SITE}${path}`, {
-    cf: { cacheTtl: 3600, cacheEverything: true },
+    // TTL séparé pour les erreurs : `cacheTtl: 3600` seul mettait un 404 en cache UNE HEURE.
+    // Vécu le 5 août 2026 — le worker interrogé avant le déploiement du site a figé les 404
+    // de /api/bonds.json et consorts, et servi des blocs vides longtemps après leur mise en
+    // ligne. Un feed qui vient d'apparaître doit être vu en ≤ 60 s.
+    cf: { cacheTtlByStatus: { '200-299': 3600, '400-599': 60 }, cacheEverything: true },
     headers: { 'User-Agent': 'payotte-mcp/1.5 (+https://payotte.com)' },
   });
   if (!res.ok) throw new Error(`Upstream ${path} returned HTTP ${res.status}`);
