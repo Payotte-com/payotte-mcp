@@ -51,7 +51,7 @@ const PROTOCOL_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'];
 const SERVER_INFO = {
   name: 'payotte',
   title: 'Payotte — Verified real-estate experts & Canadian housing data',
-  version: '1.5.0',
+  version: '1.5.1',
 };
 const INSTRUCTIONS =
   'Payotte is an independent directory of VERIFIED real-estate professionals in Canada ' +
@@ -1328,44 +1328,94 @@ async function kvKeys(kv, prefix) {
 const expertUnsubUrl = async (env, origin, slug) =>
   `${origin}/unsubscribe?x=${encodeURIComponent(slug)}&t=${await hmacHex(env, `x:${slug}`)}`;
 
+// ---- 10 h CHEZ LE DESTINATAIRE (décision proprio, 5 août 2026) ----------------------
+// Une heure UTC unique envoyait à 9 h HE… donc 6 h du matin sur la côte Ouest : un courriel
+// professionnel qui arrive avant le lever se lit à la va-vite ou pas du tout. Le cron tourne
+// désormais À CHAQUE HEURE de la fenêtre 12-18 h UTC, et chaque exécution ne sert QUE les
+// provinces où il est 10 h passé. Personne d'autre n'est touché ce tour-là.
+//
+// Fuseaux IANA, pas de décalages en dur : l'heure avancée s'applique toute seule, et la
+// Saskatchewan (America/Regina, qui ne la suit JAMAIS) se règle sans cas particulier.
+const PROV_TZ = {
+  QC: 'America/Toronto',   ON: 'America/Toronto',    MB: 'America/Winnipeg',
+  SK: 'America/Regina',    AB: 'America/Edmonton',   BC: 'America/Vancouver',
+  NS: 'America/Halifax',   NB: 'America/Moncton',    PE: 'America/Halifax',
+  NL: 'America/St_Johns',
+};
+const SEND_LOCAL_HOUR = 10;
+
+const localHour = (tz, at) =>
+  Number(new Intl.DateTimeFormat('en-CA', { timeZone: tz, hour: 'numeric', hour12: false }).format(at));
+
+// Provinces dont l'heure locale est dans la tranche des 10 h. On teste l'HEURE, pas la minute :
+// la tranche dure 60 minutes, ce qui garantit qu'un cron horaire tombe toujours dedans — y
+// compris à Terre-Neuve, dont le décalage d'une demi-heure ferait rater un test à la minute
+// près (10 h 00 à St. John's = 12 h 30 UTC, une heure qui n'existe pas au calendrier du cron ;
+// c'est le passage de 13 h UTC, soit 10 h 30 locale, qui la sert).
+function zonesAt10h(at = new Date()) {
+  return new Set(Object.entries(PROV_TZ)
+    .filter(([, tz]) => localHour(tz, at) === SEND_LOCAL_HOUR)
+    .map(([code]) => code));
+}
+
 // Orchestration du CYCLE MENSUEL, étalée sur autant de jours qu'il faut.
 //
-// Le cron tourne TOUS LES JOURS mais l'unité de compte reste le mois : un destinataire servi
-// porte la clé `sent:{AAAA-MM}:{slug}` et n'est plus rappelé avant le mois suivant. Chaque
-// exécution repart donc de la liste des « pas encore servis ce mois-ci », en envoie autant que
-// le budget de sous-requêtes le permet (~44), et s'arrête. Quand tout le monde a reçu, les
-// exécutions suivantes du mois ne font plus rien (3 lectures KV, 2 feeds) jusqu'au 1er.
-// C'est ce qui remplace le « tout d'un coup » impossible sur le plan gratuit : ~490 courriels
-// passent en une douzaine de jours, sans jamais dépasser ni Cloudflare, ni Resend, ni la
-// prudence élémentaire pour la réputation du domaine.
+// Le cron tourne CHAQUE HEURE de 12 à 18 h UTC mais l'unité de compte reste le mois : un
+// destinataire servi porte la clé `sent:{AAAA-MM}:{slug}` et n'est plus rappelé avant le mois
+// suivant. Chaque exécution ne regarde QUE les provinces où il est 10 h locale, repart de la
+// liste des « pas encore servis ce mois-ci », en envoie autant que le budget le permet, et
+// s'arrête. Quand tout le monde a reçu, les exécutions suivantes du mois ne font plus rien
+// (3 lectures KV, 1 feed) jusqu'au 1er. C'est ce qui remplace le « tout d'un coup » impossible
+// sur le plan gratuit : ~490 courriels passent en une douzaine de jours, sans jamais dépasser
+// ni Cloudflare, ni Resend, ni la prudence élémentaire pour la réputation du domaine.
+//
+// Le plafond quotidien est GLOBAL, pas par exécution : sept passages par jour × 20 auraient
+// fait 140 courriels et pulvérisé la montée en charge du domaine. Le compte du jour vit en KV.
 //
 // OPT-OUT : plus de `sub:` à poser à la main. Seule une clé `unsub:{slug}` exclut quelqu'un.
-// dryRun=true → aucun envoi, rapport d'audience seulement.
-async function runBulletin(env, { dryRun = false } = {}) {
+// dryRun=true → aucun envoi, rapport d'audience seulement (et TOUS les fuseaux, sinon le
+// rapport ne montrerait que la tranche horaire du moment).
+async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
   const origin = WORKER_ORIGIN;
-  const cycle = new Date().toISOString().slice(0, 7);   // AAAA-MM
+  const cycle = at.toISOString().slice(0, 7);      // AAAA-MM
+  const dayKey = at.toISOString().slice(0, 10);    // AAAA-MM-JJ (jour comptable = UTC)
   // Compteur de sous-requêtes de CETTE exécution (feeds + appels Resend). Les opérations KV
   // n'y entrent pas. `left()` est ce qui reste de disponible.
   const ctr = { subs: 0 };
   const F = async (path) => { ctr.subs++; return feed(path); };
   const left = () => SUBREQUEST_BUDGET - SUBREQUEST_MARGIN - ctr.subs;
-  // En dry-run rien n'est consommé : l'audience complète du mois doit apparaître au rapport.
+  // Ce que les exécutions PRÉCÉDENTES du jour ont déjà consommé (les 7 passages horaires se
+  // partagent un seul plafond quotidien).
+  const daySoFar = Number((env.SUBSCRIBERS ? await env.SUBSCRIBERS.get(`day:${dayKey}`) : 0) || 0);
   const dayCap = Math.min(DAILY_SEND_CAP, RESEND_DAY_CAP);
-  const canSend = () => dryRun || (left() > 0 && report.attempts < dayCap);
+  // En dry-run rien n'est consommé : l'audience complète du mois doit apparaître au rapport.
+  const canSend = () => dryRun || (left() > 0 && daySoFar + report.attempts < dayCap);
 
   // `attempts` = appels Resend tentés (ils consomment le budget, réussis ou non) ;
   // `sent` = acceptés par Resend ; `failed`/`errors` = refusés ; `pending` = ce qui reste
-  // à faire ce mois-ci et repassera demain.
+  // à faire ce mois-ci et repassera au prochain passage.
   const report = {
     dryRun, cycle, attempts: 0, sent: 0, failed: 0, pending: 0,
     prospects: 0, experts: { intro: 0, yellow: 0, green: 0, reco: 0, partner: 0 },
     activeCities: 0, errors: [], skipped: [], recipients: [], budgetUsed: 0,
+    zones: [], dayUsedBefore: daySoFar, dayCap,
   };
 
+  // Fuseaux servis à ce passage. En dry-run on ne filtre pas : le rapport doit montrer
+  // l'audience du mois entier, pas la seule tranche de 10 h en cours.
+  const zones = zonesAt10h(at);
+  report.zones = [...zones];
+
   const market = await F('/api/market.json').catch(() => ({ cities: [] }));
-  const active = (market.cities || []).filter(hasMarketStats);
+  const allActive = (market.cities || []).filter(hasMarketStats);
+  // Le filtre par fuseau s'applique ICI, sur les villes : tout le reste (prospects comme
+  // experts) passe par `cityBySlug`, donc personne hors tranche ne peut être servi.
+  const active = dryRun ? allActive : allActive.filter((c) => zones.has(c.province));
   const cityBySlug = Object.fromEntries(active.map((c) => [c.slug, c]));
   report.activeCities = active.length;
+
+  // Aucune province à 10 h : on s'arrête là (1 feed, 1 lecture KV). Le cas normal 6 fois sur 7.
+  if (!active.length) { report.budgetUsed = ctr.subs; return report; }
 
   // État du cycle : 3 lectures KV, pas une seule sous-requête.
   const done = new Set(env.SUBSCRIBERS ? await kvKeys(env.SUBSCRIBERS, `sent:${cycle}:`) : []);
@@ -1457,6 +1507,12 @@ async function runBulletin(env, { dryRun = false } = {}) {
   }
 
   report.budgetUsed = ctr.subs;
+  // Report du compte du jour pour les passages horaires suivants. On additionne les TENTATIVES,
+  // pas les succès : un appel refusé par Resend a quand même été facturé au quota du jour.
+  // TTL 3 jours — la clé ne sert que dans sa journée.
+  if (!dryRun && report.attempts) {
+    await env.SUBSCRIBERS?.put(`day:${dayKey}`, String(daySoFar + report.attempts), { expirationTtl: 3 * 24 * 3600 });
+  }
   if (!dryRun && (report.attempts || report.failed)) await sendRunReport(env, report);
   return report;
 }
@@ -1471,13 +1527,15 @@ async function sendRunReport(env, report) {
   const provAttendues = report.skipped.filter((s) => s.endsWith('(budget épuisé)')).length;
   const partiel = report.pending > 0 || provAttendues > 0;
   const reste = partiel ? `au moins ${report.pending}` : '0';
+  const jour = (report.dayUsedBefore ?? 0) + report.attempts;
   const L = [
     `Cycle ${report.cycle} — envoyés ${report.sent} · ratés ${report.failed} · reste ${reste}`,
-    `Villes actives : ${report.activeCities} · rythme du jour : ${report.sent}/${DAILY_SEND_CAP} · sous-requêtes : ${report.budgetUsed}/${SUBREQUEST_BUDGET}${provAttendues ? ` · provinces non ouvertes aujourd'hui : ${provAttendues}` : ''}`,
+    `Passage de 10 h : ${report.zones?.join(', ') || '—'} · ${report.activeCities} ville(s) dans la tranche`,
+    `Rythme du jour (toutes tranches) : ${jour}/${report.dayCap ?? DAILY_SEND_CAP} · sous-requêtes de ce passage : ${report.budgetUsed}/${SUBREQUEST_BUDGET}${provAttendues ? ` · provinces non ouvertes : ${provAttendues}` : ''}`,
     `Étapes : ${Object.entries(report.experts).filter(([, n]) => n).map(([k, n]) => `${k} ${n}`).join(' · ') || '—'}${report.prospects ? ` · prospects ${report.prospects}` : ''}`,
     partiel
-      ? `\nLa vague du mois n'est pas finie : la prochaine exécution quotidienne reprend là où celle-ci s'est arrêtée.`
-      : `\nCycle terminé : plus rien à envoyer avant le 1er du mois prochain.`,
+      ? `\nIl reste du monde dans ce ou ces fuseaux : ils seront servis demain, à 10 h chez eux.`
+      : `\nCe fuseau est à jour pour le mois. Les autres sont servis à leur propre 10 h.`,
     report.errors.length ? `\nÉCHECS (${report.errors.length}) — ils repasseront demain :\n${report.errors.slice(0, 40).join('\n')}` : '',
   ];
   await fetch('https://api.resend.com/emails', {
@@ -1486,7 +1544,7 @@ async function sendRunReport(env, report) {
     body: JSON.stringify({
       from: env.MAIL_FROM_BULLETIN || 'Payotte <bulletin@payotte.com>',
       to: [REPORT_TO],
-      subject: `Bulletin ${report.cycle} — ${report.sent} envoyés${report.failed ? `, ${report.failed} ratés` : ''}${partiel ? ', vague en cours' : ', cycle terminé'}`,
+      subject: `Bulletin ${report.cycle} ${report.zones?.join('/') || ''} — ${report.sent} envoyés${report.failed ? `, ${report.failed} ratés` : ''}${partiel ? ', vague en cours' : ', fuseau à jour'}`,
       text: L.filter(Boolean).join('\n'),
     }),
   }).catch(() => { /* le récap n'est jamais bloquant */ });
@@ -1709,10 +1767,12 @@ export default {
     return handleRpc(msg, env);
   },
 
-  // Bulletin : cron QUOTIDIEN (13h UTC / 9h HE), cycle MENSUEL. Chaque jour, le worker sert
-  // ceux qui n'ont pas encore reçu leur courriel du mois, dans la limite de son budget de
-  // sous-requêtes — la vague met une douzaine de jours, puis les exécutions tournent à vide
-  // jusqu'au 1er. Villes actives = toutes celles qui ont un prix de référence.
+  // Bulletin : cron HORAIRE sur 12-18 h UTC, cycle MENSUEL, envoi à 10 h CHEZ LE DESTINATAIRE.
+  // Chaque passage ne sert que les provinces où il est 10 h locale (zonesAt10h) et n'y prend
+  // que ceux qui n'ont pas encore reçu leur courriel du mois, dans la limite du budget de
+  // sous-requêtes ET du plafond quotidien global. La vague met une douzaine de jours, puis les
+  // exécutions tournent à vide jusqu'au 1er. Villes actives = celles qui ont un prix de
+  // référence — filtrées, à chaque passage, par le fuseau horaire.
   async scheduled(event, env, ctx) {
     if (!env.RESEND_API_KEY) return;   // sans clé : aucun envoi (le dry-run reste dispo par route)
     await runBulletin(env, { dryRun: false });

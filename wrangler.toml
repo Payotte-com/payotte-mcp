@@ -22,10 +22,21 @@ MAIL_FROM_BULLETIN = "Payotte <bulletin@payotte.com>"
 binding = "SUBSCRIBERS"
 id = "6b341a2d876b49d78bb5651936ccac8e"
 
-# Bulletin : cron QUOTIDIEN à 13h UTC (9h HE), pour un cycle MENSUEL.
+# Bulletin : cycle MENSUEL, servi à 10 H CHEZ LE DESTINATAIRE (décision proprio, 5 août 2026).
+# Une heure UTC unique arrivait à 6 h du matin sur la côte Ouest. Le worker se réveille donc à
+# chaque heure de la fenêtre et ne sert QUE les provinces où il est alors 10 h passé — le tri
+# se fait dans le code (PROV_TZ / zonesAt10h), en fuseaux IANA, donc l'heure avancée et la
+# Saskatchewan qui ne la suit jamais se règlent toutes seules.
+#
+# 12-18 h UTC couvre les 10 h locales de tout le pays, été comme hiver :
+#   été   → NL 12:30 · AT 13 h · ET 14 h · CT 15 h · SK/MT 16 h · PT 17 h
+#   hiver → NL 13:30 · AT 14 h · ET 15 h · CT/SK 16 h · MT 17 h · PT 18 h
+# (Terre-Neuve et sa demi-heure : c'est le passage suivant, à 10 h 30 locale, qui la sert.)
+# Six passages sur sept ne trouvent aucune province dans la tranche et s'arrêtent aussitôt.
+#
 # Deux plafonds se cumulent : le plan gratuit Cloudflare (50 sous-requêtes par exécution) et le
-# rythme voulu (DAILY_SEND_CAP = 20/jour). La vague mensuelle (~455 destinataires) s'étale donc
-# sur trois semaines, une petite tranche par jour. Une fois tout le monde servi, les exécutions
-# du mois ne font plus rien jusqu'au 1er.
+# rythme voulu (DAILY_SEND_CAP = 20/JOUR, global à tous les passages — voir le compteur `day:`
+# en KV, sans quoi 7 passages × 20 feraient 140 courriels). La vague mensuelle (~455
+# destinataires) s'étale sur trois semaines. Une fois tout le monde servi, plus rien jusqu'au 1er.
 [triggers]
-crons = ["0 13 * * *"]
+crons = ["0 12-18 * * *"]
