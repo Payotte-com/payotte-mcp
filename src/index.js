@@ -121,12 +121,16 @@ async function feed(path) {
   return res.json();
 }
 
-async function allExperts() {
-  const manifest = await feed('/api/experts.json');
+// `provinceSlugs` (facultatif) : ne rapatrier QUE les provinces utiles. Sans filtre on passe
+// par le manifeste puis les 10 provinces = 11 sous-requêtes, alors que le plan gratuit
+// Cloudflare n'en autorise que 50 par invocation (voir SUBREQUEST_BUDGET). Le bulletin, lui,
+// ne lit que les provinces de ses villes actives : 1 sous-requête au lieu de 11.
+async function allExperts(provinceSlugs = null) {
+  const slugs = provinceSlugs?.length
+    ? provinceSlugs
+    : (await feed('/api/experts.json')).provinces.map((p) => p.slug);
   const lists = await Promise.all(
-    manifest.provinces.map((p) =>
-      feed(`/api/experts/${p.slug}.json`).then((d) => d.experts ?? []).catch(() => []),
-    ),
+    slugs.map((s) => feed(`/api/experts/${s}.json`).then((d) => d.experts ?? []).catch(() => [])),
   );
   return lists.flat();
 }
@@ -1061,7 +1065,8 @@ const TOOL_IMPL = {
 // +date de consentement (LCAP) dans KV. Désabonnement en un clic (HMAC, clé = CONTACTS_TOKEN).
 
 const SUB_CAP_DAY = 30;   // garde-fou anti-abus sur les inscriptions
-const SEND_CAP_RUN = 90;  // marge sous le palier Resend gratuit (100/jour)
+// Le plafond d'envois par exécution n'est plus un chiffre en dur : il se déduit du budget
+// de sous-requêtes, plus bas (SUBREQUEST_BUDGET).
 
 async function hmacHex(env, msg) {
   const key = await crypto.subtle.importKey(
@@ -1141,13 +1146,18 @@ async function sendBulletin(env, origin, email, city, lang, welcome = false) {
 // figé n'est mémorisé. Données = champs PRÉSENTS seulement, jamais d'analyse inventée (Règle #3).
 
 const LOGO = 'https://payotte.com/payotte-logo-transparent.png';
-const PERSO_COPY = 'gpayotte@gmail.com';   // copie perso de CHAQUE envoi (demande du proprio)
+// Plus de copie BCC de chaque envoi (décision proprio, 2 août 2026 : illisible à 500 courriels).
+// À la place, UN récapitulatif par exécution — sans lui, un envoi raté ne laisse aucune trace.
+const REPORT_TO = 'gpayotte@gmail.com';
 
-// Étape d'un expert d'après son état vivant. subscribed=false → premier contact ⓪ (opt-in).
-function expertStage(expert, subscribed) {
+// Étape d'un expert d'après son état vivant. `introduced` = il a déjà reçu la présentation ⓪.
+// OPT-OUT (décision proprio, 2 août 2026) : personne n'a à dire « oui ». Après la présentation,
+// l'expert monte dans l'escalier ①②③④ d'office, chaque mois, jusqu'à ce qu'il dise non
+// (clic sur le lien de désabonnement → clé `unsub:{slug}`, seul motif d'exclusion).
+function expertStage(expert, introduced) {
   const c = expert?.score?.color;
   if (!c || c === 'red') return null;          // rouge = non publié → pas de bulletin
-  if (!subscribed) return 'intro';             // ⓪ présentation + consentement
+  if (!introduced) return 'intro';             // ⓪ présentation (une seule fois dans la vie)
   if (c === 'yellow') return 'yellow';         // ① monter vers le vert
   if (!expert.ownerVerified) return 'green';   // ② confirmer → Recommandé
   if (!expert.badgeExchange) return 'reco';    // ③ poser le badge
@@ -1212,8 +1222,8 @@ function renderPulse({ segment, stage, city, expert, lang, unsubUrl }) {
     const proWho = fr ? `l'expert vérifié en ${expert?.professionLabel ?? ''} pour ${city.name}` : `the verified ${expert?.professionLabel ?? ''} for ${city.name}`;
     if (stage === 'intro') {
       subject = fr ? `Pourquoi je vous ai retenu comme référence à ${city.name}` : `Why I chose you as the reference in ${city.name}`;
-      close = CLOSE('#faf8f7', '#eee9e8', `${P(fr ? `Je m'appelle Grégory Payotte. J'ai bâti <b>Payotte</b>, un annuaire indépendant qui recommande un seul expert vérifié par ville et par métier — gratuit, sans commission. Pour ${proWho}, c'est vous que j'ai retenu, sur la foi de données publiques. Le pouls ci-dessus, je le publie chaque mois.` : `I'm Grégory Payotte. I built <b>Payotte</b>, an independent directory recommending one verified expert per city and trade — free, no commission. For ${proWho}, I chose you, based on public data. I publish the pulse above every month.`)}${P(fr ? `Vous le voulez chaque mois ? <b>Répondez « oui »</b> et je vous l'envoie. Sinon, aucune suite.` : `Want it monthly? <b>Reply "yes"</b> and I'll send it. Otherwise, no follow-up.`)}${BTN(url, fr ? 'Voir votre fiche →' : 'See your profile →')}`);
-      foot = FOOT(fr ? `Courriel unique de présentation, parce que vous êtes ${proWho}. Aucune suite sans votre accord.` : `One-time introduction, because you are ${proWho}. No follow-up without your consent.`, url, fr ? 'Ne rien recevoir' : 'Opt out');
+      close = CLOSE('#faf8f7', '#eee9e8', `${P(fr ? `Je m'appelle Grégory Payotte. J'ai bâti <b>Payotte</b>, un annuaire indépendant qui recommande un seul expert vérifié par ville et par métier — gratuit, sans commission. Pour ${proWho}, c'est vous que j'ai retenu, sur la foi de données publiques. Le pouls ci-dessus, je le publie chaque mois.` : `I'm Grégory Payotte. I built <b>Payotte</b>, an independent directory recommending one verified expert per city and trade — free, no commission. For ${proWho}, I chose you, based on public data. I publish the pulse above every month.`)}${P(fr ? `Je vous l'enverrai <b>chaque mois</b>, gratuitement — rien à faire de votre côté. Si vous n'en voulez pas, un clic en bas de ce courriel et vous n'entendrez plus jamais parler de moi.` : `I'll send it to you <b>every month</b>, free — nothing to do on your end. If you'd rather not, one click at the bottom of this email and you'll never hear from me again.`)}${BTN(url, fr ? 'Voir votre fiche →' : 'See your profile →')}`);
+      foot = FOOT(fr ? `Vous recevez ce courriel parce que vous êtes ${proWho}. Le pouls du marché part une fois par mois.` : `You're receiving this because you are ${proWho}. The market pulse goes out once a month.`, unsubUrl, fr ? 'Ne plus rien recevoir' : 'Unsubscribe');
     } else if (stage === 'yellow') {
       subject = fr ? `Votre marché à ${city.name} — et la donnée qui vous ferait monter` : `Your ${city.name} market — and the data that would lift you`;
       close = CLOSE('#fdf6e9', '#f2e4c4', `${H3(fr ? 'Pendant qu\'on y est : votre fiche.' : 'While we\'re at it: your profile.')}${P(fr ? `Votre fiche Payotte est à <b>${expert?.score?.total ?? ''}/100</b>. La donnée la plus payante qui vous manque : <b>${ask}</b>. Répondez à ce courriel avec — je mets à jour le jour même.` : `Your profile is at <b>${expert?.score?.total ?? ''}/100</b>. The most valuable missing piece: <b>${ask}</b>. Reply with it — I update the same day.`)}${BTN(url, fr ? 'Voir ma fiche →' : 'See my profile →')}`);
@@ -1236,76 +1246,250 @@ function renderPulse({ segment, stage, city, expert, lang, unsubUrl }) {
   return { subject, html };
 }
 
-// Envoi générique avec COPIE PERSO systématique (bcc) — demande du proprio.
-async function sendPulse(env, { to, subject, html, replyTo }) {
-  if (!env.RESEND_API_KEY) return { simulated: true, to, subject };
-  const res = await fetch('https://api.resend.com/emails', {
+// Resend limite à 2 requêtes/seconde (429 au-delà). La boucle du bulletin tire en rafale :
+// on espace les appels pour rester sous la barre. 600 ms ≈ 1,6 envoi/s.
+const RESEND_MIN_GAP_MS = 600;
+let lastPulseAt = 0;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Envoi générique. PAS de copie BCC (elle noyait la boîte du proprio) : la trace, c'est le
+// récapitulatif de fin d'exécution. Retourne TOUJOURS l'issue réelle : `ok:false` + `status`
+// quand Resend refuse. L'appelant DOIT la lire — un envoi raté qui passe pour réussi marque
+// l'expert comme servi et le prive de son courriel du mois.
+// `unsubUrl` alimente List-Unsubscribe : désabonnement en un clic depuis Gmail/Outlook,
+// exigé par la LCAP au même titre que le lien dans le pied de page.
+async function sendPulse(env, { to, subject, html, replyTo, unsubUrl }) {
+  if (!env.RESEND_API_KEY) return { ok: false, simulated: true, to, subject };
+  const wait = RESEND_MIN_GAP_MS - (Date.now() - lastPulseAt);
+  if (wait > 0) await sleep(wait);
+  lastPulseAt = Date.now();
+  let res;
+  try {
+    res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: env.MAIL_FROM_BULLETIN || 'Payotte <bulletin@payotte.com>',
+        to: [to], reply_to: replyTo || 'gregory@payotte.com',
+        subject, html,
+        ...(unsubUrl ? { headers: { 'List-Unsubscribe': `<${unsubUrl}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' } } : {}),
+      }),
+    });
+  } catch (err) {
+    return { ok: false, status: 0, error: String(err?.message ?? err) };
+  }
+  return { ok: res.ok, status: res.status };
+}
+
+// Villes ACTIVES du bulletin = TOUTES celles dont on publie un prix de référence
+// (décision proprio, 2 août 2026 : « le maximum de villes où j'ai des stats »). Aucun
+// slug à tenir à jour : une ville entre dans le bulletin le jour où son prix entre dans
+// cityMarket.json, et en sort si la donnée disparaît. Le courriel s'ouvre sur ce prix —
+// sans lui, il n'y a rien à envoyer.
+const hasMarketStats = (c) => (c?.benchmarkHpi ?? c?.medianPrice) != null;
+
+// Code province de market.json → slug du feed /api/experts/{slug}.json.
+const PROV_SLUG = {
+  QC: 'quebec', ON: 'ontario', AB: 'alberta', BC: 'british-columbia', MB: 'manitoba',
+  NS: 'nova-scotia', SK: 'saskatchewan', NB: 'new-brunswick',
+  NL: 'newfoundland-and-labrador', PE: 'prince-edward-island',
+};
+
+// Budget de sous-requêtes. Plan gratuit Cloudflare : 50 par invocation — la run du
+// 1er août 2026 est morte PILE à 50 (13 feeds + 37 envois), laissant 17 experts sur le
+// carreau sans le moindre signal. Désormais l'exécution COMPTE ses sous-requêtes et
+// s'arrête d'elle-même ; ce qui n'est pas parti aujourd'hui part demain (cron quotidien).
+// Les opérations KV n'entrent pas dans ce budget (vérifié sur la run du 1er août).
+const SUBREQUEST_BUDGET = 50;
+const SUBREQUEST_MARGIN = 3;   // récapitulatif de fin + coussin
+const RESEND_DAY_CAP = 90;     // plafond dur : marge sous le palier Resend gratuit (100/jour)
+// Rythme choisi (décision proprio, 3 août 2026) : un petit filet tous les jours plutôt qu'une
+// rafale. ~455 destinataires à 20/jour = la vague du mois passe en trois semaines, sans jamais
+// approcher les limites de Resend, et le domaine (37 courriels dans sa vie au 1er août) monte
+// en charge doucement — c'est ce qui décide si les prochains atterrissent en boîte ou en spam.
+// Monter ce chiffre quand l'annuaire grossira : il doit rester ≥ destinataires ÷ 28 jours.
+const DAILY_SEND_CAP = 20;
+// Durée de vie des marques de cycle (`sent:`, `prov-done:`) : ~100 jours. Elles ne servent
+// qu'au mois courant et se nettoient toutes seules. `intro:` et `unsub:`, eux, sont éternels.
+const CYCLE_TTL = 100 * 24 * 3600;
+
+// Toutes les clés d'un préfixe (KV plafonne à 1000 par page ; l'annuaire les dépassera).
+async function kvKeys(kv, prefix) {
+  const out = [];
+  let cursor;
+  do {
+    const r = await kv.list({ prefix, cursor });
+    for (const k of r.keys) out.push(k.name.slice(prefix.length));
+    cursor = r.list_complete ? null : r.cursor;
+  } while (cursor);
+  return out;
+}
+
+const expertUnsubUrl = async (env, origin, slug) =>
+  `${origin}/unsubscribe?x=${encodeURIComponent(slug)}&t=${await hmacHex(env, `x:${slug}`)}`;
+
+// Orchestration du CYCLE MENSUEL, étalée sur autant de jours qu'il faut.
+//
+// Le cron tourne TOUS LES JOURS mais l'unité de compte reste le mois : un destinataire servi
+// porte la clé `sent:{AAAA-MM}:{slug}` et n'est plus rappelé avant le mois suivant. Chaque
+// exécution repart donc de la liste des « pas encore servis ce mois-ci », en envoie autant que
+// le budget de sous-requêtes le permet (~44), et s'arrête. Quand tout le monde a reçu, les
+// exécutions suivantes du mois ne font plus rien (3 lectures KV, 2 feeds) jusqu'au 1er.
+// C'est ce qui remplace le « tout d'un coup » impossible sur le plan gratuit : ~490 courriels
+// passent en une douzaine de jours, sans jamais dépasser ni Cloudflare, ni Resend, ni la
+// prudence élémentaire pour la réputation du domaine.
+//
+// OPT-OUT : plus de `sub:` à poser à la main. Seule une clé `unsub:{slug}` exclut quelqu'un.
+// dryRun=true → aucun envoi, rapport d'audience seulement.
+async function runBulletin(env, { dryRun = false } = {}) {
+  const origin = WORKER_ORIGIN;
+  const cycle = new Date().toISOString().slice(0, 7);   // AAAA-MM
+  // Compteur de sous-requêtes de CETTE exécution (feeds + appels Resend). Les opérations KV
+  // n'y entrent pas. `left()` est ce qui reste de disponible.
+  const ctr = { subs: 0 };
+  const F = async (path) => { ctr.subs++; return feed(path); };
+  const left = () => SUBREQUEST_BUDGET - SUBREQUEST_MARGIN - ctr.subs;
+  // En dry-run rien n'est consommé : l'audience complète du mois doit apparaître au rapport.
+  const dayCap = Math.min(DAILY_SEND_CAP, RESEND_DAY_CAP);
+  const canSend = () => dryRun || (left() > 0 && report.attempts < dayCap);
+
+  // `attempts` = appels Resend tentés (ils consomment le budget, réussis ou non) ;
+  // `sent` = acceptés par Resend ; `failed`/`errors` = refusés ; `pending` = ce qui reste
+  // à faire ce mois-ci et repassera demain.
+  const report = {
+    dryRun, cycle, attempts: 0, sent: 0, failed: 0, pending: 0,
+    prospects: 0, experts: { intro: 0, yellow: 0, green: 0, reco: 0, partner: 0 },
+    activeCities: 0, errors: [], skipped: [], recipients: [], budgetUsed: 0,
+  };
+
+  const market = await F('/api/market.json').catch(() => ({ cities: [] }));
+  const active = (market.cities || []).filter(hasMarketStats);
+  const cityBySlug = Object.fromEntries(active.map((c) => [c.slug, c]));
+  report.activeCities = active.length;
+
+  // État du cycle : 3 lectures KV, pas une seule sous-requête.
+  const done = new Set(env.SUBSCRIBERS ? await kvKeys(env.SUBSCRIBERS, `sent:${cycle}:`) : []);
+  const unsub = new Set(env.SUBSCRIBERS ? await kvKeys(env.SUBSCRIBERS, 'unsub:') : []);
+  const intro = new Set(env.SUBSCRIBERS ? await kvKeys(env.SUBSCRIBERS, 'intro:') : []);
+
+  // Cohorte de l'ANCIENNE présentation (avant le passage à l'opt-out). Ce courriel-là
+  // promettait par écrit : « Répondez oui et je vous l'envoie. Sinon, aucune suite » et
+  // « Aucune suite sans votre accord ». La décision du 2 août change la règle pour la suite,
+  // elle n'efface pas cette phrase déjà envoyée : enrôler ces gens en silence dans l'escalier
+  // ①②③④ serait reprendre la parole donnée. Ils reçoivent donc d'abord la NOUVELLE
+  // présentation — qui dit ce qui va se passer et comment l'arrêter en un clic — puis entrent
+  // dans le cycle comme les autres. Une seule fois : l'envoi réécrit leur clé `intro:`.
+  // Lecture KV seulement (hors budget de sous-requêtes), et seulement pour les déjà-présentés.
+  const OPT_OUT_SWITCH = '2026-08-02';
+  const reIntro = new Set();
+  if (env.SUBSCRIBERS) {
+    for (const slug of intro) {
+      const at = await env.SUBSCRIBERS.get(`intro:${slug}`);
+      if (at && at.slice(0, 10) < OPT_OUT_SWITCH) reIntro.add(slug);
+    }
+  }
+
+  // ---- Prospects (abonnés du formulaire) ----
+  if (env.SUBSCRIBERS) {
+    for (const key of await kvKeys(env.SUBSCRIBERS, 's:')) {
+      const rec = JSON.parse((await env.SUBSCRIBERS.get(`s:${key}`)) || '{}');
+      const city = cityBySlug[rec.city];
+      if (!rec.email || !city) continue;
+      const id = `prospect:${rec.city}:${rec.email}`;
+      if (done.has(id)) continue;
+      if (!canSend()) { report.pending++; continue; }
+      const unsubUrl = `${origin}/unsubscribe?e=${encodeURIComponent(rec.email)}&c=${encodeURIComponent(rec.city)}&t=${await hmacHex(env, `u:${rec.email}:${rec.city}`)}`;
+      const { subject, html } = renderPulse({ segment: 'prospect', city, lang: rec.lang, unsubUrl });
+      report.prospects++; report.recipients.push({ to: rec.email, kind: 'prospect', city: rec.city });
+      if (dryRun) continue;
+      report.attempts++; ctr.subs++;
+      const r = await sendPulse(env, { to: rec.email, subject, html, unsubUrl });
+      if (!r.ok) { report.failed++; report.errors.push(`prospect ${rec.email} — Resend HTTP ${r.status ?? '?'}${r.error ? ` (${r.error})` : ''}`); continue; }
+      await env.SUBSCRIBERS.put(`sent:${cycle}:${id}`, new Date().toISOString(), { expirationTtl: CYCLE_TTL });
+      report.sent++;
+    }
+  }
+
+  // ---- Experts, province par province ----
+  // On ne rapatrie une province QUE si on a encore de quoi envoyer : chaque feed coûte une
+  // sous-requête. `prov-done:` évite de repayer ce feed les jours suivants pour une province
+  // déjà entièrement servie ce mois-ci.
+  let dir = {};
+  if (env.CONTACTS_TOKEN) { try { dir = (await F(`/api/cx/${env.CONTACTS_TOKEN}.json`)).contacts || {}; } catch { /* annuaire indispo */ } }
+  const provinces = [...new Set(active.map((c) => PROV_SLUG[c.province]).filter(Boolean))];
+  const provDone = new Set(env.SUBSCRIBERS ? await kvKeys(env.SUBSCRIBERS, `prov-done:${cycle}:`) : []);
+  // Les adresses déjà servies ce mois-ci : un pro inscrit sur deux secteurs ne reçoit
+  // qu'un seul courriel par mois (l'autre fiche attendra le cycle suivant).
+  const mailsDone = new Set([...done].map((id) => dir[id]?.email?.toLowerCase()).filter(Boolean));
+
+  for (const prov of provinces) {
+    if (provDone.has(prov)) continue;
+    if (left() <= 1) { report.skipped.push(`${prov} (budget épuisé)`); continue; }
+    const experts = await F(`/api/experts/${prov}.json`).then((d) => d.experts ?? []).catch(() => []);
+    let restants = 0;
+    for (const e of experts) {
+      const city = cityBySlug[e.city];
+      if (!city || e.score?.color === 'red' || !e.score?.color) continue;
+      if (done.has(e.slug) || unsub.has(e.slug)) continue;
+      const contact = dir[e.slug];
+      if (!contact?.email) { report.skipped.push(`${e.slug} (pas de courriel)`); continue; }
+      if (mailsDone.has(contact.email.toLowerCase())) continue;   // doublon d'adresse : au prochain cycle
+      const stage = expertStage(e, intro.has(e.slug) && !reIntro.has(e.slug));
+      if (!stage) continue;
+      if (!canSend()) { restants++; report.pending++; continue; }
+      report.experts[stage] = (report.experts[stage] || 0) + 1;
+      report.recipients.push({ to: contact.email, kind: `expert:${stage}`, slug: e.slug });
+      // Le dry-run tient la même comptabilité (sans écrire en KV), sinon il annoncerait une
+      // audience gonflée des doublons d'adresse que l'envoi réel, lui, écarte.
+      if (dryRun) { done.add(e.slug); mailsDone.add(contact.email.toLowerCase()); continue; }
+      const unsubUrl = await expertUnsubUrl(env, origin, e.slug);
+      const { subject, html } = renderPulse({ segment: 'expert', stage, city, expert: e, lang: contact.lang || e.lang, unsubUrl });
+      report.attempts++; ctr.subs++;
+      const r = await sendPulse(env, { to: contact.email, subject, html, unsubUrl });
+      // On ne marque RIEN tant que Resend n'a pas accepté : un envoi raté doit repasser demain.
+      if (!r.ok) { report.failed++; report.errors.push(`${e.slug} — Resend HTTP ${r.status ?? '?'}${r.error ? ` (${r.error})` : ''}`); restants++; continue; }
+      await env.SUBSCRIBERS?.put(`sent:${cycle}:${e.slug}`, new Date().toISOString(), { expirationTtl: CYCLE_TTL });
+      if (stage === 'intro') await env.SUBSCRIBERS?.put(`intro:${e.slug}`, new Date().toISOString());
+      done.add(e.slug); mailsDone.add(contact.email.toLowerCase());
+      report.sent++;
+    }
+    if (!restants && !dryRun) await env.SUBSCRIBERS?.put(`prov-done:${cycle}:${prov}`, new Date().toISOString(), { expirationTtl: CYCLE_TTL });
+  }
+
+  report.budgetUsed = ctr.subs;
+  if (!dryRun && (report.attempts || report.failed)) await sendRunReport(env, report);
+  return report;
+}
+
+// Un seul courriel par exécution, pour le proprio : ce qui est parti, ce qui a raté, ce qui
+// reste. C'est la seule trace — le worker n'a pas de journal persistant.
+async function sendRunReport(env, report) {
+  if (!env.RESEND_API_KEY) return;
+  // `pending` ne compte que les candidats VUS après épuisement du budget : les provinces
+  // qu'on n'a même pas rapatriées faute de sous-requêtes n'y figurent pas. On annonce donc
+  // « au moins », jamais un chiffre définitif qu'on n'a pas les moyens de calculer.
+  const provAttendues = report.skipped.filter((s) => s.endsWith('(budget épuisé)')).length;
+  const partiel = report.pending > 0 || provAttendues > 0;
+  const reste = partiel ? `au moins ${report.pending}` : '0';
+  const L = [
+    `Cycle ${report.cycle} — envoyés ${report.sent} · ratés ${report.failed} · reste ${reste}`,
+    `Villes actives : ${report.activeCities} · rythme du jour : ${report.sent}/${DAILY_SEND_CAP} · sous-requêtes : ${report.budgetUsed}/${SUBREQUEST_BUDGET}${provAttendues ? ` · provinces non ouvertes aujourd'hui : ${provAttendues}` : ''}`,
+    `Étapes : ${Object.entries(report.experts).filter(([, n]) => n).map(([k, n]) => `${k} ${n}`).join(' · ') || '—'}${report.prospects ? ` · prospects ${report.prospects}` : ''}`,
+    partiel
+      ? `\nLa vague du mois n'est pas finie : la prochaine exécution quotidienne reprend là où celle-ci s'est arrêtée.`
+      : `\nCycle terminé : plus rien à envoyer avant le 1er du mois prochain.`,
+    report.errors.length ? `\nÉCHECS (${report.errors.length}) — ils repasseront demain :\n${report.errors.slice(0, 40).join('\n')}` : '',
+  ];
+  await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       from: env.MAIL_FROM_BULLETIN || 'Payotte <bulletin@payotte.com>',
-      to: [to], bcc: [PERSO_COPY], reply_to: replyTo || 'gregory@payotte.com',
-      subject, html,
+      to: [REPORT_TO],
+      subject: `Bulletin ${report.cycle} — ${report.sent} envoyés${report.failed ? `, ${report.failed} ratés` : ''}${partiel ? ', vague en cours' : ', cycle terminé'}`,
+      text: L.filter(Boolean).join('\n'),
     }),
-  });
-  return { ok: res.ok };
-}
-
-// Villes ACTIVES du bulletin. Lot test dès le 1er août : Laval + Montréal.
-// Élargir = ajouter des slugs ici (puis redéployer).
-const ACTIVE_CITIES = ['laval', 'montreal'];
-
-// Orchestration mensuelle. dryRun=true → aucun envoi, renvoie seulement le rapport d'audience.
-// Prospects (abonnés du formulaire) + experts des villes actives. Un expert FROID reçoit ⓪
-// (présentation) et est marqué `intro:` pour ne JAMAIS le re-présenter sans son accord
-// (`sub:` posé à la main quand il répond « oui » → il entre alors dans l'escalier ①②③④).
-async function runBulletin(env, { dryRun = false } = {}) {
-  const origin = 'https://payotte-mcp.payotte.workers.dev';
-  const report = { dryRun, activeCities: ACTIVE_CITIES, prospects: 0, experts: { intro: 0, yellow: 0, green: 0, reco: 0, partner: 0 }, sent: 0, cap: SEND_CAP_RUN, skipped: [], recipients: [] };
-  const market = await feed('/api/market.json').catch(() => ({ cities: [] }));
-  const cityBySlug = Object.fromEntries((market.cities || []).map((c) => [c.slug, c]));
-
-  // ---- Prospects des villes actives ----
-  if (env.SUBSCRIBERS) {
-    const subs = await env.SUBSCRIBERS.list({ prefix: 's:' });
-    for (const k of subs.keys) {
-      if (report.sent >= SEND_CAP_RUN) break;
-      const rec = JSON.parse((await env.SUBSCRIBERS.get(k.name)) || '{}');
-      if (!ACTIVE_CITIES.includes(rec.city)) continue;
-      const city = cityBySlug[rec.city]; if (!city) continue;
-      const unsub = `${origin}/unsubscribe?e=${encodeURIComponent(rec.email)}&c=${encodeURIComponent(rec.city)}&t=${await hmacHex(env, `u:${rec.email}:${rec.city}`)}`;
-      const { subject, html } = renderPulse({ segment: 'prospect', city, lang: rec.lang, unsubUrl: unsub });
-      report.prospects++; report.recipients.push({ to: rec.email, kind: 'prospect', city: rec.city });
-      if (!dryRun) { await sendPulse(env, { to: rec.email, subject, html }); report.sent++; }
-    }
-  }
-
-  // ---- Experts des villes actives ----
-  let all = [];
-  try { all = await allExperts(); } catch { /* feed indispo */ }
-  const lm = all.filter((e) => ACTIVE_CITIES.includes(e.city) && e.score?.color && e.score.color !== 'red');
-  let dir = {};
-  if (env.CONTACTS_TOKEN) { try { dir = (await feed(`/api/cx/${env.CONTACTS_TOKEN}.json`)).contacts || {}; } catch { /* annuaire indispo */ } }
-  for (const e of lm) {
-    if (report.sent >= SEND_CAP_RUN) { report.skipped.push(`${e.slug} (cap)`); continue; }
-    const contact = dir[e.slug];
-    if (!contact?.email) { report.skipped.push(`${e.slug} (pas de courriel)`); continue; }
-    const introduced = env.SUBSCRIBERS ? await env.SUBSCRIBERS.get(`intro:${e.slug}`) : null;
-    const subscribed = env.SUBSCRIBERS ? await env.SUBSCRIBERS.get(`sub:${e.slug}`) : null;
-    if (introduced && !subscribed) { report.skipped.push(`${e.slug} (présenté, pas d'accord)`); continue; }
-    const stage = expertStage(e, !!subscribed);
-    if (!stage) continue;
-    const city = cityBySlug[e.city]; if (!city) { report.skipped.push(`${e.slug} (ville sans marché)`); continue; }
-    report.experts[stage] = (report.experts[stage] || 0) + 1;
-    report.recipients.push({ to: contact.email, kind: `expert:${stage}`, slug: e.slug });
-    if (!dryRun) {
-      const { subject, html } = renderPulse({ segment: 'expert', stage, city, expert: e, lang: contact.lang || e.lang, unsubUrl: e.url });
-      await sendPulse(env, { to: contact.email, subject, html });
-      if (stage === 'intro' && env.SUBSCRIBERS) await env.SUBSCRIBERS.put(`intro:${e.slug}`, new Date().toISOString());
-      report.sent++;
-    }
-  }
-  return report;
+  }).catch(() => { /* le récap n'est jamais bloquant */ });
 }
 
 async function handleSubscribe(request, env, url) {
@@ -1351,9 +1535,19 @@ async function handleSubscribe(request, env, url) {
 }
 
 async function handleUnsubscribe(env, url) {
+  const t = url.searchParams.get('t') ?? '';
+
+  // Expert : /unsubscribe?x={slug}&t={hmac}. Un clic, aucune question posée — c'est le seul
+  // moyen de sortir de l'envoi mensuel (opt-out), et la clé posée est définitive.
+  const slug = String(url.searchParams.get('x') ?? '');
+  if (slug) {
+    if (t !== (await hmacHex(env, `x:${slug}`))) return subPage('fr', 'Lien invalide / Invalid link', 'Ce lien de désabonnement est invalide. / This unsubscribe link is invalid.');
+    if (env.SUBSCRIBERS) await env.SUBSCRIBERS.put(`unsub:${slug}`, new Date().toISOString());
+    return subPage('fr', 'C\'est fait / Done', "Vous ne recevrez plus aucun courriel de Payotte. Votre fiche publique, elle, reste en ligne — elle ne dépend pas de ces envois. / You will receive no further email from Payotte. Your public profile stays online; it does not depend on these emails.");
+  }
+
   const email = String(url.searchParams.get('e') ?? '').trim().toLowerCase();
   const ville = String(url.searchParams.get('c') ?? '');
-  const t = url.searchParams.get('t') ?? '';
   const expect = await hmacHex(env, `u:${email}:${ville}`);
   if (!email || !ville || t !== expect) return subPage('fr', 'Lien invalide', 'Ce lien de désabonnement est invalide ou expiré. / Invalid unsubscribe link.');
   if (env.SUBSCRIBERS) await env.SUBSCRIBERS.delete(`s:${ville}:${email}`);
@@ -1474,7 +1668,9 @@ export default {
 
     // Bulletin de marché (formulaire zéro-JS des pages ville).
     if (request.method === 'POST' && url.pathname === '/subscribe') return handleSubscribe(request, env, url);
-    if (request.method === 'GET' && url.pathname === '/unsubscribe') return handleUnsubscribe(env, url);
+    // POST accepté aussi : Gmail et Outlook déclenchent le désabonnement en un clic
+    // (List-Unsubscribe-Post) sans jamais ouvrir la page.
+    if ((request.method === 'GET' || request.method === 'POST') && url.pathname === '/unsubscribe') return handleUnsubscribe(env, url);
 
     // Double opt-in du relais de contact : le clic humain qui transmet la demande à l'expert.
     if (request.method === 'GET' && url.pathname === '/confirm') return confirmRelay(env, url);
@@ -1513,7 +1709,10 @@ export default {
     return handleRpc(msg, env);
   },
 
-  // Envoi mensuel du bulletin (cron : 1er du mois, 13h UTC). Villes actives = ACTIVE_CITIES.
+  // Bulletin : cron QUOTIDIEN (13h UTC / 9h HE), cycle MENSUEL. Chaque jour, le worker sert
+  // ceux qui n'ont pas encore reçu leur courriel du mois, dans la limite de son budget de
+  // sous-requêtes — la vague met une douzaine de jours, puis les exécutions tournent à vide
+  // jusqu'au 1er. Villes actives = toutes celles qui ont un prix de référence.
   async scheduled(event, env, ctx) {
     if (!env.RESEND_API_KEY) return;   // sans clé : aucun envoi (le dry-run reste dispo par route)
     await runBulletin(env, { dryRun: false });

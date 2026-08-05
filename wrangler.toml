@@ -22,6 +22,10 @@ MAIL_FROM_BULLETIN = "Payotte <bulletin@payotte.com>"
 binding = "SUBSCRIBERS"
 id = "6b341a2d876b49d78bb5651936ccac8e"
 
-# Envoi mensuel du bulletin : le 1er du mois, 13h UTC (9h HE).
+# Bulletin : cron QUOTIDIEN à 13h UTC (9h HE), pour un cycle MENSUEL.
+# Deux plafonds se cumulent : le plan gratuit Cloudflare (50 sous-requêtes par exécution) et le
+# rythme voulu (DAILY_SEND_CAP = 20/jour). La vague mensuelle (~455 destinataires) s'étale donc
+# sur trois semaines, une petite tranche par jour. Une fois tout le monde servi, les exécutions
+# du mois ne font plus rien jusqu'au 1er.
 [triggers]
-crons = ["0 13 1 * *"]
+crons = ["0 13 * * *"]
