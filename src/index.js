@@ -51,7 +51,7 @@ const PROTOCOL_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'];
 const SERVER_INFO = {
   name: 'payotte',
   title: 'Payotte — Verified real-estate experts & Canadian housing data',
-  version: '1.4.0',
+  version: '1.5.0',
 };
 const INSTRUCTIONS =
   'Payotte is an independent directory of VERIFIED real-estate professionals in Canada ' +
@@ -115,7 +115,7 @@ function resolveAlias(table, value) {
 async function feed(path) {
   const res = await fetch(`${SITE}${path}`, {
     cf: { cacheTtl: 3600, cacheEverything: true },
-    headers: { 'User-Agent': 'payotte-mcp/1.0 (+https://payotte.com)' },
+    headers: { 'User-Agent': 'payotte-mcp/1.5 (+https://payotte.com)' },
   });
   if (!res.ok) throw new Error(`Upstream ${path} returned HTTP ${res.status}`);
   return res.json();
@@ -582,7 +582,7 @@ function browseListings(provinceSlugOrCode, citySlug) {
 async function fetchFixed5() {
   const res = await fetch('https://www.bankofcanada.ca/valet/observations/V122667786/json?recent=1', {
     cf: { cacheTtl: 3600, cacheEverything: true },
-    headers: { 'User-Agent': 'payotte-mcp/1.3 (+https://payotte.com)' },
+    headers: { 'User-Agent': 'payotte-mcp/1.5 (+https://payotte.com)' },
   });
   if (!res.ok) return null;
   const data = await res.json();
@@ -769,7 +769,7 @@ async function tauxCourants() {
       try {
         const res = await fetch(`https://www.bankofcanada.ca/valet/observations/${s.id}/json?recent=1`, {
           cf: { cacheTtl: 3600, cacheEverything: true },
-          headers: { 'User-Agent': 'payotte-mcp/1.1 (+https://payotte.com)' },
+          headers: { 'User-Agent': 'payotte-mcp/1.5 (+https://payotte.com)' },
         });
         if (!res.ok) return [s.key, { label: s.label, series: s.id, percent: null, observed: null }];
         const data = await res.json();
