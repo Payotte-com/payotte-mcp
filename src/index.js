@@ -3,12 +3,15 @@
  *
  * Cloudflare Worker SANS ÉTAT, transport Streamable HTTP (POST JSON-RPC → réponse JSON).
  * Le worker ne stocke RIEN : il lit en direct les feeds statiques de payotte.com
- * (/api/experts.json, /api/regulators.json, /api/market.json), régénérés à chaque
- * déploiement du site → zéro maintenance ici.
+ * (/api/experts.json, /api/regulators.json, /api/market.json, /api/rates.json,
+ * /api/bonds.json, /api/housing-starts.json, /api/new-home-prices.json), régénérés à
+ * chaque déploiement du site → zéro maintenance ici.
  *
  * 8 outils : trouver_expert · verifier_titre · stats_marche · taux_courants · contacter_expert
  * · taxe_mutation · acheter_ou_louer · salaire_requis.
- * taux_courants lit les taux d'intérêt canadiens en direct à la Banque du Canada (Valet).
+ * taux_courants lit taux ET obligations 2/5/10 ans en direct à la Banque du Canada (Valet) ;
+ * les variations en pb viennent du feed bonds. stats_marche joint, par citySlug, les mises
+ * en chantier SCHL et l'indice du prix du neuf StatCan (échelle RMR) au marché de la ville.
  * Les 3 outils de calcul (taxe/louer-acheter/salaire) appliquent une arithmétique PUBLIÉE
  * (mêmes hypothèses que les dossiers payotte.com correspondants) aux prix des chambres,
  * aux loyers SCHL et aux taux BdC — chaque réponse énonce ses hypothèses et ses limites.
@@ -182,7 +185,10 @@ const TOOLS = [
     description:
       'Call this for current housing-market figures in a Canadian city: reference price (MLS HPI benchmark or ' +
       'median), year-over-year change, sales volume, months of inventory, days on market, 5-year growth. ' +
-      'Compiled by Payotte from real-estate board and CREA publications; each city lists its sources.',
+      'Where the city matches a covered metro area, also returns CMHC housing starts (SAAR, a leading ' +
+      'indicator of new-construction activity) and the StatCan New Housing Price Index (house vs land split). ' +
+      'Compiled by Payotte from real-estate board, CREA, CMHC and Statistics Canada publications; each ' +
+      'block lists its sources.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -197,9 +203,11 @@ const TOOLS = [
     description:
       'Call this for the current Canadian reference interest rates: the Bank of Canada policy ' +
       '(overnight target) rate, the prime rate, and system-average mortgage rates (5-year fixed, ' +
-      'variable). Read live from the Bank of Canada (Valet API); each rate carries its own ' +
-      'observation date. Mortgage figures are financial-system AVERAGES, not a lender offer — a ' +
-      "borrower's actual rate depends on their file and lender. Source: Bank of Canada.",
+      'variable), plus Government of Canada benchmark bond yields (2/5/10-year — the 5-year yield ' +
+      'is the leading indicator behind 5-year fixed mortgage rates). Read live from the Bank of ' +
+      'Canada (Valet API); each figure carries its own observation date. Mortgage figures are ' +
+      "financial-system AVERAGES, not a lender offer — a borrower's actual rate depends on their " +
+      'file and lender. Source: Bank of Canada.',
     inputSchema: { type: 'object', properties: {} },
   },
   {
@@ -488,7 +496,36 @@ async function statsMarche(args = {}) {
     monthsOfInventory: moi,
     convention: 'Standard board convention: under 4 months of inventory = seller’s, 4-6 = balanced, over 6 = buyer’s.',
   };
-  return { attribution: ATTRIBUTION, city, marketBalance, browseListings: browseListings(city.province, city.slug) };
+
+  // Mises en chantier (SCHL) + indice du prix du neuf (StatCan), joints par citySlug —
+  // échelle RMR, pas ville. Feeds facultatifs : indisponibles ou RMR non couverte → null,
+  // jamais fabriqué (Règle #3). Les deux lectures partent en parallèle.
+  const [housingStarts, newHomePrices] = await Promise.all([
+    feed('/api/housing-starts.json').then((hs) => {
+      const r = (hs.regions ?? []).find((x) => x.citySlug === city.slug);
+      if (!r) return null;
+      const { referenceMonth, startsSaar, changeMomPct, changeYoyPct, saar3mAvg, saar3mChangePct, volatile } = r;
+      return {
+        scope: `${r.name} census metropolitan area (CMA) — wider than the city itself`,
+        referenceMonth, startsSaar, changeMomPct, changeYoyPct, saar3mAvg, saar3mChangePct, volatile,
+        note: hs.seriesNote + (volatile ? ' VOLATILE series: small centre, prefer the 3-month average.' : ''),
+        attribution: hs.attribution,
+      };
+    }).catch(() => null),
+    feed('/api/new-home-prices.json').then((np) => {
+      const r = (np.regions ?? []).find((x) => x.citySlug === city.slug);
+      if (!r) return null;
+      const { referenceMonth, total, houseOnly, landOnly } = r;
+      return {
+        scope: `${r.name} region — new construction only`,
+        referenceMonth, total, houseOnly, landOnly,
+        note: np.seriesNote,
+        attribution: np.attribution,
+      };
+    }).catch(() => null),
+  ]);
+
+  return { attribution: ATTRIBUTION, city, marketBalance, housingStarts, newHomePrices, browseListings: browseListings(city.province, city.slug) };
 }
 
 // ---------------------------------------------------------------- outils de calcul
@@ -709,13 +746,22 @@ const RATE_SERIES = [
   { key: 'mortgageVariable', id: 'V122667782',  label: 'Variable-rate mortgage (uninsured, market reference)' },
 ];
 
+// Obligations de référence (mêmes séries que scripts/fetch-bonds.mjs côté site). Lues en
+// direct pour la valeur du jour ; les variations (pb) et le canal 52 semaines viennent du
+// feed /api/bonds.json — calculés par le script du site, jamais recalculés ici (Règle #3).
+const BOND_SERIES = [
+  { key: 'gov2yr',  id: 'BD.CDN.2YR.DQ.YLD',  label: 'Government of Canada benchmark bond — 2-year' },
+  { key: 'gov5yr',  id: 'BD.CDN.5YR.DQ.YLD',  label: 'Government of Canada benchmark bond — 5-year' },
+  { key: 'gov10yr', id: 'BD.CDN.10YR.DQ.YLD', label: 'Government of Canada benchmark bond — 10-year' },
+];
+
 const BOC_ATTRIBUTION =
   'Rate data © Bank of Canada (Valet API), used under the Bank of Canada terms of use ' +
   '(https://www.bankofcanada.ca/terms/); relayed by Payotte (https://payotte.com).';
 
 async function tauxCourants() {
   const results = await Promise.all(
-    RATE_SERIES.map(async (s) => {
+    RATE_SERIES.concat(BOND_SERIES).map(async (s) => {
       try {
         const res = await fetch(`https://www.bankofcanada.ca/valet/observations/${s.id}/json?recent=1`, {
           cf: { cacheTtl: 3600, cacheEverything: true },
@@ -731,6 +777,10 @@ async function tauxCourants() {
       }
     }),
   );
+  const byKey = Object.fromEntries(results);
+  const rateKeys = RATE_SERIES.map((s) => s.key);
+  const bondKeys = BOND_SERIES.map((s) => s.key);
+
   // Décisions récentes + prochaines annonces : lues sur le feed du site (une source, déjà daté).
   let rateDecisions = [], upcomingDecisions = [], lastChange = null;
   try {
@@ -740,11 +790,31 @@ async function tauxCourants() {
     lastChange = feedData.lastChange ?? null;
   } catch { /* le feed peut être indisponible : les taux live suffisent */ }
 
+  // Variations (pb) + canal 52 semaines des obligations : mêmes clés que BOND_SERIES sur le
+  // feed /api/bonds.json. Feed indisponible → le rendement du jour part quand même, sans deltas.
+  let curve2to10 = null;
+  try {
+    const bondsFeed = await feed('/api/bonds.json');
+    for (const key of bondKeys) {
+      const extra = bondsFeed.bonds?.[key];
+      if (extra && byKey[key]) {
+        const { change1mBps, ref1m, change3mBps, ref3m, change1yBps, ref1y, low52w, high52w } = extra;
+        Object.assign(byKey[key], { change1mBps, ref1m, change3mBps, ref3m, change1yBps, ref1y, low52w, high52w });
+      }
+    }
+    curve2to10 = bondsFeed.curve2to10 ?? null;
+  } catch { /* idem : les rendements live suffisent */ }
+
   return {
     attribution: BOC_ATTRIBUTION,
     dataSource: 'Bank of Canada',
     note: 'Mortgage rates are financial-system averages, not a lender offer; each rate carries its own observation date. For a verified mortgage broker, use trouver_expert.',
-    rates: Object.fromEntries(results),
+    rates: Object.fromEntries(rateKeys.map((k) => [k, byKey[k]])),
+    bondYields: {
+      note: 'Government of Canada benchmark bond yields. The 5-year yield underpins 5-year fixed mortgage rates: when it rises, fixed rates follow within days. NOT a mortgage rate — the leading indicator behind one. Changes in basis points (bps): 100 bps = 1%.',
+      yields: Object.fromEntries(bondKeys.map((k) => [k, byKey[k]])),
+      curve2to10,
+    },
     lastChange,
     recentDecisions: rateDecisions,
     upcomingDecisions,
