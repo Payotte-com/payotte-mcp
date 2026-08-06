@@ -51,7 +51,7 @@ const PROTOCOL_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'];
 const SERVER_INFO = {
   name: 'payotte',
   title: 'Payotte — Verified real-estate experts & Canadian housing data',
-  version: '1.5.1',
+  version: '1.6.0',
 };
 const INSTRUCTIONS =
   'Payotte is an independent directory of VERIFIED real-estate professionals in Canada ' +
@@ -1205,6 +1205,60 @@ function marketCore(city, fr, eyebrow) {
     </td></tr>`;
 }
 
+// ---- Bloc NATIONAL : taux et obligations ---------------------------------------------
+// Identique pour tous les destinataires, donc rapatrié UNE fois par exécution et non par
+// courriel : deux sous-requêtes au total, pas deux par envoi.
+//
+// Pourquoi l'ajouter : le bulletin ne montrait que les 5 chiffres récoltés à la main auprès
+// des chambres immobilières. Les taux et les obligations sont collectés automatiquement
+// depuis la Banque du Canada et ne coûtaient rien à personne — ils dormaient. Ils comptent
+// surtout pour les 39 villes qui n'ont AUCUNE autre source automatique : c'est le seul
+// contenu qu'on puisse leur ajouter sans nouvelle récolte.
+//
+// Le 5 ans a sa place ici et nulle part ailleurs : c'est ce qui fait bouger le fixe 5 ans
+// quelques jours plus tard. Un courtier hypothécaire le sait ; un courtier immobilier, rarement.
+function nationalBlock(macro, fr) {
+  if (!macro) return '';
+  const r = macro.rates || {};
+  const b = macro.bonds || {};
+  const pct = (v) => (v == null ? null : `${v.toLocaleString(fr ? 'fr-CA' : 'en-CA')} %`);
+  const cells = [];
+  if (r.policyRate?.percent != null) cells.push([fr ? 'Taux directeur' : 'Policy rate', pct(r.policyRate.percent)]);
+  if (r.primeRate?.percent != null) cells.push([fr ? 'Taux préférentiel' : 'Prime rate', pct(r.primeRate.percent)]);
+  if (r.mortgage5yrFixed?.percent != null) cells.push([fr ? 'Fixe 5 ans (moyenne)' : '5-yr fixed (average)', pct(r.mortgage5yrFixed.percent)]);
+  if (r.mortgageVariable?.percent != null) cells.push([fr ? 'Variable (moyenne)' : 'Variable (average)', pct(r.mortgageVariable.percent)]);
+  const g5 = b.gov5yr;
+  if (!cells.length && g5?.percent == null) return '';
+
+  let gridRows = '';
+  for (let i = 0; i < cells.length; i += 2) gridRows += `<tr>${S(cells[i][0], cells[i][1])}${cells[i + 1] ? S(cells[i + 1][0], cells[i + 1][1]) : '<td width="50%"></td>'}</tr>`;
+
+  // L'obligation 5 ans, avec sa variation sur un mois : le signal avancé du taux fixe.
+  let bondLine = '';
+  if (g5?.percent != null) {
+    const d = g5.change1mBps;
+    const sens = d == null ? '' : d > 0
+      ? (fr ? `en hausse de ${d} pb sur un mois` : `up ${d} bps over the month`)
+      : d < 0 ? (fr ? `en baisse de ${Math.abs(d)} pb sur un mois` : `down ${Math.abs(d)} bps over the month`)
+        : (fr ? 'stable sur un mois' : 'flat over the month');
+    const couleur = d == null || d === 0 ? '#6f6769' : d > 0 ? '#b3261e' : '#1f7a44';
+    bondLine = `<div style="margin-top:16px;padding-top:14px;border-top:1px solid #f1ecec;">
+      <span style="font-size:13px;color:#8a8284;">${fr ? 'Obligation du Canada 5 ans' : 'Government of Canada 5-yr bond'}</span><br>
+      <span style="font-size:16px;color:#211c1e;font-weight:bold;">${pct(g5.percent)}</span>${sens ? `<span style="font-size:12px;color:${couleur};"> &middot; ${sens}</span>` : ''}
+      <div style="font-size:12px;line-height:1.55;color:#6f6769;margin-top:7px;">${fr
+        ? 'C’est elle qui mène le taux fixe 5 ans : quand elle monte, les fixes suivent en quelques jours. Ce n’est pas un taux hypothécaire — c’est ce qui le précède.'
+        : 'This is what drives 5-year fixed rates: when it rises, fixed rates follow within days. It is not a mortgage rate — it is what leads one.'}</div>
+    </div>`;
+  }
+
+  return `<tr><td style="padding:22px 32px 6px 32px;">
+      <div style="font-family:Georgia,'Times New Roman',serif;font-size:19px;line-height:1.3;color:#211c1e;margin-bottom:16px;">${fr ? 'Les taux, partout au pays' : 'Rates, nationwide'}</div>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid #f1ecec;">${gridRows}</table>
+      ${bondLine}
+      <div style="font-size:11.5px;color:#a49c9e;margin-top:14px;">${fr ? 'Source' : 'Source'} : ${fr ? 'Banque du Canada' : 'Bank of Canada'}${macro.fetched ? ` &middot; ${macro.fetched}` : ''}${fr ? ' &middot; moyennes du système financier, pas une offre de prêteur' : ' &middot; financial-system averages, not a lender offer'}</div>
+    </td></tr>`;
+}
+
 const CLOSE = (bg, border, inner) => `<tr><td style="padding:20px 32px 4px 32px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${bg};border:1px solid ${border};border-radius:12px;"><tr><td style="padding:22px 24px;">${inner}</td></tr></table></td></tr>`;
 const BTN = (href, txt) => `<a href="${href}" style="display:inline-block;background:#c8102e;color:#ffffff;font-size:14px;font-weight:bold;text-decoration:none;padding:11px 20px;border-radius:9px;">${txt}</a>`;
 const H3 = (t) => `<div style="font-family:Georgia,'Times New Roman',serif;font-size:19px;line-height:1.25;color:#211c1e;margin-bottom:10px;">${t}</div>`;
@@ -1212,7 +1266,7 @@ const P = (t) => `<div style="font-size:14px;line-height:1.6;color:#443e40;margi
 const FOOT = (why, unsubUrl, unsubTxt) => `<tr><td style="padding:22px 32px 26px 32px;"><div style="border-top:1px solid #f1ecec;padding-top:16px;font-size:11.5px;line-height:1.6;color:#a49c9e;">${why} <a href="${unsubUrl}" style="color:#8a8284;">${unsubTxt}</a> &middot; payotte.com</div></td></tr>`;
 
 // Rendu complet d'un courriel : {subject, html}. segment='prospect'|'expert' ; stage pour les experts.
-function renderPulse({ segment, stage, city, expert, lang, unsubUrl }) {
+function renderPulse({ segment, stage, city, expert, lang, unsubUrl, macro = null }) {
   const fr = lang !== 'en';
   const url = expert?.url || `${SITE}`;
   const eyebrow = `${fr ? 'Le pouls du marché' : 'Market pulse'}<br><span style="color:#c8102e;letter-spacing:1px;">${city.name}${city.referenceMonth ? ' &middot; ' + city.referenceMonth : ''}</span>`;
@@ -1246,7 +1300,7 @@ function renderPulse({ segment, stage, city, expert, lang, unsubUrl }) {
       foot = FOOT(fr ? `Vous êtes Recommandé et partenaire vérifié à ${city.name}.` : `You are Recommended and a verified partner in ${city.name}.`, unsubUrl, fr ? 'Ne plus recevoir' : 'Unsubscribe');
     }
   }
-  const html = `<div style="background:#f5f3f2;margin:0;padding:28px 12px;font-family:Arial,Helvetica,sans-serif;"><table role="presentation" width="580" cellpadding="0" cellspacing="0" border="0" align="center" style="max-width:580px;width:100%;background:#ffffff;border:1px solid #eae5e5;border-radius:8px;">${marketCore(city, fr, eyebrow)}${close}${foot}</table></div>`;
+  const html = `<div style="background:#f5f3f2;margin:0;padding:28px 12px;font-family:Arial,Helvetica,sans-serif;"><table role="presentation" width="580" cellpadding="0" cellspacing="0" border="0" align="center" style="max-width:580px;width:100%;background:#ffffff;border:1px solid #eae5e5;border-radius:8px;">${marketCore(city, fr, eyebrow)}${nationalBlock(macro, fr)}${close}${foot}</table></div>`;
   return { subject, html };
 }
 
@@ -1421,6 +1475,15 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
   // Aucune province à 10 h : on s'arrête là (1 feed, 1 lecture KV). Le cas normal 6 fois sur 7.
   if (!active.length) { report.budgetUsed = ctr.subs; return report; }
 
+  // Taux et obligations : NATIONAUX, donc identiques pour tout le monde. Deux sous-requêtes
+  // pour l'exécution entière, jamais deux par courriel. Feeds indisponibles → `macro` reste
+  // null et le bloc disparaît simplement du gabarit : aucun envoi n'est bloqué pour ça.
+  const macro = await Promise.all([
+    F('/api/rates.json').catch(() => null),
+    F('/api/bonds.json').catch(() => null),
+  ]).then(([r, b]) => (r || b ? { rates: r?.rates ?? null, bonds: b?.bonds ?? null, fetched: r?.fetched ?? b?.fetched ?? null } : null));
+  report.macro = macro ? 'taux+obligations' : 'indisponible';
+
   // État du cycle : 3 lectures KV, pas une seule sous-requête.
   const done = new Set(env.SUBSCRIBERS ? await kvKeys(env.SUBSCRIBERS, `sent:${cycle}:`) : []);
   const unsub = new Set(env.SUBSCRIBERS ? await kvKeys(env.SUBSCRIBERS, 'unsub:') : []);
@@ -1453,7 +1516,7 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
       if (done.has(id)) continue;
       if (!canSend()) { report.pending++; continue; }
       const unsubUrl = `${origin}/unsubscribe?e=${encodeURIComponent(rec.email)}&c=${encodeURIComponent(rec.city)}&t=${await hmacHex(env, `u:${rec.email}:${rec.city}`)}`;
-      const { subject, html } = renderPulse({ segment: 'prospect', city, lang: rec.lang, unsubUrl });
+      const { subject, html } = renderPulse({ segment: 'prospect', city, lang: rec.lang, unsubUrl, macro });
       report.prospects++; report.recipients.push({ to: rec.email, kind: 'prospect', city: rec.city });
       if (dryRun) continue;
       report.attempts++; ctr.subs++;
@@ -1497,7 +1560,7 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
       // audience gonflée des doublons d'adresse que l'envoi réel, lui, écarte.
       if (dryRun) { done.add(e.slug); mailsDone.add(contact.email.toLowerCase()); continue; }
       const unsubUrl = await expertUnsubUrl(env, origin, e.slug);
-      const { subject, html } = renderPulse({ segment: 'expert', stage, city, expert: e, lang: contact.lang || e.lang, unsubUrl });
+      const { subject, html } = renderPulse({ segment: 'expert', stage, city, expert: e, lang: contact.lang || e.lang, unsubUrl, macro });
       report.attempts++; ctr.subs++;
       const r = await sendPulse(env, { to: contact.email, subject, html, unsubUrl });
       // On ne marque RIEN tant que Resend n'a pas accepté : un envoi raté doit repasser demain.
@@ -1717,7 +1780,13 @@ export default {
         } catch { /* gabarit ci-dessous */ }
         if (!expert) expert = { name: 'Exemple', professionLabel: 'courtier immobilier', score: { total: 64, color: 'yellow' }, licence: { body: 'OACIQ', number: null }, url: `${SITE}` };
       }
-      const { subject, html } = renderPulse({ segment, stage, city, expert, lang, unsubUrl: '#preview' });
+      // L'aperçu doit montrer le courriel RÉEL, bloc des taux compris — sinon il valide un
+      // gabarit qui n'existe pas.
+      const macro = await Promise.all([
+        feed('/api/rates.json').catch(() => null),
+        feed('/api/bonds.json').catch(() => null),
+      ]).then(([r, b]) => (r || b ? { rates: r?.rates ?? null, bonds: b?.bonds ?? null, fetched: r?.fetched ?? b?.fetched ?? null } : null));
+      const { subject, html } = renderPulse({ segment, stage, city, expert, lang, unsubUrl: '#preview', macro });
       return new Response(`<!--${subject}-->\n${html}`, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'X-Robots-Tag': 'noindex' } });
     }
 
