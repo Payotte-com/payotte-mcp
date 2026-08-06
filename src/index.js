@@ -1222,11 +1222,17 @@ function nationalBlock(macro, fr) {
   const r = macro.rates || {};
   const b = macro.bonds || {};
   const pct = (v) => (v == null ? null : `${v.toLocaleString(fr ? 'fr-CA' : 'en-CA')} %`);
+  // CHAQUE chiffre porte sa date d'observation, parce qu'elles diffèrent de plusieurs mois :
+  // le taux directeur est quotidien, mais les moyennes hypothécaires de la Banque du Canada
+  // sont MENSUELLES et publiées avec du retard — au 6 août 2026, elles dataient du 1er mai.
+  // Afficher « fixe 5 ans : 4,34 % » sans cette date, à des courtiers hypothécaires qui
+  // connaissent le marché du jour, décrédibiliserait tout le reste du courriel.
+  const daté = (v) => (v?.observed ? `<span style="font-size:11px;color:#a49c9e;font-weight:normal;"> &middot; ${v.observed}</span>` : '');
   const cells = [];
-  if (r.policyRate?.percent != null) cells.push([fr ? 'Taux directeur' : 'Policy rate', pct(r.policyRate.percent)]);
-  if (r.primeRate?.percent != null) cells.push([fr ? 'Taux préférentiel' : 'Prime rate', pct(r.primeRate.percent)]);
-  if (r.mortgage5yrFixed?.percent != null) cells.push([fr ? 'Fixe 5 ans (moyenne)' : '5-yr fixed (average)', pct(r.mortgage5yrFixed.percent)]);
-  if (r.mortgageVariable?.percent != null) cells.push([fr ? 'Variable (moyenne)' : 'Variable (average)', pct(r.mortgageVariable.percent)]);
+  if (r.policyRate?.percent != null) cells.push([fr ? 'Taux directeur' : 'Policy rate', pct(r.policyRate.percent) + daté(r.policyRate)]);
+  if (r.primeRate?.percent != null) cells.push([fr ? 'Taux préférentiel' : 'Prime rate', pct(r.primeRate.percent) + daté(r.primeRate)]);
+  if (r.mortgage5yrFixed?.percent != null) cells.push([fr ? 'Fixe 5 ans (moyenne)' : '5-yr fixed (average)', pct(r.mortgage5yrFixed.percent) + daté(r.mortgage5yrFixed)]);
+  if (r.mortgageVariable?.percent != null) cells.push([fr ? 'Variable (moyenne)' : 'Variable (average)', pct(r.mortgageVariable.percent) + daté(r.mortgageVariable)]);
   const g5 = b.gov5yr;
   if (!cells.length && g5?.percent == null) return '';
 
@@ -1244,7 +1250,7 @@ function nationalBlock(macro, fr) {
     const couleur = d == null || d === 0 ? '#6f6769' : d > 0 ? '#b3261e' : '#1f7a44';
     bondLine = `<div style="margin-top:16px;padding-top:14px;border-top:1px solid #f1ecec;">
       <span style="font-size:13px;color:#8a8284;">${fr ? 'Obligation du Canada 5 ans' : 'Government of Canada 5-yr bond'}</span><br>
-      <span style="font-size:16px;color:#211c1e;font-weight:bold;">${pct(g5.percent)}</span>${sens ? `<span style="font-size:12px;color:${couleur};"> &middot; ${sens}</span>` : ''}
+      <span style="font-size:16px;color:#211c1e;font-weight:bold;">${pct(g5.percent)}</span>${g5.observed ? `<span style="font-size:11px;color:#a49c9e;"> &middot; ${g5.observed}</span>` : ''}${sens ? `<span style="font-size:12px;color:${couleur};"> &middot; ${sens}</span>` : ''}
       <div style="font-size:12px;line-height:1.55;color:#6f6769;margin-top:7px;">${fr
         ? 'C’est elle qui mène le taux fixe 5 ans : quand elle monte, les fixes suivent en quelques jours. Ce n’est pas un taux hypothécaire — c’est ce qui le précède.'
         : 'This is what drives 5-year fixed rates: when it rises, fixed rates follow within days. It is not a mortgage rate — it is what leads one.'}</div>
@@ -1255,7 +1261,9 @@ function nationalBlock(macro, fr) {
       <div style="font-family:Georgia,'Times New Roman',serif;font-size:19px;line-height:1.3;color:#211c1e;margin-bottom:16px;">${fr ? 'Les taux, partout au pays' : 'Rates, nationwide'}</div>
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid #f1ecec;">${gridRows}</table>
       ${bondLine}
-      <div style="font-size:11.5px;color:#a49c9e;margin-top:14px;">${fr ? 'Source' : 'Source'} : ${fr ? 'Banque du Canada' : 'Bank of Canada'}${macro.fetched ? ` &middot; ${macro.fetched}` : ''}${fr ? ' &middot; moyennes du système financier, pas une offre de prêteur' : ' &middot; financial-system averages, not a lender offer'}</div>
+      <div style="font-size:11.5px;line-height:1.55;color:#a49c9e;margin-top:14px;">${fr
+        ? 'Source : Banque du Canada. Chaque chiffre porte sa date d’observation — les moyennes hypothécaires sont une série mensuelle, publiée avec du retard. Ce sont des moyennes du système financier, pas une offre de prêteur.'
+        : 'Source: Bank of Canada. Each figure carries its own observation date — the mortgage averages are a monthly series, published with a lag. These are financial-system averages, not a lender offer.'}</div>
     </td></tr>`;
 }
 
