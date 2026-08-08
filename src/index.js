@@ -51,7 +51,7 @@ const PROTOCOL_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'];
 const SERVER_INFO = {
   name: 'payotte',
   title: 'Payotte — Verified real-estate experts & Canadian housing data',
-  version: '1.6.0',
+  version: '1.6.1',
 };
 const INSTRUCTIONS =
   'Payotte is an independent directory of VERIFIED real-estate professionals in Canada ' +
@@ -1370,11 +1370,14 @@ const SUBREQUEST_BUDGET = 50;
 const SUBREQUEST_MARGIN = 3;   // récapitulatif de fin + coussin
 const RESEND_DAY_CAP = 90;     // plafond dur : marge sous le palier Resend gratuit (100/jour)
 // Rythme choisi (décision proprio, 3 août 2026) : un petit filet tous les jours plutôt qu'une
-// rafale. ~455 destinataires à 20/jour = la vague du mois passe en trois semaines, sans jamais
-// approcher les limites de Resend, et le domaine (37 courriels dans sa vie au 1er août) monte
-// en charge doucement — c'est ce qui décide si les prochains atterrissent en boîte ou en spam.
-// Monter ce chiffre quand l'annuaire grossira : il doit rester ≥ destinataires ÷ 28 jours.
-const DAILY_SEND_CAP = 20;
+// rafale, sans jamais approcher les limites de Resend, et le domaine (37 courriels dans sa
+// vie au 1er août) monte en charge doucement — c'est ce qui décide si les prochains
+// atterrissent en boîte ou en spam.
+// 2026-08-08 (décision proprio) : 20 → 35. Les ~296 prospects de la récolte entrent dans le
+// circuit (clés s:) et s'ajoutent aux ~455 experts : ~750 destinataires — 20/jour ne bouclait
+// plus le mois. La règle tient : rester ≥ destinataires ÷ 28 jours (750/28 ≈ 27) et sous
+// RESEND_DAY_CAP. Réviser à la prochaine vague de récolte (boule de neige).
+const DAILY_SEND_CAP = 35;
 // Durée de vie des marques de cycle (`sent:`, `prov-done:`) : ~100 jours. Elles ne servent
 // qu'au mois courant et se nettoient toutes seules. `intro:` et `unsub:`, eux, sont éternels.
 const CYCLE_TTL = 100 * 24 * 3600;
