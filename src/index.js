@@ -51,7 +51,7 @@ const PROTOCOL_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'];
 const SERVER_INFO = {
   name: 'payotte',
   title: 'Payotte — Verified real-estate experts & Canadian housing data',
-  version: '1.6.2',
+  version: '1.6.3',
 };
 const INSTRUCTIONS =
   'Payotte is an independent directory of VERIFIED real-estate professionals in Canada ' +
@@ -1468,6 +1468,30 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
   // En dry-run rien n'est consommé : l'audience complète du mois doit apparaître au rapport.
   const canSend = () => dryRun || (left() > 0 && daySoFar + report.attempts < dayCap);
 
+  // Échantillon du jour (décision proprio, 2026-08-09) : la PREMIÈRE fois qu'un courriel
+  // part dans la journée, une copie conforme (même HTML, même sujet) file au proprio,
+  // sujet préfixé « [échantillon → destinataire] ». Une seule par jour (clé KV, TTL 3 j),
+  // hors plafond quotidien — c'est de l'observation, pas de l'audience.
+  let sampleSent = dryRun || !env.SUBSCRIBERS
+    || Boolean(await env.SUBSCRIBERS.get(`sample:${dayKey}`));
+  const envoyerEchantillon = async (aQui, subject, html) => {
+    if (sampleSent) return;
+    sampleSent = true;
+    ctr.subs++;
+    await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: env.MAIL_FROM_BULLETIN || 'Payotte <bulletin@payotte.com>',
+        to: [REPORT_TO],
+        subject: `[échantillon → ${aQui}] ${subject}`,
+        html,
+      }),
+    }).catch(() => { /* l'échantillon n'est jamais bloquant */ });
+    await env.SUBSCRIBERS.put(`sample:${dayKey}`, new Date().toISOString(),
+      { expirationTtl: 3 * 24 * 3600 });
+  };
+
   // `attempts` = appels Resend tentés (ils consomment le budget, réussis ou non) ;
   // `sent` = acceptés par Resend ; `failed`/`errors` = refusés ; `pending` = ce qui reste
   // à faire ce mois-ci et repassera au prochain passage.
@@ -1543,6 +1567,7 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
       if (!r.ok) { report.failed++; report.errors.push(`prospect ${rec.email} — Resend HTTP ${r.status ?? '?'}${r.error ? ` (${r.error})` : ''}`); continue; }
       await env.SUBSCRIBERS.put(`sent:${cycle}:${id}`, new Date().toISOString(), { expirationTtl: CYCLE_TTL });
       report.sent++;
+      await envoyerEchantillon(rec.email, subject, html);
     }
   }
 
@@ -1588,6 +1613,7 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
       if (stage === 'intro') await env.SUBSCRIBERS?.put(`intro:${e.slug}`, new Date().toISOString());
       done.add(e.slug); mailsDone.add(contact.email.toLowerCase());
       report.sent++;
+      await envoyerEchantillon(contact.email, subject, html);
     }
     if (!restants && !dryRun) await env.SUBSCRIBERS?.put(`prov-done:${cycle}:${prov}`, new Date().toISOString(), { expirationTtl: CYCLE_TTL });
   }
