@@ -1,13 +1,13 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.Payotte-com/payotte-mcp",
-  "description": "Verified Canadian real-estate experts & housing data: vetted pros, market stats, rates, tax math.",
+  "description": "Verified Canadian real-estate pros + housing data: prices, rates, land-transfer tax, rent-vs-buy.",
   "websiteUrl": "https://payotte.com",
   "repository": {
     "url": "https://github.com/Payotte-com/payotte-mcp",
     "source": "github"
   },
-  "version": "1.6.0",
+  "version": "1.7.1",
   "remotes": [
     {
       "type": "streamable-http",
