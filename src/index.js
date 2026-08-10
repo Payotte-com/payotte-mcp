@@ -51,7 +51,7 @@ const PROTOCOL_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'];
 const SERVER_INFO = {
   name: 'payotte',
   title: 'Payotte — Verified real-estate experts & Canadian housing data',
-  version: '1.6.1',
+  version: '1.6.2',
 };
 const INSTRUCTIONS =
   'Payotte is an independent directory of VERIFIED real-estate professionals in Canada ' +
@@ -1374,10 +1374,18 @@ const RESEND_DAY_CAP = 90;     // plafond dur : marge sous le palier Resend grat
 // vie au 1er août) monte en charge doucement — c'est ce qui décide si les prochains
 // atterrissent en boîte ou en spam.
 // 2026-08-08 (décision proprio) : 20 → 35. Les ~296 prospects de la récolte entrent dans le
-// circuit (clés s:) et s'ajoutent aux ~455 experts : ~750 destinataires — 20/jour ne bouclait
-// plus le mois. La règle tient : rester ≥ destinataires ÷ 28 jours (750/28 ≈ 27) et sous
-// RESEND_DAY_CAP. Réviser à la prochaine vague de récolte (boule de neige).
-const DAILY_SEND_CAP = 35;
+// circuit (clés s:) et s'ajoutent aux ~455 experts — 20/jour ne bouclait plus le mois.
+// 2026-08-09 (décision proprio, objectif 2 800 destinataires au 31 août) : montée en
+// PALIERS DATÉS — 50 maintenant, 70 dès le 15 août, 90 dès le 22 (le max sous le palier
+// gratuit Resend : 90 × 30 + ~210 rapports ≈ 2 910 < 3 000/mois). Les paliers hebdo sont
+// le profil de montée en charge que les filtres anti-spam tolèrent ; un saut direct
+// 20 → 90 sur un domaine jeune est le profil type qui finit en spam.
+const dailySendCap = (at = new Date()) => {
+  const d = at.toISOString().slice(0, 10);
+  if (d >= '2026-08-22') return 90;
+  if (d >= '2026-08-15') return 70;
+  return 50;
+};
 // Durée de vie des marques de cycle (`sent:`, `prov-done:`) : ~100 jours. Elles ne servent
 // qu'au mois courant et se nettoient toutes seules. `intro:` et `unsub:`, eux, sont éternels.
 const CYCLE_TTL = 100 * 24 * 3600;
@@ -1456,7 +1464,7 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
   // Ce que les exécutions PRÉCÉDENTES du jour ont déjà consommé (les 7 passages horaires se
   // partagent un seul plafond quotidien).
   const daySoFar = Number((env.SUBSCRIBERS ? await env.SUBSCRIBERS.get(`day:${dayKey}`) : 0) || 0);
-  const dayCap = Math.min(DAILY_SEND_CAP, RESEND_DAY_CAP);
+  const dayCap = Math.min(dailySendCap(at), RESEND_DAY_CAP);
   // En dry-run rien n'est consommé : l'audience complète du mois doit apparaître au rapport.
   const canSend = () => dryRun || (left() > 0 && daySoFar + report.attempts < dayCap);
 
@@ -1609,7 +1617,7 @@ async function sendRunReport(env, report) {
   const L = [
     `Cycle ${report.cycle} — envoyés ${report.sent} · ratés ${report.failed} · reste ${reste}`,
     `Passage de 10 h : ${report.zones?.join(', ') || '—'} · ${report.activeCities} ville(s) dans la tranche`,
-    `Rythme du jour (toutes tranches) : ${jour}/${report.dayCap ?? DAILY_SEND_CAP} · sous-requêtes de ce passage : ${report.budgetUsed}/${SUBREQUEST_BUDGET}${provAttendues ? ` · provinces non ouvertes : ${provAttendues}` : ''}`,
+    `Rythme du jour (toutes tranches) : ${jour}/${report.dayCap ?? dailySendCap()} · sous-requêtes de ce passage : ${report.budgetUsed}/${SUBREQUEST_BUDGET}${provAttendues ? ` · provinces non ouvertes : ${provAttendues}` : ''}`,
     `Étapes : ${Object.entries(report.experts).filter(([, n]) => n).map(([k, n]) => `${k} ${n}`).join(' · ') || '—'}${report.prospects ? ` · prospects ${report.prospects}` : ''}`,
     partiel
       ? `\nIl reste du monde dans ce ou ces fuseaux : ils seront servis demain, à 10 h chez eux.`
