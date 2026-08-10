@@ -671,13 +671,24 @@ async function taxeMutation(args = {}) {
       }
       return { ...common, province: 'Nova Scotia', city: city.name, tax: null, note: `Nova Scotia's Deed Transfer Tax is set by each municipality (~0.5% to 1.5%) and Payotte has only validated the Halifax (HRM) rate at source. Check ${city.name}'s municipal by-law, or ask again for Halifax.` };
     }
+    // Frais d'inscription AB/SK — barèmes revalidés à la source le 2026-08-10.
+    // Doivent rester alignés sur payotte-astro/src/lib/closingCosts.ts (source unique du site).
     case 'alberta': {
-      const fees = Math.round(50 + Math.ceil(price / 5000) * 2 + 50 + Math.ceil((price * 0.8) / 5000) * 1.5);
-      return { ...common, province: 'Alberta', city: city?.name ?? null, tax: fees, isRegistrationFeesOnly: true, note: 'Alberta charges NO land transfer tax — only modest land-title and mortgage registration fees (computed here with a 20% down payment). One of only two such provinces, with Saskatchewan.' };
+      // Land Titles Act, art. 64.1 (titre) et 102.1 (hypothèque). Prélèvement relevé le
+      // 20 octobre 2024 : 2 $/5 000 $ (titre) et 1,50 $/5 000 $ (hypothèque) → 5 $ pour les deux.
+      const fees = Math.round(50 + Math.ceil(price / 5000) * 5 + 50 + Math.ceil((price * 0.8) / 5000) * 5);
+      return { ...common, province: 'Alberta', city: city?.name ?? null, tax: fees, isRegistrationFeesOnly: true, note: 'Alberta charges NO land transfer tax — only land-title and mortgage registration fees: $50 + $5 per $5,000 of value for the title, and $50 + $5 per $5,000 of the loan for the mortgage (computed here with a 20% down payment). That levy more than doubled on 2024-10-20. One of only two such provinces, with Saskatchewan.' };
     }
     case 'saskatchewan': {
-      const fees = Math.round(price * 0.003 + 160);
-      return { ...common, province: 'Saskatchewan', city: city?.name ?? null, tax: fees, isRegistrationFeesOnly: true, note: 'Saskatchewan charges NO land transfer tax — only title fees (0.30% above $8,400) and a $160 mortgage registration fee.' };
+      // ISC — titre 0,4 % de la valeur (depuis le 2023-07-29) + inscription d'hypothèque
+      // par tranches du prêt (barème du 2026-04-15). Au-delà de 1 M$ : non validé → on refuse.
+      const loan = price * 0.8;
+      const mortgageFee = loan < 250000 ? 200 : loan <= 500000 ? 275 : loan <= 750000 ? 525 : loan <= 1000000 ? 775 : null;
+      if (mortgageFee === null) {
+        return { ...common, province: 'Saskatchewan', city: city?.name ?? null, tax: null, note: 'Saskatchewan charges NO land transfer tax, but the ISC mortgage-registration schedule above a $1,000,000 loan is not source-validated by Payotte. Refusing to guess — check saskregistries.ca.' };
+      }
+      const fees = Math.round(price * 0.004 + mortgageFee);
+      return { ...common, province: 'Saskatchewan', city: city?.name ?? null, tax: fees, isRegistrationFeesOnly: true, note: `Saskatchewan charges NO land transfer tax — only a title fee of 0.4% of value (since 2023-07-29) plus a tiered mortgage registration fee ($${mortgageFee} here, on a 20% down payment; ISC schedule of 2026-04-15). Despite having no tax, Saskatchewan costs MORE to register than Alberta.` };
     }
     default:
       return { error: `Payotte has not source-validated the transfer-tax schedule for "${provSlug}" (PEI, Newfoundland). Refusing to guess — check the provincial registry, or see https://payotte.com/en/home-closing-costs-canada for the provinces covered.` };
