@@ -51,7 +51,7 @@ const PROTOCOL_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'];
 const SERVER_INFO = {
   name: 'payotte',
   title: 'Payotte — Verified real-estate experts & Canadian housing data',
-  version: '1.6.3',
+  version: '1.7.0',
 };
 const INSTRUCTIONS =
   'Payotte is an independent directory of VERIFIED real-estate professionals in Canada ' +
@@ -1318,33 +1318,53 @@ const RESEND_MIN_GAP_MS = 600;
 let lastPulseAt = 0;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// Envoi générique. PAS de copie BCC (elle noyait la boîte du proprio) : la trace, c'est le
-// récapitulatif de fin d'exécution. Retourne TOUJOURS l'issue réelle : `ok:false` + `status`
-// quand Resend refuse. L'appelant DOIT la lire — un envoi raté qui passe pour réussi marque
-// l'expert comme servi et le prive de son courriel du mois.
-// `unsubUrl` alimente List-Unsubscribe : désabonnement en un clic depuis Gmail/Outlook,
-// exigé par la LCAP au même titre que le lien dans le pied de page.
-async function sendPulse(env, { to, subject, html, replyTo, unsubUrl }) {
-  if (!env.RESEND_API_KEY) return { ok: false, simulated: true, to, subject };
+// Envoi par LOTS (Resend /emails/batch — jusqu'à 100 courriels en UN appel).
+//
+// PAS de copie BCC (elle noyait la boîte du proprio) : la trace, c'est le récapitulatif de
+// fin d'exécution, plus l'échantillon du jour. Renvoie TOUJOURS l'issue réelle par
+// courriel — l'appelant DOIT la lire : un envoi raté qui passerait pour réussi marquerait
+// l'expert comme servi et le priverait de son courriel du mois.
+//
+// Pourquoi : un envoi = une sous-requête, et Cloudflare en autorise 50 par réveil du
+// worker. À l'unité, l'architecture plafonnait donc à ~45 courriels par passage quoi
+// qu'on fasse — un mur de tuyauterie, pas de forfait. Par lots de 100, mille envois ne
+// coûtent que dix sous-requêtes : le plafond quotidien redevient une décision (forfait
+// Resend + réputation du domaine), plus une contrainte technique.
+//
+// `headers` et `reply_to` sont acceptés par l'API batch (vérifié à la doc le 2026-08-10) :
+// le List-Unsubscribe un clic — exigé par la LCAP et par Gmail — survit au passage en lot.
+// Les pièces jointes, elles, n'y sont pas supportées : le bulletin n'en a jamais.
+//
+// Renvoie un tableau ALIGNÉ sur `envois` : `{ ok }` par courriel. Si l'appel entier échoue,
+// rien n'est parti — tout le lot repart demain (on ne marque `sent:` que sur acceptation).
+async function sendPulseBatch(env, envois) {
+  if (!envois.length) return [];
+  if (!env.RESEND_API_KEY) return envois.map(() => ({ ok: false, simulated: true }));
   const wait = RESEND_MIN_GAP_MS - (Date.now() - lastPulseAt);
   if (wait > 0) await sleep(wait);
   lastPulseAt = Date.now();
-  let res;
+  const from = env.MAIL_FROM_BULLETIN || 'Payotte <bulletin@payotte.com>';
+  let res, corps;
   try {
-    res = await fetch('https://api.resend.com/emails', {
+    res = await fetch('https://api.resend.com/emails/batch', {
       method: 'POST',
       headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        from: env.MAIL_FROM_BULLETIN || 'Payotte <bulletin@payotte.com>',
-        to: [to], reply_to: replyTo || 'gregory@payotte.com',
-        subject, html,
-        ...(unsubUrl ? { headers: { 'List-Unsubscribe': `<${unsubUrl}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' } } : {}),
-      }),
+      body: JSON.stringify(envois.map((e) => ({
+        from, to: [e.to], reply_to: 'gregory@payotte.com',
+        subject: e.subject, html: e.html,
+        ...(e.unsubUrl ? { headers: { 'List-Unsubscribe': `<${e.unsubUrl}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' } } : {}),
+      }))),
     });
+    corps = await res.json().catch(() => null);
   } catch (err) {
-    return { ok: false, status: 0, error: String(err?.message ?? err) };
+    return envois.map(() => ({ ok: false, status: 0, error: String(err?.message ?? err) }));
   }
-  return { ok: res.ok, status: res.status };
+  if (!res.ok) return envois.map(() => ({ ok: false, status: res.status }));
+  // Réponse acceptée : `data[i]` correspond au courriel `i` de la requête. Une entrée
+  // absente ou sans `id` = ce courriel-là n'a pas été pris ; il repassera demain. On ne
+  // suppose JAMAIS le succès d'un envoi qu'on ne voit pas confirmé.
+  const data = Array.isArray(corps?.data) ? corps.data : [];
+  return envois.map((_e, i) => ({ ok: Boolean(data[i]?.id), status: res.status, id: data[i]?.id }));
 }
 
 // Villes ACTIVES du bulletin = TOUTES celles dont on publie un prix de référence
@@ -1368,7 +1388,13 @@ const PROV_SLUG = {
 // Les opérations KV n'entrent pas dans ce budget (vérifié sur la run du 1er août).
 const SUBREQUEST_BUDGET = 50;
 const SUBREQUEST_MARGIN = 3;   // récapitulatif de fin + coussin
+// Taille d'un lot Resend (maximum de l'API). Depuis le passage aux lots (2026-08-10),
+// un passage de 1 000 courriels ne coûte que 10 sous-requêtes : le budget Cloudflare
+// n'est plus le facteur limitant, le forfait Resend et la réputation du domaine le sont.
+const TAILLE_LOT = 100;
 const RESEND_DAY_CAP = 90;     // plafond dur : marge sous le palier Resend gratuit (100/jour)
+                               // — passer à 50 000/mois (Resend Pro) permet de le relever
+                               //   sans toucher au code : seul ce chiffre change.
 // Rythme choisi (décision proprio, 3 août 2026) : un petit filet tous les jours plutôt qu'une
 // rafale, sans jamais approcher les limites de Resend, et le domaine (37 courriels dans sa
 // vie au 1er août) monte en charge doucement — c'est ce qui décide si les prochains
@@ -1466,7 +1492,12 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
   const daySoFar = Number((env.SUBSCRIBERS ? await env.SUBSCRIBERS.get(`day:${dayKey}`) : 0) || 0);
   const dayCap = Math.min(dailySendCap(at), RESEND_DAY_CAP);
   // En dry-run rien n'est consommé : l'audience complète du mois doit apparaître au rapport.
-  const canSend = () => dryRun || (left() > 0 && daySoFar + report.attempts < dayCap);
+  // File d'envoi (2026-08-10) : on n'appelle plus Resend courriel par courriel, on EMPILE
+  // et on vide par lots de 100 — un seul appel, donc UNE sous-requête, par lot.
+  const file = [];
+  const lotsAPrevoir = () => Math.ceil((file.length + 1) / TAILLE_LOT);
+  const canSend = () => dryRun
+    || (left() - lotsAPrevoir() >= 0 && daySoFar + report.attempts < dayCap);
 
   // Échantillon du jour (décision proprio, 2026-08-09) : la PREMIÈRE fois qu'un courriel
   // part dans la journée, une copie conforme (même HTML, même sujet) file au proprio,
@@ -1490,6 +1521,32 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
     }).catch(() => { /* l'échantillon n'est jamais bloquant */ });
     await env.SUBSCRIBERS.put(`sample:${dayKey}`, new Date().toISOString(),
       { expirationTtl: 3 * 24 * 3600 });
+  };
+
+  // Vidage de la file, par lots de 100. On ne marque `sent:` (ni `intro:`) qu'APRÈS
+  // acceptation par Resend, courriel par courriel : un refus repart demain, intact — la
+  // règle n'a pas bougé, seul le moment où on la vérifie a changé.
+  const echecsParProv = {};
+  const viderFile = async () => {
+    while (file.length) {
+      const lot = file.splice(0, TAILLE_LOT);
+      ctr.subs++;
+      const reponses = await sendPulseBatch(env, lot);
+      for (let i = 0; i < lot.length; i++) {
+        const e = lot[i];
+        const r = reponses[i];
+        if (!r?.ok) {
+          report.failed++;
+          if (e.prov) echecsParProv[e.prov] = (echecsParProv[e.prov] || 0) + 1;
+          report.errors.push(`${e.etiquette} — Resend HTTP ${r?.status ?? '?'}${r?.error ? ` (${r.error})` : ''}`);
+          continue;
+        }
+        await env.SUBSCRIBERS?.put(`sent:${cycle}:${e.cle}`, new Date().toISOString(), { expirationTtl: CYCLE_TTL });
+        if (e.stage === 'intro') await env.SUBSCRIBERS?.put(`intro:${e.cle}`, new Date().toISOString());
+        report.sent++;
+        await envoyerEchantillon(e.to, e.subject, e.html);
+      }
+    }
   };
 
   // `attempts` = appels Resend tentés (ils consomment le budget, réussis ou non) ;
@@ -1562,12 +1619,11 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
       const { subject, html } = renderPulse({ segment: 'prospect', city, lang: rec.lang, unsubUrl, macro });
       report.prospects++; report.recipients.push({ to: rec.email, kind: 'prospect', city: rec.city });
       if (dryRun) continue;
-      report.attempts++; ctr.subs++;
-      const r = await sendPulse(env, { to: rec.email, subject, html, unsubUrl });
-      if (!r.ok) { report.failed++; report.errors.push(`prospect ${rec.email} — Resend HTTP ${r.status ?? '?'}${r.error ? ` (${r.error})` : ''}`); continue; }
-      await env.SUBSCRIBERS.put(`sent:${cycle}:${id}`, new Date().toISOString(), { expirationTtl: CYCLE_TTL });
-      report.sent++;
-      await envoyerEchantillon(rec.email, subject, html);
+      report.attempts++;
+      done.add(id);                    // servi pour ce cycle dès la mise en file
+      file.push({ to: rec.email, subject, html, unsubUrl, cle: id,
+                  etiquette: `prospect ${rec.email}` });
+      if (file.length >= TAILLE_LOT) await viderFile();
     }
   }
 
@@ -1582,6 +1638,7 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
   // Les adresses déjà servies ce mois-ci : un pro inscrit sur deux secteurs ne reçoit
   // qu'un seul courriel par mois (l'autre fiche attendra le cycle suivant).
   const mailsDone = new Set([...done].map((id) => dir[id]?.email?.toLowerCase()).filter(Boolean));
+  const provCompletes = [];        // provinces sans reste — confirmées après le vidage
 
   for (const prov of provinces) {
     if (provDone.has(prov)) continue;
@@ -1605,17 +1662,27 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
       if (dryRun) { done.add(e.slug); mailsDone.add(contact.email.toLowerCase()); continue; }
       const unsubUrl = await expertUnsubUrl(env, origin, e.slug);
       const { subject, html } = renderPulse({ segment: 'expert', stage, city, expert: e, lang: contact.lang || e.lang, unsubUrl, macro });
-      report.attempts++; ctr.subs++;
-      const r = await sendPulse(env, { to: contact.email, subject, html, unsubUrl });
-      // On ne marque RIEN tant que Resend n'a pas accepté : un envoi raté doit repasser demain.
-      if (!r.ok) { report.failed++; report.errors.push(`${e.slug} — Resend HTTP ${r.status ?? '?'}${r.error ? ` (${r.error})` : ''}`); restants++; continue; }
-      await env.SUBSCRIBERS?.put(`sent:${cycle}:${e.slug}`, new Date().toISOString(), { expirationTtl: CYCLE_TTL });
-      if (stage === 'intro') await env.SUBSCRIBERS?.put(`intro:${e.slug}`, new Date().toISOString());
+      report.attempts++;
+      // Marqué « servi » DÈS la mise en file : l'envoi n'étant plus immédiat, un pro
+      // inscrit sur deux secteurs serait sinon empilé deux fois dans le même lot.
       done.add(e.slug); mailsDone.add(contact.email.toLowerCase());
-      report.sent++;
-      await envoyerEchantillon(contact.email, subject, html);
+      file.push({ to: contact.email, subject, html, unsubUrl, cle: e.slug, stage, prov,
+                  etiquette: e.slug });
+      if (file.length >= TAILLE_LOT) await viderFile();
     }
-    if (!restants && !dryRun) await env.SUBSCRIBERS?.put(`prov-done:${cycle}:${prov}`, new Date().toISOString(), { expirationTtl: CYCLE_TTL });
+    if (!restants && !dryRun) provCompletes.push(prov);
+  }
+
+  // Tout ce qui reste en file part maintenant.
+  await viderFile();
+
+  // `prov-done:` seulement pour les provinces dont TOUT est réellement parti : aucun reste
+  // ET aucun refus au vidage. Marquée à tort, une province ne serait pas rouverte avant le
+  // mois prochain — son feed ne serait même plus rapatrié.
+  for (const prov of provCompletes) {
+    if (!echecsParProv[prov]) {
+      await env.SUBSCRIBERS?.put(`prov-done:${cycle}:${prov}`, new Date().toISOString(), { expirationTtl: CYCLE_TTL });
+    }
   }
 
   report.budgetUsed = ctr.subs;
