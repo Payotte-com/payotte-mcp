@@ -35,8 +35,13 @@ id = "6b341a2d876b49d78bb5651936ccac8e"
 # Six passages sur sept ne trouvent aucune province dans la tranche et s'arrêtent aussitôt.
 #
 # Deux plafonds se cumulent : le plan gratuit Cloudflare (50 sous-requêtes par exécution) et le
-# rythme voulu (DAILY_SEND_CAP = 20/JOUR, global à tous les passages — voir le compteur `day:`
-# en KV, sans quoi 7 passages × 20 feraient 140 courriels). La vague mensuelle (~455
-# destinataires) s'étale sur trois semaines. Une fois tout le monde servi, plus rien jusqu'au 1er.
+# rythme quotidien, global à TOUS les passages de la journée — voir le compteur `day:` en KV,
+# sans quoi 7 passages feraient 7 fois le plafond. Ce rythme n'est PAS une constante : c'est
+# une montée en charge datée, dans `dailySendCap()` (src/index.js) — 50/jour, puis 70 à partir
+# du 15 août, 90 à partir du 22. Un domaine jeune qui saute d'un coup à 90 finit en spam ;
+# c'est la seule raison d'être de ces paliers. La valeur du jour se lit dans le code, jamais
+# ici — ce commentaire a déjà menti une fois (il annonçait 20 alors que le code servait 50).
+# La vague mensuelle (~455 destinataires) s'étale ainsi sur environ trois semaines. Une fois
+# tout le monde servi, plus rien jusqu'au 1er.
 [triggers]
 crons = ["0 12-18 * * *"]
