@@ -51,7 +51,7 @@ const PROTOCOL_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'];
 const SERVER_INFO = {
   name: 'payotte',
   title: 'Payotte — Verified real-estate experts & Canadian housing data',
-  version: '1.7.0',
+  version: '1.7.1',
 };
 const INSTRUCTIONS =
   'Payotte is an independent directory of VERIFIED real-estate professionals in Canada ' +
@@ -1273,15 +1273,50 @@ const H3 = (t) => `<div style="font-family:Georgia,'Times New Roman',serif;font-
 const P = (t) => `<div style="font-size:14px;line-height:1.6;color:#443e40;margin-bottom:14px;">${t}</div>`;
 const FOOT = (why, unsubUrl, unsubTxt) => `<tr><td style="padding:22px 32px 26px 32px;"><div style="border-top:1px solid #f1ecec;padding-top:16px;font-size:11.5px;line-height:1.6;color:#a49c9e;">${why} <a href="${unsubUrl}" style="color:#8a8284;">${unsubTxt}</a> &middot; payotte.com</div></td></tr>`;
 
+// Page de la VILLE, pas l'accueil du pays. Le bouton du bulletin pointait sur /canada :
+// on servait à quelqu'un le marché de Charlottetown pour le renvoyer choisir sa province
+// à la main (signalé par le proprio le 2026-08-10). Les pages de ville sont publiées dans
+// la langue de leur marché — une seule URL par ville, quelle que soit la langue du courriel.
+const cityUrl = (city) => `${SITE}/canada/${PROV_SLUG[city?.province] ?? ''}/${city?.slug ?? ''}`;
+
+// Zone experts : une page par métier (« visible à l'ère de l'IA »), publiée dans les deux
+// langues sous des slugs différents. Sert la ligne « présence IA » du bulletin prospect.
+const ZONE_EXPERTS = {
+  'real-estate-broker': { fr: 'courtier-immobilier', en: 'real-estate-broker',
+    lFr: 'courtiers immobiliers', lEn: 'real estate brokers' },
+  'mortgage-broker': { fr: 'courtier-hypothecaire', en: 'mortgage-broker',
+    lFr: 'courtiers hypothécaires', lEn: 'mortgage brokers' },
+  appraiser: { fr: 'evaluateur', en: 'appraiser',
+    lFr: 'évaluateurs agréés', lEn: 'certified appraisers' },
+  'home-inspector': { fr: 'inspecteur-batiment', en: 'home-inspector',
+    lFr: 'inspecteurs en bâtiment', lEn: 'home inspectors' },
+  'notary-lawyer': { fr: 'notaire-avocat', en: 'notary-lawyer',
+    lFr: 'notaires et avocats en immobilier', lEn: 'real estate lawyers and notaries' },
+};
+
+// Ligne « présence IA », adaptée au métier du destinataire quand on le connaît (les
+// contacts récoltés portent leur `metier`; les abonnés du formulaire, non). Un lien
+// discret sous le bouton — un seul appel à l'action dans le courriel, pas deux.
+function ligneIA(metier, fr) {
+  const z = ZONE_EXPERTS[metier];
+  const href = z ? `${SITE}${fr ? '' : '/en'}/zone-experts/${fr ? z.fr : z.en}`
+    : `${SITE}${fr ? '/ia-en-immobilier' : '/en/ai-in-real-estate'}`;
+  const qui = z ? (fr ? z.lFr : z.lEn) : (fr ? 'experts immobiliers' : 'real-estate experts');
+  return `<div style="font-size:12.5px;line-height:1.6;color:#6f6769;margin-top:14px;">${fr
+    ? `Payotte travaille aussi la présence des <b>${qui}</b> dans les réponses des IA (ChatGPT, Copilot, Perplexity), pas seulement dans Google.`
+    : `Payotte also works on how <b>${qui}</b> show up in AI answers (ChatGPT, Copilot, Perplexity), not just in Google.`}
+    <a href="${href}" style="color:#c8102e;text-decoration:none;font-weight:bold;">${fr ? 'Voir comment &rarr;' : 'See how &rarr;'}</a></div>`;
+}
+
 // Rendu complet d'un courriel : {subject, html}. segment='prospect'|'expert' ; stage pour les experts.
-function renderPulse({ segment, stage, city, expert, lang, unsubUrl, macro = null }) {
+function renderPulse({ segment, stage, city, expert, lang, unsubUrl, macro = null, metier = '' }) {
   const fr = lang !== 'en';
   const url = expert?.url || `${SITE}`;
   const eyebrow = `${fr ? 'Le pouls du marché' : 'Market pulse'}<br><span style="color:#c8102e;letter-spacing:1px;">${city.name}${city.referenceMonth ? ' &middot; ' + city.referenceMonth : ''}</span>`;
   let subject, close, foot;
   if (segment === 'prospect') {
     subject = fr ? `${city.name} : le pouls du marché` : `${city.name}: your market pulse`;
-    close = CLOSE('#eef3f0', '#cfe4d7', `${H3(fr ? `Un projet à ${city.name} ?` : `Planning a move in ${city.name}?`)}${P(fr ? `Payotte a vérifié <b>un seul</b> expert de référence par secteur et par métier — sans commission, sans publicité.` : `Payotte verified <b>one</b> reference expert per sector and trade — no commission, no ads.`)}${BTN(`${SITE}/canada`, fr ? 'Trouver mon expert vérifié →' : 'Find my verified expert →')}`);
+    close = CLOSE('#eef3f0', '#cfe4d7', `${H3(fr ? `Les experts vérifiés de ${city.name}` : `${city.name}'s verified experts`)}${P(fr ? `Payotte a vérifié <b>un seul</b> expert de référence par secteur et par métier — sans commission, sans publicité.` : `Payotte verified <b>one</b> reference expert per sector and trade — no commission, no ads.`)}${BTN(cityUrl(city), fr ? `Voir les experts de ${city.name} →` : `See ${city.name}'s experts →`)}${ligneIA(metier, fr)}`);
     foot = FOOT(fr ? `Vous recevez le pouls de ${city.name}, une fois par mois.` : `You get the ${city.name} pulse once a month.`, unsubUrl, fr ? 'Se désabonner' : 'Unsubscribe');
   } else {
     const ask = expert ? missingAsk(expert, fr) : '';
@@ -1616,7 +1651,7 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
       if (done.has(id)) continue;
       if (!canSend()) { report.pending++; continue; }
       const unsubUrl = `${origin}/unsubscribe?e=${encodeURIComponent(rec.email)}&c=${encodeURIComponent(rec.city)}&t=${await hmacHex(env, `u:${rec.email}:${rec.city}`)}`;
-      const { subject, html } = renderPulse({ segment: 'prospect', city, lang: rec.lang, unsubUrl, macro });
+      const { subject, html } = renderPulse({ segment: 'prospect', city, lang: rec.lang, unsubUrl, macro, metier: rec.metier });
       report.prospects++; report.recipients.push({ to: rec.email, kind: 'prospect', city: rec.city });
       if (dryRun) continue;
       report.attempts++;
@@ -1898,7 +1933,8 @@ export default {
         feed('/api/rates.json').catch(() => null),
         feed('/api/bonds.json').catch(() => null),
       ]).then(([r, b]) => (r || b ? { rates: r?.rates ?? null, bonds: b?.bonds ?? null, fetched: r?.fetched ?? b?.fetched ?? null } : null));
-      const { subject, html } = renderPulse({ segment, stage, city, expert, lang, unsubUrl: '#preview', macro });
+      const { subject, html } = renderPulse({ segment, stage, city, expert, lang, unsubUrl: '#preview', macro,
+        metier: url.searchParams.get('metier') || '' });
       return new Response(`<!--${subject}-->\n${html}`, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'X-Robots-Tag': 'noindex' } });
     }
 
