@@ -5,7 +5,7 @@
 import { readFileSync } from 'node:fs';
 
 import { homedir } from 'node:os';
-const src = readFileSync(`${homedir()}/Desktop/Payotte/payotte-mcp/src/index.js`, 'utf8');
+const src = readFileSync(`${homedir()}/Payotte/payotte-mcp/src/index.js`, 'utf8');
 const debut = src.indexOf('async function sendPulseBatch');
 const fin = src.indexOf('\n}', src.indexOf('return envois.map((_e, i)', debut)) + 2;
 const corpsFn = src.slice(debut, fin);
