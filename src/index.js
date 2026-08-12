@@ -51,7 +51,7 @@ const PROTOCOL_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'];
 const SERVER_INFO = {
   name: 'payotte',
   title: 'Payotte — Verified real-estate experts & Canadian housing data',
-  version: '1.7.1',
+  version: '1.8.0',
 };
 const INSTRUCTIONS =
   'Payotte is an independent directory of VERIFIED real-estate professionals in Canada ' +
@@ -1545,6 +1545,45 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
   const canSend = () => dryRun
     || (left() - lotsAPrevoir() >= 0 && daySoFar + report.attempts < dayCap);
 
+  // ── ESPACEMENT PAR DOMAINE (2026-08-12) ────────────────────────────────────────────
+  // Le plafond « par firme » du versement a été retiré : il comptait des NOMS DE FIRME
+  // alors que le risque se joue sur les DOMAINES. Mesuré le 2026-08-12 avec un plafond
+  // de 5 en vigueur : pmegatineau.ca 26 adresses en base, mortgagealliance.com 21,
+  // royallepage.ca 19 — les bannières franchisées regroupent des dizaines de firmes
+  // juridiquement distinctes sur un domaine unique et passaient au travers.
+  //
+  // Or les clés sont parcourues dans l'ordre `s:{ville}:{courriel}` : les 26 adresses
+  // d'un même cabinet de Gatineau sont contiguës et partaient dans le MÊME lot, le même
+  // jour. Un serveur d'entreprise lit ça comme une rafale, et une seule plainte peut
+  // faire bloquer le domaine entier — on perdrait les 26 d'un coup, plus la réputation.
+  //
+  // La protection est ICI et pas à la collecte : personne n'est écarté de la base, le
+  // reste passe simplement au lendemain. Compteur par jour et par domaine en KV (TTL 3 j),
+  // partagé par les sept passages horaires.
+  //
+  // ⚠️ LE COMPTE MONTE À LA MISE EN FILE, pas à l'acceptation : l'envoi étant différé,
+  // compter à l'acceptation laisserait une seule exécution empiler les 26 avant que le
+  // premier lot ne parte.
+  const MAX_PAR_DOMAINE = Number(env.MAX_PAR_DOMAINE || 5);
+  const domaineDe = (email) => String(email || '').split('@')[1]?.toLowerCase() || '?';
+  const domCache = new Map();                    // domaine -> déjà servi/en file aujourd'hui
+  const domDejaVu = async (dom) => {
+    if (!domCache.has(dom)) {
+      const v = env.SUBSCRIBERS ? await env.SUBSCRIBERS.get(`dom:${dayKey}:${dom}`) : null;
+      domCache.set(dom, Number(v || 0));
+    }
+    return domCache.get(dom);
+  };
+  // true = on peut servir cette adresse aujourd'hui ; réserve le créneau au passage.
+  const prendreCreneauDomaine = async (email) => {
+    if (dryRun) return true;
+    const dom = domaineDe(email);
+    const n = await domDejaVu(dom);
+    if (n >= MAX_PAR_DOMAINE) { report.reportesDomaine = (report.reportesDomaine || 0) + 1; return false; }
+    domCache.set(dom, n + 1);
+    return true;
+  };
+
   // Échantillon du jour (décision proprio, 2026-08-09) : la PREMIÈRE fois qu'un courriel
   // part dans la journée, une copie conforme (même HTML, même sujet) file au proprio,
   // sujet préfixé « [échantillon → destinataire] ». Une seule par jour (clé KV, TTL 3 j),
@@ -1589,6 +1628,12 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
         }
         await env.SUBSCRIBERS?.put(`sent:${cycle}:${e.cle}`, new Date().toISOString(), { expirationTtl: CYCLE_TTL });
         if (e.stage === 'intro') await env.SUBSCRIBERS?.put(`intro:${e.cle}`, new Date().toISOString());
+        // Compteur du jour par domaine, persisté pour les passages horaires suivants.
+        // On écrit la valeur RÉSERVÉE (mise en file), pas le nombre d'acceptations : elle
+        // majore, et majorer va dans le sens de la prudence pour la réputation.
+        const domE = domaineDe(e.to);
+        await env.SUBSCRIBERS?.put(`dom:${dayKey}:${domE}`, String(domCache.get(domE) ?? 1),
+          { expirationTtl: 3 * 24 * 3600 });
         report.sent++;
         await envoyerEchantillon(e.to, e.subject, e.html);
       }
@@ -1600,6 +1645,9 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
   // à faire ce mois-ci et repassera au prochain passage.
   const report = {
     dryRun, cycle, attempts: 0, sent: 0, failed: 0, pending: 0,
+    // Reportés au lendemain parce que leur domaine avait déjà eu ses MAX_PAR_DOMAINE
+    // du jour. À zéro tant qu'aucune bannière ne sature : c'est le témoin de l'espacement.
+    reportesDomaine: 0,
     prospects: 0, experts: { intro: 0, yellow: 0, green: 0, reco: 0, partner: 0 },
     activeCities: 0, errors: [], skipped: [], recipients: [], budgetUsed: 0,
     zones: [], dayUsedBefore: daySoFar, dayCap,
@@ -1661,6 +1709,9 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
       const id = `prospect:${rec.city}:${rec.email}`;
       if (done.has(id)) continue;
       if (!canSend()) { report.pending++; continue; }
+      // Domaine saturé pour aujourd'hui : on ne marque RIEN (ni `done`, ni `sent:`),
+      // l'adresse repassera telle quelle au prochain passage.
+      if (!await prendreCreneauDomaine(rec.email)) { report.pending++; continue; }
       const unsubUrl = `${origin}/unsubscribe?e=${encodeURIComponent(rec.email)}&c=${encodeURIComponent(rec.city)}&t=${await hmacHex(env, `u:${rec.email}:${rec.city}`)}`;
       const { subject, html } = renderPulse({ segment: 'prospect', city, lang: rec.lang, unsubUrl, macro, metier: rec.metier });
       report.prospects++; report.recipients.push({ to: rec.email, kind: 'prospect', city: rec.city });
@@ -1701,6 +1752,9 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
       const stage = expertStage(e, intro.has(e.slug) && !reIntro.has(e.slug));
       if (!stage) continue;
       if (!canSend()) { restants++; report.pending++; continue; }
+      // Domaine saturé : `restants++` est essentiel — sans lui la province serait
+      // marquée `prov-done:` et son feed ne serait plus rapatrié avant le mois prochain.
+      if (!await prendreCreneauDomaine(contact.email)) { restants++; report.pending++; continue; }
       report.experts[stage] = (report.experts[stage] || 0) + 1;
       report.recipients.push({ to: contact.email, kind: `expert:${stage}`, slug: e.slug });
       // Le dry-run tient la même comptabilité (sans écrire en KV), sinon il annoncerait une
