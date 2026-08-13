@@ -1739,13 +1739,33 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
 
   // ---- Prospects (abonnés du formulaire) ----
   if (env.SUBSCRIBERS) {
+    // ── FILTRER AVANT DE LIRE (2026-08-13) ────────────────────────────────────────
+    // Le 13 août, AUCUN bulletin n'est parti et aucun rapport n'a été émis : le passage
+    // lisait la VALEUR des 1 512 prospects, en série, avant de découvrir que la plupart
+    // sont hors du fuseau servi ou déjà servis ce cycle. À ~1 100 prospects ça passait
+    // encore ; la récolte en a versé 933 le 12 août et le passage a fini par dépasser son
+    // temps d'exécution — en silence, puisque le rapport n'est envoyé que s'il y a eu au
+    // moins une tentative. Une panne qui grandit avec le succès de la récolte.
+    //
+    // Or la clé porte DÉJÀ tout ce qu'il faut pour écarter : `s:{ville}:{courriel}`, et
+    // l'identifiant de cycle est exactement `prospect:{ville}:{courriel}`. On filtre donc
+    // sur la clé — zéro lecture — et on ne lit la valeur que pour ceux qu'on va servir.
+    // Les lectures passent de 1 512 par passage à quelques dizaines.
     for (const key of await kvKeys(env.SUBSCRIBERS, 's:')) {
-      const rec = JSON.parse((await env.SUBSCRIBERS.get(`s:${key}`)) || '{}');
-      const city = cityBySlug[rec.city];
-      if (!rec.email || !city) continue;
-      const id = `prospect:${rec.city}:${rec.email}`;
-      if (done.has(id)) continue;
+      const sep = key.indexOf(':');
+      if (sep < 1) continue;                         // clé malformée : on ne devine pas
+      const city = cityBySlug[key.slice(0, sep)];
+      if (!city) continue;                           // hors du fuseau servi à cette heure
+      const id = `prospect:${key}`;
+      if (done.has(id)) continue;                    // déjà servi ce cycle
       if (!canSend()) { report.pending++; continue; }
+      const rec = JSON.parse((await env.SUBSCRIBERS.get(`s:${key}`)) || '{}');
+      if (!rec.email) continue;
+      // Garde-fou : si la valeur stockée ne concordait pas avec sa clé, l'identifiant
+      // calculé plus haut serait faux et on risquerait un doublon. On revérifie sur
+      // l'identifiant RÉEL avant d'engager quoi que ce soit.
+      const idReel = `prospect:${rec.city}:${rec.email}`;
+      if (idReel !== id && done.has(idReel)) continue;
       // Domaine saturé pour aujourd'hui : on ne marque RIEN (ni `done`, ni `sent:`),
       // l'adresse repassera telle quelle au prochain passage.
       if (!await prendreCreneauDomaine(rec.email)) { report.pending++; continue; }
@@ -1754,8 +1774,8 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
       report.prospects++; report.recipients.push({ to: rec.email, kind: 'prospect', city: rec.city });
       if (dryRun) continue;
       report.attempts++;
-      done.add(id);                    // servi pour ce cycle dès la mise en file
-      file.push({ to: rec.email, subject, html, unsubUrl, cle: id,
+      done.add(idReel);                // servi pour ce cycle dès la mise en file
+      file.push({ to: rec.email, subject, html, unsubUrl, cle: idReel,
                   etiquette: `prospect ${rec.email}` });
       if (file.length >= TAILLE_LOT) await viderFile();
     }
