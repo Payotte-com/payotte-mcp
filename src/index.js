@@ -1390,12 +1390,30 @@ async function sendPulseBatch(env, envois) {
   if (wait > 0) await sleep(wait);
   lastPulseAt = Date.now();
   const from = env.MAIL_FROM_BULLETIN || 'Payotte <bulletin@payotte.com>';
+
+  // ── QUARANTAINE DES ADRESSES INVALIDES (2026-08-13) ────────────────────────────────
+  // Resend valide le lot ENTIER : une seule adresse malformée le fait répondre 422, et
+  // TOUS les courriels du lot sont perdus. C'est arrivé le 12 août : la fiche
+  // `appraiser--north-end-fairview` porte deux adresses dans un seul champ
+  // (« Geoff.Coderre@gmail.com ; SjBest@Eastlink.ca » — même convention que son
+  // téléphone). Elle a emporté 10 prospects parfaitement valides avec elle, et elle
+  // échouait déjà seule chaque jour depuis le 7 août.
+  // On écarte donc les adresses invalides AVANT l'appel : elles sont signalées une par
+  // une dans le rapport (motif explicite, pas un « HTTP 422 » opaque) et le reste du lot
+  // part normalement. Coût : zéro sous-requête.
+  const valides = [], resultats = new Array(envois.length);
+  envois.forEach((e, i) => {
+    if (EMAIL_RE.test(String(e.to ?? '').trim())) valides.push({ e, i });
+    else resultats[i] = { ok: false, status: 0, error: 'adresse invalide — écartée avant envoi' };
+  });
+  if (!valides.length) return resultats;
+
   let res, corps;
   try {
     res = await fetch('https://api.resend.com/emails/batch', {
       method: 'POST',
       headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(envois.map((e) => ({
+      body: JSON.stringify(valides.map(({ e }) => ({
         from, to: [e.to], reply_to: 'gregory@payotte.com',
         subject: e.subject, html: e.html,
         ...(e.unsubUrl ? { headers: { 'List-Unsubscribe': `<${e.unsubUrl}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' } } : {}),
@@ -1403,14 +1421,23 @@ async function sendPulseBatch(env, envois) {
     });
     corps = await res.json().catch(() => null);
   } catch (err) {
-    return envois.map(() => ({ ok: false, status: 0, error: String(err?.message ?? err) }));
+    valides.forEach(({ i }) => { resultats[i] = { ok: false, status: 0, error: String(err?.message ?? err) }; });
+    return resultats;
   }
-  if (!res.ok) return envois.map(() => ({ ok: false, status: res.status }));
+  if (!res.ok) {
+    valides.forEach(({ i }) => { resultats[i] = { ok: false, status: res.status }; });
+    return resultats;
+  }
   // Réponse acceptée : `data[i]` correspond au courriel `i` de la requête. Une entrée
   // absente ou sans `id` = ce courriel-là n'a pas été pris ; il repassera demain. On ne
   // suppose JAMAIS le succès d'un envoi qu'on ne voit pas confirmé.
+  // `data[k]` correspond au k-ième courriel ENVOYÉ (donc au k-ième valide), pas au k-ième
+  // de `envois` : les indices divergent dès qu'une adresse a été mise en quarantaine.
   const data = Array.isArray(corps?.data) ? corps.data : [];
-  return envois.map((_e, i) => ({ ok: Boolean(data[i]?.id), status: res.status, id: data[i]?.id }));
+  valides.forEach(({ i }, k) => {
+    resultats[i] = { ok: Boolean(data[k]?.id), status: res.status, id: data[k]?.id };
+  });
+  return resultats;
 }
 
 // Villes ACTIVES du bulletin = TOUTES celles dont on publie un prix de référence
@@ -1452,10 +1479,20 @@ const RESEND_DAY_CAP = 90;     // plafond dur : marge sous le palier Resend grat
 // gratuit Resend : 90 × 30 + ~210 rapports ≈ 2 910 < 3 000/mois). Les paliers hebdo sont
 // le profil de montée en charge que les filtres anti-spam tolèrent ; un saut direct
 // 20 → 90 sur un domaine jeune est le profil type qui finit en spam.
+// Ramp accélérée le 2026-08-13 (décision proprio, objectif de fin de mois). Les paliers
+// 70 et 90 avancent de deux et quatre jours ; le SOMMET NE BOUGE PAS.
+// ⚠️ 90 est un plafond, pas une timidité : le forfait gratuit Resend coupe à 100/jour, et
+// les rapports d'exécution envoyés au proprio consomment le MÊME quota. Aller à 100 ferait
+// refuser les derniers courriels du jour sans qu'on sache lesquels.
+// L'arithmétique du 13 août : même à 90/jour jusqu'au 31, août plafonne autour de 2 090
+// envois — or l'audience disponible n'est que d'environ 2 080 personnes (1 512 prospects
+// + ~568 experts, un seul courriel par personne et par cycle). Cette ramp épuise donc
+// à peu près tout le carnet. Le chiffre de 3 000 n'est PAS atteignable en août : il
+// demanderait 137/jour (au-dessus du gratuit) ET un carnet d'adresses qui n'existe pas.
 const dailySendCap = (at = new Date()) => {
   const d = at.toISOString().slice(0, 10);
-  if (d >= '2026-08-22') return 90;
-  if (d >= '2026-08-15') return 70;
+  if (d >= '2026-08-18') return 90;
+  if (d >= '2026-08-13') return 70;
   return 50;
 };
 // Durée de vie des marques de cycle (`sent:`, `prov-done:`) : ~100 jours. Elles ne servent
