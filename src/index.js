@@ -2225,7 +2225,47 @@ export default {
         }),
       }).catch(() => null);
       if (!r || !r.ok) return json({ error: 'send-failed', status: r?.status ?? 0 }, 502);
-      return json({ ok: true });
+
+      // ── ACCUSÉ DE RÉCEPTION AU VISITEUR (2026-08-17, second passage) ─────────────
+      // Il partait par mail() côté PHP. Vérifié le jour même : il n'arrive JAMAIS — le
+      // mail() de cet hébergement est mort, c'est ce qui a fait perdre les messages.
+      // Un visiteur qui n'a aucun accusé récrit, ou renonce. On l'envoie donc par le
+      // même Resend, avec le MÊME texte que le PHP (repris mot pour mot).
+      // Best-effort : un accusé raté ne doit jamais faire échouer la réception du message,
+      // qui est déjà journalisée côté serveur et déjà partie chez le proprio.
+      const fr = propre(b.lang) !== 'en';
+      const suj = sujet !== '(sans sujet)' ? sujet : '';
+      const accuse = fr
+        ? ['Bonjour,', '',
+           'Merci d’avoir contacté Payotte. Nous avons bien reçu votre message',
+           'et vous répondrons par e-mail dès que possible — généralement sous 48 h.', '',
+           ...(suj ? [`Objet de votre demande : ${suj}`, ''] : []),
+           'Ceci est une confirmation automatique — inutile d’y répondre.', '',
+           '— Payotte',
+           'L’annuaire indépendant d’experts immobiliers vérifiés au Canada',
+           'https://payotte.com']
+        : ['Hello,', '',
+           'Thank you for contacting Payotte. We’ve received your message and',
+           'will reply by email as soon as possible — usually within 48 hours.', '',
+           ...(suj ? [`Subject of your request: ${suj}`, ''] : []),
+           'This is an automated confirmation — no need to reply.', '',
+           '— Payotte',
+           'Independent directory of verified real estate experts in Canada',
+           'https://payotte.com'];
+      const accuseOk = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: env.MAIL_FROM || 'Payotte <relais@payotte.com>',
+          to: [de],
+          reply_to: REPORT_TO,          // s'il répond quand même, ça arrive au proprio
+          subject: fr ? 'Nous avons bien reçu votre message — Payotte' : 'We’ve received your message — Payotte',
+          text: accuse.join('\n'),
+          headers: { 'Auto-Submitted': 'auto-replied' },
+        }),
+      }).then((x) => x.ok).catch(() => false);
+
+      return json({ ok: true, accuse: accuseOk });
     }
 
     // Dry-run du bulletin (aucun envoi) — rapport d'audience. Protégé par le jeton privé.
