@@ -1,3 +1,5 @@
 node_modules/
 .wrangler/
 .dev.vars
+# sauvegardes locales avant modification (jamais versionnées)
+src/*.bak-*

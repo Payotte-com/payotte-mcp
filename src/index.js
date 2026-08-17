@@ -1738,6 +1738,10 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
   }
 
   // ---- Prospects (abonnés du formulaire) ----
+  // Liste hissée hors de la boucle : elle sert DEUX fois — pour servir, puis pour le
+  // recensement par province du récapitulatif. Un `kv.list()` de plus serait gratuit en
+  // budget de sous-requêtes, mais pas en temps d'exécution (2 100 clés paginées).
+  const clesProspects = env.SUBSCRIBERS ? await kvKeys(env.SUBSCRIBERS, 's:') : [];
   if (env.SUBSCRIBERS) {
     // ── FILTRER AVANT DE LIRE (2026-08-13) ────────────────────────────────────────
     // Le 13 août, AUCUN bulletin n'est parti et aucun rapport n'a été émis : le passage
@@ -1751,7 +1755,7 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
     // l'identifiant de cycle est exactement `prospect:{ville}:{courriel}`. On filtre donc
     // sur la clé — zéro lecture — et on ne lit la valeur que pour ceux qu'on va servir.
     // Les lectures passent de 1 512 par passage à quelques dizaines.
-    for (const key of await kvKeys(env.SUBSCRIBERS, 's:')) {
+    for (const key of clesProspects) {
       const sep = key.indexOf(':');
       if (sep < 1) continue;                         // clé malformée : on ne devine pas
       const city = cityBySlug[key.slice(0, sep)];
@@ -1842,6 +1846,44 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
     }
   }
 
+  // ---- RECENSEMENT PAR PROVINCE (demande proprio, 2026-08-17) ----------------------
+  // « Combien est parti ce coup-ci, combien par province depuis le début du cycle, et
+  // combien reste-t-il pour faire le tour du mois. »
+  //
+  // Côté INFOLETTRE c'est exact et gratuit : la clé `s:{ville}:{courriel}` porte déjà la
+  // ville, l'identifiant de cycle est `prospect:{ville}:{courriel}`, et les opérations KV
+  // ne comptent pas dans le budget de sous-requêtes. Aucune valeur n'est lue.
+  //
+  // Un désabonnement prospect SUPPRIME sa clé `s:` : la liste est donc l'audience vivante,
+  // il n'y a rien à retrancher. `done` a été alimenté pendant ce passage, donc « servis »
+  // inclut bien les envois de cet événement.
+  //
+  // Côté EXPERTS, on ne peut PAS recenser sans payer : chaque province coûte une
+  // sous-requête de feed, et une province déjà finie n'est même plus rapatriée. On
+  // n'annonce donc que ce qu'on sait pour de vrai — les provinces marquées `prov-done:`
+  // sont terminées pour le mois — plutôt qu'un total inventé.
+  //
+  // Réserve assumée : un abonné dont la valeur stockée ne concorde pas avec sa clé est
+  // marqué sous son identifiant RÉEL (voir le garde-fou `idReel` plus haut) ; il compterait
+  // alors comme « à servir ». Cas rare et sans conséquence — le prochain passage l'écarte.
+  {
+    const provDeVille = Object.fromEntries(allActive.map((c) => [c.slug, c.province]));
+    const par = {};
+    let sansMarche = 0;   // abonnés d'une ville sans chiffres : le bulletin n'a rien à leur dire
+    for (const key of clesProspects) {
+      const sep = key.indexOf(':');
+      if (sep < 1) continue;
+      const code = provDeVille[key.slice(0, sep)];
+      if (!code) { sansMarche++; continue; }
+      const p = (par[code] ||= { total: 0, servis: 0 });
+      p.total++;
+      if (done.has(`prospect:${key}`)) p.servis++;
+    }
+    report.parProvince = par;
+    report.prospectsSansMarche = sansMarche;
+    report.provincesTerminees = [...provDone].sort();
+  }
+
   report.budgetUsed = ctr.subs;
   // Report du compte du jour pour les passages horaires suivants. On additionne les TENTATIVES,
   // pas les succès : un appel refusé par Resend a quand même été facturé au quota du jour.
@@ -1864,11 +1906,38 @@ async function sendRunReport(env, report) {
   const partiel = report.pending > 0 || provAttendues > 0;
   const reste = partiel ? `au moins ${report.pending}` : '0';
   const jour = (report.dayUsedBefore ?? 0) + report.attempts;
+  // Tableau par province (demande proprio du 2026-08-17) : ce qui est parti ce coup-ci est
+  // sur la 1re ligne ; ici c'est le CUMUL DU CYCLE et ce qu'il reste pour finir le tour.
+  // Trié par reste décroissant : ce qui bloque la fin du mois se lit en premier.
+  const pp = report.parProvince || {};
+  const rangs = Object.entries(pp)
+    .map(([code, v]) => ({ code, ...v, reste: v.total - v.servis }))
+    .sort((a, b) => b.reste - a.reste || b.total - a.total);
+  const larg = Math.max(0, ...rangs.map((r) => String(r.total).length));
+  const blocProvinces = rangs.length ? [
+    ``,
+    `INFOLETTRE PAR PROVINCE — cycle ${report.cycle} (cumul, cet envoi compris)`,
+    ...rangs.map((r) =>
+      `  ${r.code.padEnd(3)} envoyés ${String(r.servis).padStart(larg)}/${String(r.total).padEnd(larg)}`
+      + ` · reste ${String(r.reste).padStart(larg)}`
+      + (r.reste === 0 ? '  ✓ tour terminé' : '')),
+    `  ${'—'.repeat(3)} TOTAL   ${rangs.reduce((n, r) => n + r.servis, 0)}/${rangs.reduce((n, r) => n + r.total, 0)}`
+      + ` · reste ${rangs.reduce((n, r) => n + r.reste, 0)}`,
+    report.prospectsSansMarche
+      ? `  (+ ${report.prospectsSansMarche} abonné(s) dans une ville sans chiffres de marché : jamais servis, le bulletin n'aurait rien à leur dire)`
+      : '',
+    report.provincesTerminees?.length
+      ? `  Côté EXPERTS, provinces bouclées ce cycle : ${report.provincesTerminees.join(', ')}.`
+        + ` Les autres ne sont pas recensables sans payer une sous-requête par province.`
+      : `  Côté EXPERTS, aucune province encore bouclée ce cycle.`,
+  ].filter(Boolean) : [];
+
   const L = [
-    `Cycle ${report.cycle} — envoyés ${report.sent} · ratés ${report.failed} · reste ${reste}`,
+    `Cycle ${report.cycle} — CET ENVOI : ${report.sent} parti(s) · ${report.failed} raté(s) · reste ${reste} dans ce passage`,
     `Passage de 10 h : ${report.zones?.join(', ') || '—'} · ${report.activeCities} ville(s) dans la tranche`,
     `Rythme du jour (toutes tranches) : ${jour}/${report.dayCap ?? dailySendCap()} · sous-requêtes de ce passage : ${report.budgetUsed}/${SUBREQUEST_BUDGET}${provAttendues ? ` · provinces non ouvertes : ${provAttendues}` : ''}`,
     `Étapes : ${Object.entries(report.experts).filter(([, n]) => n).map(([k, n]) => `${k} ${n}`).join(' · ') || '—'}${report.prospects ? ` · prospects ${report.prospects}` : ''}`,
+    ...blocProvinces,
     partiel
       ? `\nIl reste du monde dans ce ou ces fuseaux : ils seront servis demain, à 10 h chez eux.`
       : `\nCe fuseau est à jour pour le mois. Les autres sont servis à leur propre 10 h.`,
