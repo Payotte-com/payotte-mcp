@@ -1802,6 +1802,16 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
       const id = `prospect:${key}`;
       if (done.has(id)) continue;                    // déjà servi ce cycle
       if (!canSend()) { report.pending++; continue; }
+      // DRY-RUN : ni lecture de valeur, ni rendu. Le dry-run ne filtre pas par fuseau
+      // (il doit montrer l'audience du mois entier), donc il tombait sur les 2 100 clés :
+      // 2 100 lectures KV + 2 100 courriels fabriqués pour être jetés à la ligne suivante.
+      // Le worker dépassait son temps d'exécution et /bulletin-dryrun répondait 500 (1101).
+      // Or la clé `s:{ville}:{courriel}` porte DÉJÀ tout ce que le recensement demande.
+      if (dryRun) {
+        report.prospects++;
+        report.recipients.push({ to: key.slice(sep + 1), kind: 'prospect', city: key.slice(0, sep) });
+        continue;
+      }
       const rec = JSON.parse((await env.SUBSCRIBERS.get(`s:${key}`)) || '{}');
       if (!rec.email) continue;
       // Garde-fou : si la valeur stockée ne concordait pas avec sa clé, l'identifiant
@@ -2169,6 +2179,53 @@ export default {
       const { subject, html } = renderPulse({ segment, stage, city, expert, lang, unsubUrl: '#preview', macro,
         metier: url.searchParams.get('metier') || '' });
       return new Response(`<!--${subject}-->\n${html}`, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'X-Robots-Tag': 'noindex' } });
+    }
+
+    // ── RELAIS DU FORMULAIRE DE CONTACT (2026-08-17) ─────────────────────────────
+    // POURQUOI. public/contact-handler.php envoyait par mail() de PHP vers
+    // gregory@payotte.com — un simple RENVOI GoDaddy, pas une boîte. Testé le 17 août :
+    // le message n'arrive nulle part, et le handler ne journalisait rien. Deux mois de
+    // formulaires ont pu disparaître sans laisser de trace (handler créé le 2026-06-16).
+    // mail() sur hébergement mutualisé est réputé pour ça.
+    //
+    // Le worker, lui, envoie déjà des centaines de courriels par Resend sans incident.
+    // Le PHP relaie donc ici, et Resend livre DIRECTEMENT dans le Gmail du proprio.
+    // Le PHP journalise avant d'appeler : même si ce relais tombe, rien n'est perdu.
+    //
+    // Auth : le même CONTACTS_TOKEN que /bulletin-dryrun. Refus = 401, et le PHP bascule
+    // alors sur mail() en dernier recours.
+    if (request.method === 'POST' && url.pathname === '/contact-relay') {
+      if (!env.CONTACTS_TOKEN || url.searchParams.get('key') !== env.CONTACTS_TOKEN) {
+        return json({ error: 'unauthorized' }, 401);
+      }
+      if (!env.RESEND_API_KEY) return json({ error: 'no-mailer' }, 503);
+      const b = await request.json().catch(() => null);
+      if (!b || !b.email || !b.message) return json({ error: 'bad-request' }, 400);
+      const propre = (v) => String(v ?? '').replace(/[\r\n]+/g, ' ').slice(0, 300).trim();
+      const de = propre(b.email);
+      const sujet = propre(b.subject) || '(sans sujet)';
+      const corps = [
+        `De      : ${de}`,
+        `Sujet   : ${sujet}`,
+        `Secteur : ${propre(b.sector) || '—'}`,
+        `Langue  : ${propre(b.lang) || '—'}`,
+        `Page    : ${propre(b.page) || '—'}`,
+        '',
+        String(b.message ?? '').slice(0, 20000),
+      ].join('\n');
+      const r = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: env.MAIL_FROM || 'Payotte <relais@payotte.com>',
+          to: [REPORT_TO],
+          reply_to: de,               // « Répondre » écrit au visiteur, pas au relais
+          subject: `[Contact Payotte] ${sujet}`,
+          text: corps,
+        }),
+      }).catch(() => null);
+      if (!r || !r.ok) return json({ error: 'send-failed', status: r?.status ?? 0 }, 502);
+      return json({ ok: true });
     }
 
     // Dry-run du bulletin (aucun envoi) — rapport d'audience. Protégé par le jeton privé.
