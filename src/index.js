@@ -1529,6 +1529,10 @@ const PROV_TZ = {
   NL: 'America/St_Johns',
 };
 const SEND_LOCAL_HOUR = 10;
+// Dernière heure UTC où le cron tourne — doit rester en phase avec `crons` de wrangler.toml
+// ("0 12-18 * * *"). Sert à savoir combien de passages restent dans la journée pour partager
+// le plafond quotidien entre les fuseaux (voir « part équitable » dans runBulletin).
+const CRON_DERNIERE_HEURE_UTC = 18;
 
 const localHour = (tz, at) =>
   Number(new Intl.DateTimeFormat('en-CA', { timeZone: tz, hour: 'numeric', hour12: false }).format(at));
@@ -1574,13 +1578,48 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
   // partagent un seul plafond quotidien).
   const daySoFar = Number((env.SUBSCRIBERS ? await env.SUBSCRIBERS.get(`day:${dayKey}`) : 0) || 0);
   const dayCap = Math.min(dailySendCap(at), RESEND_DAY_CAP);
+
+  // ── PART ÉQUITABLE DU PLAFOND QUOTIDIEN (2026-08-17) ──────────────────────────────
+  // LE FUSEAU LE PLUS À L'OUEST MOURAIT DE FAIM. Le plafond du jour est GLOBAL et les
+  // fuseaux passent l'un après l'autre — Atlantique 13 h UTC, Est 14 h, Centre 15 h,
+  // Prairies/Montagnes 16 h, Pacifique 17 h. Servis dans cet ordre sur une réserve
+  // commune, les premiers la vidaient avant que les derniers n'aient leur tour.
+  //
+  // Mesuré le 2026-08-17 sur le cycle en cours, et la pente ne laisse aucun doute :
+  //   QC 198/874 · ON 83/415 (14 h UTC)   → servis
+  //   SK 11/201 · AB 31/75  (16 h UTC)   → à peine entamés
+  //   BC 0/333              (17 h UTC)   → PAS UN SEUL COURRIEL DE TOUT LE MOIS
+  // Plus un fuseau est à l'ouest, plus il est affamé. Ce n'était pas un bug visible :
+  // le worker n'a jamais rien signalé, et sans le tableau par province du récapitulatif
+  // personne ne l'aurait vu.
+  //
+  // LA RÉSERVE. Chaque passage ne prend plus que SA PART de ce qui reste au jour,
+  // divisée par le nombre de passages qui ont encore des fuseaux à servir aujourd'hui
+  // (celui-ci compris). Le dernier passage du jour hérite donc de tout le reliquat.
+  // Le total quotidien ne bouge pas : on ne change QUE le partage.
+  //
+  // Auto-correcteur : un fuseau qui n'utilise pas sa part ne la gaspille pas — `daySoFar`
+  // ne compte que les tentatives réelles, donc le passage suivant divise un reste plus
+  // gros par un diviseur plus petit et récupère la mise.
+  const passagesRestants = (() => {
+    let n = 0;
+    for (let u = at.getUTCHours(); u <= CRON_DERNIERE_HEURE_UTC; u++) {
+      const d = new Date(at); d.setUTCHours(u, 0, 0, 0);
+      if (zonesAt10h(d).size) n++;
+    }
+    return Math.max(1, n);
+  })();
+  const partPassage = Math.max(1, Math.floor((dayCap - daySoFar) / passagesRestants));
+
   // En dry-run rien n'est consommé : l'audience complète du mois doit apparaître au rapport.
   // File d'envoi (2026-08-10) : on n'appelle plus Resend courriel par courriel, on EMPILE
   // et on vide par lots de 100 — un seul appel, donc UNE sous-requête, par lot.
   const file = [];
   const lotsAPrevoir = () => Math.ceil((file.length + 1) / TAILLE_LOT);
   const canSend = () => dryRun
-    || (left() - lotsAPrevoir() >= 0 && daySoFar + report.attempts < dayCap);
+    || (left() - lotsAPrevoir() >= 0
+        && report.attempts < partPassage                 // sa part, pour laisser vivre l'Ouest
+        && daySoFar + report.attempts < dayCap);         // et jamais plus que le jour
 
   // ── ESPACEMENT PAR DOMAINE (2026-08-12) ────────────────────────────────────────────
   // Le plafond « par firme » du versement a été retiré : il comptait des NOMS DE FIRME
@@ -1687,7 +1726,7 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
     reportesDomaine: 0,
     prospects: 0, experts: { intro: 0, yellow: 0, green: 0, reco: 0, partner: 0 },
     activeCities: 0, errors: [], skipped: [], recipients: [], budgetUsed: 0,
-    zones: [], dayUsedBefore: daySoFar, dayCap,
+    zones: [], dayUsedBefore: daySoFar, dayCap, partPassage, passagesRestants,
   };
 
   // Fuseaux servis à ce passage. En dry-run on ne filtre pas : le rapport doit montrer
@@ -1935,7 +1974,10 @@ async function sendRunReport(env, report) {
   const L = [
     `Cycle ${report.cycle} — CET ENVOI : ${report.sent} parti(s) · ${report.failed} raté(s) · reste ${reste} dans ce passage`,
     `Passage de 10 h : ${report.zones?.join(', ') || '—'} · ${report.activeCities} ville(s) dans la tranche`,
-    `Rythme du jour (toutes tranches) : ${jour}/${report.dayCap ?? dailySendCap()} · sous-requêtes de ce passage : ${report.budgetUsed}/${SUBREQUEST_BUDGET}${provAttendues ? ` · provinces non ouvertes : ${provAttendues}` : ''}`,
+    `Rythme du jour (toutes tranches) : ${jour}/${report.dayCap ?? dailySendCap()}`
+      + ` · part de ce passage ${report.attempts}/${report.partPassage ?? '—'}`
+      + ` (${report.passagesRestants ?? '?'} passage(s) à fuseau restant(s) aujourd'hui)`,
+    `Sous-requêtes : ${report.budgetUsed}/${SUBREQUEST_BUDGET}${provAttendues ? ` · provinces non ouvertes : ${provAttendues}` : ''}`,
     `Étapes : ${Object.entries(report.experts).filter(([, n]) => n).map(([k, n]) => `${k} ${n}`).join(' · ') || '—'}${report.prospects ? ` · prospects ${report.prospects}` : ''}`,
     ...blocProvinces,
     partiel
@@ -2133,6 +2175,9 @@ export default {
     if (request.method === 'GET' && url.pathname === '/bulletin-dryrun') {
       if (!env.CONTACTS_TOKEN || url.searchParams.get('key') !== env.CONTACTS_TOKEN) return json({ error: 'unauthorized' }, 401);
       const report = await runBulletin(env, { dryRun: true });
+      // `?mail=1` : envoie AUSSI le récapitulatif à REPORT_TO, pour voir le rendu réel du
+      // courriel sans qu'un seul bulletin ne parte (dryRun bloque tous les envois en amont).
+      if (url.searchParams.get('mail') === '1') await sendRunReport(env, report);
       return json(report);
     }
 
