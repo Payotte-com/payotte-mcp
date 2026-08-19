@@ -2600,13 +2600,55 @@ async function handleSubscribe(request, env, url) {
 const ALERTE_TAUX_LOT = 100;   // taille de lot Resend
 
 /** Rendu de l'alerte. Deux chiffres, une date, un lien. Rien de plus. */
+/**
+ * L'IMPACT LOCAL — ce qui rend ce courriel utile plutôt que poli.
+ *
+ * Un courtier hypothécaire sait déjà que le taux a bougé : il l'a appris à 9 h 46 par sa
+ * propre veille. Lui réannoncer la nouvelle n'apporte rien. Ce qu'il n'a PAS sous la main
+ * à 10 h, c'est le calcul appliqué à SA ville, prêt à être répété à un client dans l'heure.
+ * C'est ça qu'on lui donne.
+ *
+ * ⚠️ CE QUI EST CALCULABLE, ET CE QUI NE L'EST PAS.
+ * Le revenu requis à la qualification dépend du FIXE 5 ANS (règle du stress test), lequel
+ * suit les obligations, pas le taux directeur. Le lier à une décision de la Banque du
+ * Canada serait fabriquer une causalité — Règle #3. On ne le fait pas.
+ *
+ * Ce qui suit mécaniquement le taux directeur, c'est le TAUX PRÉFÉRENTIEL, donc les
+ * hypothèques à taux VARIABLE (préférentiel moins escompte). C'est le seul calcul honnête,
+ * et c'est aussi celui qui touche les clients qui appellent leur courtier le jour même.
+ *
+ * L'hypothèse — « si le préférentiel suit d'autant » — est ÉCRITE dans le courriel, en une
+ * ligne. Ce n'est pas une prévision déguisée : c'est une arithmétique conditionnelle dont
+ * la condition est visible. Un courtier sait juger cette hypothèse mieux que nous.
+ */
+function impactVariable({ ecartPct, prix }) {
+  const ANS = 25, MISE = 0.20;
+  // Taux de travail : on ne connaît pas l'escompte de chaque prêteur. On prend une valeur
+  // ordinaire du marché variable et on affiche la DIFFÉRENCE, qui est très peu sensible au
+  // niveau de départ — c'est le delta qui compte, pas le niveau.
+  const base = 4.0;
+  const par100k = (mensuel) => Math.round(mensuel);
+  const calcul = (montant) => {
+    const avant = montant * monthlyFactor(base, ANS);
+    const apres = montant * monthlyFactor(base + ecartPct, ANS);
+    return Math.abs(apres - avant);
+  };
+  const cent = par100k(calcul(100000));
+  if (!prix || !(prix > 0)) return { cent, montant: null, mensuel: null, prix: null };
+  const montant = Math.round(prix * (1 - MISE));
+  return { cent, montant, mensuel: Math.round(calcul(montant)), prix };
+}
+
 function renderAlerteTaux({ nouveau, ancien, observed, lang, unsubUrl, postale = '',
-                           segment = 'optin', nom = '', secteur = '', url = '' }) {
+                           segment = 'optin', nom = '', ville = '', prix = null }) {
   const fr = lang === 'fr';
+  const L = fr ? 'fr-CA' : 'en-CA';
   // Deux décimales, toujours. « 2 % » pour un taux directeur fait négligé auprès de gens
   // dont c'est le métier ; « 2,00 % » est la convention de la Banque du Canada elle-même.
-  const nb = (v) => v.toLocaleString(fr ? 'fr-CA' : 'en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  // Date écrite en toutes lettres : « 2026-08-18 » dans un courriel fait sortie de machine.
+  const nb = (v) => v.toLocaleString(L, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const arg = (v) => v.toLocaleString(L, { maximumFractionDigits: 0 }) + (fr ? ' $' : '');
+  const argEn = (v) => (fr ? arg(v) : '$' + v.toLocaleString(L, { maximumFractionDigits: 0 }));
+  // Date en toutes lettres : « 2026-08-18 » dans un courriel fait sortie de machine.
   const jour = (iso) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(String(iso ?? ''))) return String(iso ?? '');
     const [a, m, j] = iso.split('-').map(Number);
@@ -2615,59 +2657,74 @@ function renderAlerteTaux({ nouveau, ancien, observed, lang, unsubUrl, postale =
       : ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
     return fr ? `${j} ${mois[m - 1]} ${a}` : `${mois[m - 1]} ${j}, ${a}`;
   };
+
   const sens = ancien == null ? null : nouveau > ancien ? 'hausse' : 'baisse';
   const ecart = ancien == null ? null : Math.round(Math.abs(nouveau - ancien) * 100);
+  const baisse = sens === 'baisse';
 
   const titre = fr
     ? (sens === 'hausse' ? `La Banque du Canada monte son taux à ${nb(nouveau)} %`
-      : sens === 'baisse' ? `La Banque du Canada baisse son taux à ${nb(nouveau)} %`
+      : baisse ? `La Banque du Canada baisse son taux à ${nb(nouveau)} %`
         : `Taux directeur : ${nb(nouveau)} %`)
     : (sens === 'hausse' ? `Bank of Canada raises its rate to ${nb(nouveau)}%`
-      : sens === 'baisse' ? `Bank of Canada cuts its rate to ${nb(nouveau)}%`
+      : baisse ? `Bank of Canada cuts its rate to ${nb(nouveau)}%`
         : `Policy rate: ${nb(nouveau)}%`);
 
-  const mouvement = ecart == null ? '' : fr
-    ? `<p style="margin:0 0 18px 0;font-size:15px;line-height:1.6;color:#4a4446;">Le taux directeur passe de <strong>${nb(ancien)} %</strong> à <strong>${nb(nouveau)} %</strong>, soit ${ecart} points de base à la ${sens}. Observation datée du ${jour(observed)}.</p>`
-    : `<p style="margin:0 0 18px 0;font-size:15px;line-height:1.6;color:#4a4446;">The policy rate moves from <strong>${nb(ancien)}%</strong> to <strong>${nb(nouveau)}%</strong> — ${ecart} basis points ${sens === 'hausse' ? 'up' : 'down'}. Observation dated ${jour(observed)}.</p>`;
-
-  // Salutation nominative quand on connaît la personne — c'est le cas des 130 courtiers
-  // de l'annuaire. Un courriel qui commence par « Bonjour Marie » et cite SON secteur n'a
-  // rien à voir avec un envoi de masse, et c'est la correction demandée sur les maquettes
-  // du 18 août (« trop générique, pas assez personnalisé »).
   const salut = nom
-    ? `<p style="margin:0 0 16px 0;font-size:15px;line-height:1.6;color:#4a4446;">${fr ? 'Bonjour' : 'Hello'} ${esc(String(nom).split(' ')[0])},</p>`
+    ? `<p style="margin:0 0 14px 0;font-size:15px;line-height:1.6;color:#4a4446;">${fr ? 'Bonjour' : 'Hello'} ${esc(String(nom).split(' ')[0])},</p>`
     : '';
+
+  const mouvement = ecart == null ? '' : fr
+    ? `<p style="margin:0 0 20px 0;font-size:15px;line-height:1.6;color:#4a4446;">Le taux directeur passe de <strong>${nb(ancien)} %</strong> à <strong>${nb(nouveau)} %</strong> — ${ecart} points de base à la ${sens}, observation du ${jour(observed)}.</p>`
+    : `<p style="margin:0 0 20px 0;font-size:15px;line-height:1.6;color:#4a4446;">The policy rate moves from <strong>${nb(ancien)}%</strong> to <strong>${nb(nouveau)}%</strong> — ${ecart} basis points ${baisse ? 'down' : 'up'}, observed ${jour(observed)}.</p>`;
+
+  // ── Le bloc utile ───────────────────────────────────────────────────────────────
+  const imp = ecart == null ? null : impactVariable({ ecartPct: (nouveau - ancien), prix });
+  const moins = baisse ? (fr ? 'de moins' : 'less') : (fr ? 'de plus' : 'more');
+  let utile = '';
+  if (imp) {
+    const ligneVille = imp.montant
+      ? (fr
+        ? `<p style="margin:0 0 10px 0;font-size:15px;line-height:1.65;color:#211c1e;">À <strong>${esc(ville)}</strong>, la propriété de référence est à ${arg(imp.prix)}. Sur une hypothèque variable de ${arg(imp.montant)} (20 % de mise de fonds, 25 ans), cet écart de ${ecart} points de base représente environ <strong style="color:#C8102E;">${arg(imp.mensuel)} par mois ${moins}</strong>.</p>`
+        : `<p style="margin:0 0 10px 0;font-size:15px;line-height:1.65;color:#211c1e;">In <strong>${esc(ville)}</strong>, the reference property sits at ${argEn(imp.prix)}. On a ${argEn(imp.montant)} variable mortgage (20% down, 25 years), those ${ecart} bps are roughly <strong style="color:#C8102E;">${argEn(imp.mensuel)} a month ${moins}</strong>.</p>`)
+      : '';
+    utile = `
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#faf8f8;border:1px solid #f1ecec;border-left:3px solid #C8102E;border-radius:6px;margin:0 0 18px 0;">
+        <tr><td style="padding:18px 20px;">
+          <div style="font-size:10.5px;letter-spacing:1.3px;text-transform:uppercase;color:#a49c9e;margin-bottom:10px;">${fr ? 'Ce que ça change sur un taux variable' : 'What it changes on a variable rate'}</div>
+          ${ligneVille}
+          <p style="margin:0;font-size:14px;line-height:1.6;color:#6f6769;">${fr
+            ? `Par tranche de 100 000 $ d’hypothèque : environ <strong>${arg(imp.cent)} par mois ${moins}</strong>. Calcul valable si le taux préférentiel suit d’autant.`
+            : `Per $100,000 of mortgage: about <strong>${argEn(imp.cent)} a month ${moins}</strong>. Holds if prime moves by the same amount.`}</p>
+        </td></tr>
+      </table>`;
+  }
 
   const corps = `
     <tr><td style="padding:34px 32px 0 32px;">
       <div style="font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:#a49c9e;margin-bottom:10px;">${fr ? 'Alerte taux' : 'Rate alert'}</div>
-      <h1 style="margin:0 0 18px 0;font-size:23px;line-height:1.3;color:#211c1e;font-weight:normal;">${titre}</h1>
+      <h1 style="margin:0 0 16px 0;font-size:23px;line-height:1.3;color:#211c1e;font-weight:normal;">${titre}</h1>
       ${salut}${mouvement}
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#faf8f8;border:1px solid #f1ecec;border-radius:6px;margin:0 0 20px 0;">
-        <tr><td style="padding:18px 20px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#faf8f8;border:1px solid #f1ecec;border-radius:6px;margin:0 0 18px 0;">
+        <tr><td style="padding:16px 20px;">
           <span style="font-size:13px;color:#8a8284;">${fr ? 'Taux directeur' : 'Policy interest rate'}</span><br>
-          <span style="font-size:28px;color:#C8102E;font-weight:bold;">${nb(nouveau)} %</span>
+          <span style="font-size:28px;color:#C8102E;font-weight:bold;">${nb(nouveau)}${fr ? ' %' : '%'}</span>
           <span style="font-size:11px;color:#a49c9e;"> &middot; ${jour(observed)}</span>
         </td></tr>
       </table>
-      <p style="margin:0 0 20px 0;font-size:14px;line-height:1.65;color:#6f6769;">${fr
-        ? 'Payotte ne commente pas cette décision et n’en tire aucune prévision : le taux préférentiel, les taux fixes et les rendements obligataires réagissent à leur propre rythme, et personne ne peut le dater d’avance.'
-        : 'Payotte does not comment on this decision or forecast from it: prime, fixed rates and bond yields each react on their own schedule, and no one can date that in advance.'}</p>
-      <p style="margin:0 0 12px 0;font-size:14px;line-height:1.65;">
-        <a href="${SITE}${fr ? '/taux-directeur-canada' : '/en/canada-policy-rate'}" style="color:#C8102E;">${fr ? 'Voir tous les taux courants sur payotte.com →' : 'See all current rates on payotte.com →'}</a>
+      ${utile}
+      <p style="margin:0 0 26px 0;font-size:14px;line-height:1.65;">
+        <a href="${SITE}${fr ? '/taux-directeur-canada' : '/en/canada-policy-rate'}" style="color:#C8102E;font-weight:bold;">${fr ? 'Tous les taux à jour, et l’historique des décisions →' : 'All current rates, and the decision history →'}</a>
       </p>
-      ${url ? `<p style="margin:0 0 26px 0;font-size:14px;line-height:1.65;"><a href="${url}" style="color:#C8102E;">${fr ? `Votre fiche${secteur ? ` — ${esc(secteur)}` : ''} →` : `Your profile${secteur ? ` — ${esc(secteur)}` : ''} →`}</a></p>` : '<div style="height:14px"></div>'}
-      <div style="font-size:11.5px;line-height:1.6;color:#a49c9e;border-top:1px solid #f1ecec;padding-top:14px;">${BOC_ATTRIBUTION}</div>
     </td></tr>`;
 
-  // ⚠️ LE MOTIF DOIT ÊTRE VRAI. La première version disait « parce que vous l'avez demandée »
-  // à TOUT LE MONDE — faux pour les 130 courtiers de l'annuaire et les 325 abonnés, qui
-  // n'ont rien demandé de tel. Mentir sur la raison d'un envoi, c'est précisément ce que la
-  // LCAP sanctionne, et c'est la première chose qu'un destinataire agacé va relire.
+  // ⚠️ LE MOTIF DOIT ÊTRE VRAI. Une première version disait « parce que vous l'avez
+  // demandée » à TOUT LE MONDE — faux pour les 455 destinataires réels. Mentir sur la
+  // raison d'un envoi est précisément ce que la LCAP sanctionne.
   const MOTIFS = {
     optin: [
-      'Vous recevez cette alerte parce que vous l’avez demandée sur payotte.com. Elle ne part que lorsque le taux directeur change — deux à quatre fois par an.',
-      'You receive this alert because you asked for it on payotte.com. It only goes out when the policy rate changes — two to four times a year.',
+      'Vous recevez cette alerte parce que vous l’avez demandée sur payotte.com. Elle ne part que lorsque le taux directeur change.',
+      'You receive this alert because you asked for it on payotte.com. It only goes out when the policy rate changes.',
     ],
     expert: [
       'Vous recevez ceci parce que vous êtes le courtier hypothécaire retenu par Payotte pour votre secteur. On ne vous écrit que lorsque le taux directeur change — deux à quatre fois par an.',
@@ -2678,7 +2735,11 @@ function renderAlerteTaux({ nouveau, ancien, observed, lang, unsubUrl, postale =
       'You receive this because you are a mortgage broker subscribed to Payotte. We only write when the policy rate changes — two to four times a year.',
     ],
   };
-  const motif = (MOTIFS[segment] ?? MOTIFS.optin)[fr ? 0 : 1];
+  // L'attribution de la Banque du Canada est une CONDITION DE LICENCE, pas un ornement :
+  // elle reste, mais dans le pied, à la taille du pied. Le pavé de mise en garde qui
+  // occupait le tiers du courriel est retiré (demande de Grégory, 19 août) : à un courtier
+  // hypothécaire, expliquer que Payotte ne fait pas de prévision est du remplissage.
+  const motif = `${(MOTIFS[segment] ?? MOTIFS.optin)[fr ? 0 : 1]} ${BOC_ATTRIBUTION}`;
   const pied = FOOT(motif, unsubUrl, fr ? 'Se désabonner' : 'Unsubscribe', postale);
 
   const html = `<div style="background:#f5f3f2;margin:0;padding:28px 12px;font-family:Arial,Helvetica,sans-serif;"><table role="presentation" width="580" cellpadding="0" cellspacing="0" border="0" align="center" style="max-width:580px;width:100%;background:#ffffff;border:1px solid #eae5e5;border-radius:8px;">${corps}${pied}</table></div>`;
@@ -2740,43 +2801,7 @@ async function handleAlerteTauxInscription(request, env, url) {
  * Le déclencheur, appelé à chaque passage du cron. Coût quand rien ne bouge : une lecture
  * KV et une lecture Valet (mise en cache 1 h par Cloudflare) — c'est le cas 361 jours sur 365.
  */
-const ALERTE_HEURE_LOCALE = 9;      // consigne de Grégory, 2026-08-19
 const METIER_ALERTE = 'mortgage-broker';
-
-/**
- * Les provinces à servir À CE PASSAGE, et pourquoi ce n'est pas simplement « il est 9 h ».
- *
- * ⚠️ LA BANQUE DU CANADA ANNONCE À 9 H 45, HEURE DE L'EST. C'est la contrainte qui commande
- * tout ce qui suit, et elle n'est pas négociable :
- *
- *      à 9 h locale …          il est … à l'Est      la nouvelle existe ?
- *      Terre-Neuve                 7 h 30                    non
- *      Atlantique                  8 h 00                    non
- *      Québec, Ontario             9 h 00                    NON (45 min trop tôt)
- *      Manitoba, Saskatchewan     10 h 00                    oui
- *      Alberta                    11 h 00                    oui
- *      Colombie-Britannique       12 h 00                    oui
- *
- * Servir « à 9 h locale » à la lettre condamnerait le Québec et l'Ontario — les deux plus
- * grosses provinces de l'annuaire — à recevoir l'alerte le LENDEMAIN, 24 h en retard, sur la
- * seule chose qui doit être immédiate. Ce serait respecter la consigne en trahissant son but.
- *
- * D'où la règle : **9 h locale quand c'est encore possible, sinon le plus tôt après l'annonce.**
- *   • heure locale == 9 h  → c'est le créneau demandé, on sert.
- *   • heure locale  > 9 h  → 9 h est passée SANS que la nouvelle existe encore à ce moment-là.
- *                            On rattrape immédiatement plutôt que d'attendre demain.
- *   • heure locale  < 9 h  → on attend. Le passage de 9 h viendra dans la journée.
- *
- * Un jour de décision, tout le monde est donc servi le jour même : QC/ON vers 10 h locale
- * (le premier passage après l'annonce), le Manitoba, l'Alberta et la C.-B. à 9 h pile.
- */
-function zonesAlerte(at = new Date()) {
-  const sert = new Set(), attend = new Set();
-  for (const [code, tz] of Object.entries(PROV_TZ)) {
-    (localHour(tz, at) >= ALERTE_HEURE_LOCALE ? sert : attend).add(code);
-  }
-  return { sert, attend };
-}
 
 /**
  * runAlerteTaux — la seule chaîne d'envoi de Payotte déclenchée par un ÉVÉNEMENT.
@@ -2787,40 +2812,43 @@ function zonesAlerte(at = new Date()) {
  * Uniquement quand le TAUX DIRECTEUR change de valeur. Pas les obligations (elles bougent
  * tous les jours), pas les moyennes hypothécaires (mensuelles, publiées avec deux mois de
  * retard). Le taux directeur ne bouge que sur décision : 8 annonces par an, et il ne change
- * pas à chacune — en 2026, cinq réunions et un seul mouvement. On parle de deux à quatre
- * envois par an.
+ * pas à chacune — en 2026, cinq réunions et un seul mouvement.
  *
  * ─────────────────────────────────────────────────────────────────────────────────
- * À QUI (décision de Grégory, 2026-08-19)
+ * TOUT LE MONDE EN MÊME TEMPS (décision de Grégory, 19 août)
  * ─────────────────────────────────────────────────────────────────────────────────
- *   1. les inscrits `taux:` — ils ont coché une case pour ça ;
- *   2. les COURTIERS HYPOTHÉCAIRES parmi les experts de l'annuaire (~130) ;
- *   3. les COURTIERS HYPOTHÉCAIRES parmi les abonnés de l'infolettre (~325 sur 2 404).
- *
- * ⚠️ Le filtre par métier est le cœur de la décision, pas un détail d'optimisation. Une
- * décision de la Banque du Canada est LA nouvelle du métier d'un courtier hypothécaire ;
- * pour un inspecteur en bâtiment ou un notaire, c'est du bruit. Envoyer aux 2 404 aurait
- * été du volume — exactement ce qui a donné 0 réponse sur 550 en juillet.
- *
- * Les inscrits `taux:` sont servis AU PREMIER PASSAGE, sans attendre leur fuseau : le
- * formulaire ne demande pas la province (on ne collecte pas ce dont on n'a pas besoin), et
- * quelqu'un qui a demandé une alerte veut l'alerte, pas un créneau.
+ * Une version antérieure servait province par province, à 9 h locale. Abandonné : la
+ * Banque du Canada annonce à 9 h 45 HE, donc « 9 h locale » était déjà impossible pour le
+ * Québec et l'Ontario, et étaler sur trois heures un courriel dont la valeur EST son
+ * immédiateté n'avait aucun sens. Une décision de taux n'est pas un bulletin mensuel :
+ * elle vaut à 10 h et beaucoup moins à 13 h. Tout part au premier passage qui suit
+ * l'annonce, d'un bloc, ~455 courriels en cinq lots Resend.
  *
  * ─────────────────────────────────────────────────────────────────────────────────
- * L'ÉTAT, ET POURQUOI IL Y EN A DEUX
+ * À QUI
  * ─────────────────────────────────────────────────────────────────────────────────
- *   `taux:dernier`  la dernière valeur ANNONCÉE. N'est mise à jour QUE lorsque la vague est
- *                   finie. Tant qu'elle porte l'ancienne valeur, chaque passage du cron
- *                   redétecte le changement — c'est ce qui fait reprendre une vague
- *                   interrompue (temps d'exécution dépassé, panne Resend) là où elle en était.
- *   `taux:vague`    la vague en cours : provinces déjà servies, compteurs. Effacée à la fin.
+ *   1. les inscrits `taux:` — ils ont coché une case ;
+ *   2. les COURTIERS HYPOTHÉCAIRES de l'annuaire (~130) ;
+ *   3. les COURTIERS HYPOTHÉCAIRES de l'infolettre (~325 sur 2 404).
+ *
+ * ⚠️ Le filtre par métier est le cœur de la décision. Une décision de la Banque du Canada
+ * est LA nouvelle du métier d'un courtier hypothécaire ; pour un inspecteur ou un notaire,
+ * c'est du bruit. Envoyer aux 2 404 aurait été du volume — exactement ce qui a donné
+ * 0 réponse sur 550 en juillet.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────────
+ * REPRISE APRÈS ÉCHEC
+ * ─────────────────────────────────────────────────────────────────────────────────
+ * `taux:dernier` n'est mis à jour qu'une fois l'envoi terminé : tant qu'il porte l'ancienne
+ * valeur, chaque passage du cron redétecte le changement. `taux:vague.faits[]` retient les
+ * adresses déjà servies, pour qu'une reprise n'envoie jamais deux fois la même alerte.
  *
  * ⚠️ `stop:all` posé → on enregistre le mouvement et on N'ENVOIE PAS, mais on met quand même
  * `taux:dernier` à jour. Ne pas le faire ferait partir l'alerte au moment où l'interrupteur
  * est levé — c'est-à-dire annoncer comme une nouvelle un changement vieux de plusieurs jours.
  */
 async function runAlerteTaux(env, { at = new Date(), dryRun = false } = {}) {
-  const r = { change: false, envoyes: 0, rates: 0, audience: 0, zones: [], reste: [] };
+  const r = { change: false, envoyes: 0, rates: 0, audience: 0, parSegment: {} };
   if (!env.SUBSCRIBERS) return r;
 
   const macro = await macroCourant();
@@ -2851,134 +2879,133 @@ async function runAlerteTaux(env, { at = new Date(), dryRun = false } = {}) {
   }
   if (stop) r.arrete = 'stop:all';
 
-  // ── La vague ────────────────────────────────────────────────────────────────────
   let vague = null;
   try { vague = JSON.parse((await env.SUBSCRIBERS.get('taux:vague')) || 'null'); } catch { /* clé abîmée */ }
-  if (!vague || vague.percent !== p.percent) {
-    vague = { percent: p.percent, ancien: memoire.percent, observed: p.observed, debut: at.toISOString(), zones: {}, optIn: false, envoyes: 0, rates: 0 };
-  }
-
-  const { sert, attend } = zonesAlerte(at);
-  const aServir = [...sert].filter((z) => !vague.zones[z]);
-  r.zones = aServir;
-  r.reste = [...attend];
-
-  const postale = adressePostale(env);
-  const file = [];
-  const vus = new Set();
+  if (!vague || vague.percent !== p.percent) vague = { percent: p.percent, debut: at.toISOString(), faits: [], envoyes: 0, rates: 0 };
+  const faits = new Set(vague.faits ?? []);
 
   // ── LIRE LES EXCLUSIONS EN BLOC, PAS UNE PAR UNE (leçon du 13 août) ─────────────
   // Le 13 août, AUCUN bulletin n'est parti : le passage lisait la valeur des 1 512
   // prospects EN SÉRIE et dépassait son temps d'exécution, en silence. La première
-  // version de cette fonction refaisait exactement la même faute — deux `get` par
-  // destinataire pour les désabonnements et les rebonds, soit ~900 allers-retours.
-  // Trois `list()` remplacent tout ça : les préfixes tiennent dans des Sets.
+  // version de cette fonction refaisait la même faute — deux `get` par destinataire.
+  // Trois `list()` remplacent ~900 allers-retours.
   const [tombes, rebonds, unsubExperts, unsubProspects] = await Promise.all([
     kvKeys(env.SUBSCRIBERS, 'unsub:taux:'),
     kvKeys(env.SUBSCRIBERS, 'bounce:'),
     kvKeys(env.SUBSCRIBERS, 'unsub:'),
     kvKeys(env.SUBSCRIBERS, 'unsub:prospect:'),
-  ]).then((r) => r.map((x) => new Set(x)));
+  ]).then((x) => x.map((y) => new Set(y)));
 
-  const exclu = (e) => tombes.has(e) || rebonds.has(e) || unsubProspects.has(e);
+  // Prix de référence par ville, pour le bloc « ce que ça change sur un variable ».
+  let villes = {};
+  try {
+    const market = await feed('/api/market.json');
+    villes = Object.fromEntries((market.cities || []).map((c) => [c.slug, { nom: c.name, prix: refPriceOf(c) }]));
+  } catch { /* sans market.json le bloc local disparaît, le courriel part quand même */ }
 
-  const ajouter = async (email, lang, { segment = 'optin', nom = '', secteur = '', url = '' } = {}) => {
+  const postale = adressePostale(env);
+  const file = [];
+  const vus = new Set();
+
+  const ajouter = async (email, lang, { segment = 'optin', nom = '', citySlug = '' } = {}) => {
     const e = String(email ?? '').trim().toLowerCase();
-    if (!EMAIL_RE.test(e) || vus.has(e) || exclu(e)) return;
+    if (!EMAIL_RE.test(e) || vus.has(e)) return;
+    if (tombes.has(e) || rebonds.has(e) || unsubProspects.has(e)) return;
     vus.add(e);
+    if (faits.has(e)) return;                       // déjà servi lors d'un passage précédent
+    const v = villes[citySlug] ?? null;
     const unsubUrl = `${WORKER_ORIGIN}/unsubscribe?a=taux&e=${encodeURIComponent(e)}&t=${await hmacHex(env, `a:${e}`)}`;
     const { subject, html } = renderAlerteTaux({
       nouveau: p.percent, ancien: memoire.percent, observed: p.observed,
-      lang: lang === 'en' ? 'en' : 'fr', unsubUrl, postale, segment, nom, secteur, url,
+      lang: lang === 'en' ? 'en' : 'fr', unsubUrl, postale,
+      segment, nom, ville: v?.nom ?? '', prix: v?.prix ?? null,
     });
     file.push({ to: e, subject, html, unsubUrl, segment });
+    r.parSegment[segment] = (r.parSegment[segment] || 0) + 1;
   };
 
-  // Lecture parallèle par paquets. En série, 2 404 fiches d'abonnés font expirer
-  // l'exécution ; par paquets de 50 elles se lisent en quelques secondes.
+  // Lecture parallèle par paquets : en série, 2 404 fiches font expirer l'exécution.
   const lireEnLot = async (cles, taille = 50) => {
     const out = [];
     for (let i = 0; i < cles.length; i += taille) {
-      const lot = await Promise.all(cles.slice(i, i + taille).map(async (c) => {
+      out.push(...await Promise.all(cles.slice(i, i + taille).map(async (c) => {
         try { return JSON.parse((await env.SUBSCRIBERS.get(c)) ?? 'null'); } catch { return null; }
-      }));
-      out.push(...lot);
+      })));
     }
     return out;
   };
 
-  // 1. Les inscrits volontaires — servis au premier passage, sans attendre de fuseau.
-  if (!vague.optIn) {
-    const cles = (await kvKeys(env.SUBSCRIBERS, 'taux:')).filter((c) => c !== 'dernier' && c !== 'vague');
-    const recs = await lireEnLot(cles.map((c) => `taux:${c}`));
-    for (let i = 0; i < cles.length; i++) await ajouter(recs[i]?.email ?? cles[i], recs[i]?.lang, { segment: 'optin' });
-    vague.optIn = true;
+  // 1. Les inscrits volontaires.
+  const clesOpt = (await kvKeys(env.SUBSCRIBERS, 'taux:')).filter((c) => c !== 'dernier' && c !== 'vague');
+  const recsOpt = await lireEnLot(clesOpt.map((c) => `taux:${c}`));
+  for (let i = 0; i < clesOpt.length; i++) {
+    await ajouter(recsOpt[i]?.email ?? clesOpt[i], recsOpt[i]?.lang, { segment: 'optin' });
   }
 
-  if (aServir.length) {
-    // 2. Les courtiers hypothécaires de l'annuaire, province par province.
-    let dir = {};
-    if (env.CONTACTS_TOKEN) {
-      try { dir = (await feed(`/api/cx/${env.CONTACTS_TOKEN}.json`)).contacts || {}; } catch { /* annuaire indispo : on sert quand même les prospects */ }
+  // 2. Les courtiers hypothécaires de l'annuaire, toutes provinces.
+  let dir = {};
+  if (env.CONTACTS_TOKEN) {
+    try { dir = (await feed(`/api/cx/${env.CONTACTS_TOKEN}.json`)).contacts || {}; } catch { /* annuaire indispo : les prospects partent quand même */ }
+  }
+  // ⚠️ market.json porte les noms de villes en ANGLAIS (« Montreal », « Quebec City »).
+  // Écrire « À Montreal » à un courtier de Montréal est le genre de détail qui fait
+  // « envoi automatisé » à la première ligne. Les feeds d'experts, eux, portent le nom
+  // localisé — on s'en sert pour corriger la table au passage.
+  for (const slugProv of Object.values(PROV_SLUG)) {
+    let experts = [];
+    try { experts = (await feed(`/api/experts/${slugProv}.json`)).experts ?? []; } catch { continue; }
+    for (const e of experts) {
+      if (e.city && e.cityName && villes[e.city]) villes[e.city].nom = e.cityName;
     }
-    for (const code of aServir) {
-      const slugProv = PROV_SLUG[code];
-      if (!slugProv) continue;
-      let experts = [];
-      try { experts = (await feed(`/api/experts/${slugProv}.json`)).experts ?? []; } catch { continue; }
-      for (const e of experts) {
-        if (e.profession !== METIER_ALERTE) continue;
-        if (e.score?.color === 'red' || !e.score?.color) continue;
-        if (unsubExperts.has(e.slug)) continue;                       // opt-out expert existant
-        const contact = dir[e.slug];
-        if (contact?.email) {
-          await ajouter(contact.email, contact.lang || e.lang, {
-            segment: 'expert', nom: e.name || '', secteur: e.sectorName || '', url: e.url || '',
-          });
-        }
+    for (const e of experts) {
+      if (e.profession !== METIER_ALERTE) continue;
+      if (e.score?.color === 'red' || !e.score?.color) continue;
+      if (unsubExperts.has(e.slug)) continue;                     // opt-out expert existant
+      const contact = dir[e.slug];
+      if (contact?.email) {
+        await ajouter(contact.email, contact.lang || e.lang, { segment: 'expert', nom: e.name || '', citySlug: e.city || '' });
       }
     }
+  }
 
-    // 3. Les courtiers hypothécaires de l'infolettre. Leur clé porte la VILLE (`s:{ville}:{courriel}`) ;
-    //    market.json donne la province de chaque ville, donc le fuseau.
-    let provParVille = {};
-    try {
-      const market = await feed('/api/market.json');
-      provParVille = Object.fromEntries((market.cities || []).map((c) => [c.slug, c.province]));
-    } catch { /* sans market.json on ne peut pas zoner les prospects : ils passeront au prochain tour */ }
-    if (Object.keys(provParVille).length) {
-      const aServirSet = new Set(aServir);
-      // FILTRER AVANT DE LIRE : la province se déduit du NOM de la clé (`s:{ville}:{courriel}`),
-      // donc sans aucune lecture. On ne lit que les fiches des provinces servies à ce passage.
-      const candidats = (await kvKeys(env.SUBSCRIBERS, 's:'))
-        .filter((cle) => aServirSet.has(provParVille[cle.slice(0, cle.indexOf(':'))]));
-      const recs = await lireEnLot(candidats.map((c) => `s:${c}`));
-      for (const rec of recs) {
-        if (rec?.metier !== METIER_ALERTE) continue;                  // ⚠️ le filtre qui fait tout
-        await ajouter(rec.email, rec.lang, { segment: 'prospect', nom: rec.nom || '' });
-      }
-    }
+  // 3. Les courtiers hypothécaires de l'infolettre. La clé porte la ville (`s:{ville}:{courriel}`).
+  const clesProsp = await kvKeys(env.SUBSCRIBERS, 's:');
+  const recsProsp = await lireEnLot(clesProsp.map((c) => `s:${c}`));
+  for (let i = 0; i < clesProsp.length; i++) {
+    const rec = recsProsp[i];
+    if (rec?.metier !== METIER_ALERTE) continue;                  // ⚠️ le filtre qui fait tout
+    await ajouter(rec.email, rec.lang, { segment: 'prospect', nom: rec.nom || '', citySlug: clesProsp[i].slice(0, clesProsp[i].indexOf(':')) });
   }
 
   r.audience = file.length;
-  if (dryRun) return { ...r, dryRun: true, apercu: file.slice(0, 3).map((f) => f.to) };
-  if (!file.length && !aServir.length) return r;   // rien à faire ce passage : on attend un fuseau
+  if (dryRun) return { ...r, dryRun: true, apercu: file.slice(0, 3).map((f) => `${f.to} (${f.segment})`) };
+  if (!file.length) {
+    // Personne à servir : soit tout est parti, soit il n'y a personne. Dans les deux cas
+    // la vague est close — sinon le cron redétecterait le changement à chaque passage.
+    await env.SUBSCRIBERS.put('taux:dernier', JSON.stringify({ percent: p.percent, observed: p.observed, depuis: at.toISOString(), envoyes: vague.envoyes }));
+    await env.SUBSCRIBERS.delete('taux:vague');
+    return { ...r, vagueFinie: true, totalVague: vague.envoyes };
+  }
 
   const from = env.MAIL_FROM_BULLETIN || 'Payotte <bulletin@payotte.com>';
   for (let i = 0; i < file.length; i += ALERTE_TAUX_LOT) {
-    const res = await sendPulseBatch(env, file.slice(i, i + ALERTE_TAUX_LOT), { from });
-    res.forEach((x) => { if (x?.ok) r.envoyes++; else r.rates++; });
+    const lot = file.slice(i, i + ALERTE_TAUX_LOT);
+    const res = await sendPulseBatch(env, lot, { from });
+    res.forEach((x, k) => {
+      if (x?.ok) { r.envoyes++; faits.add(lot[k].to); } else r.rates++;
+    });
+    // On enregistre APRÈS CHAQUE LOT : si l'exécution meurt au 3e lot, les deux premiers
+    // ne repartiront pas. Un doublon d'alerte est bien plus grave qu'un retard.
+    vague.faits = [...faits]; vague.envoyes += 0;
+    await env.SUBSCRIBERS.put('taux:vague', JSON.stringify(vague), { expirationTtl: 7 * 86400 });
   }
   vague.envoyes += r.envoyes;
   vague.rates += r.rates;
-  for (const z of aServir) vague.zones[z] = at.toISOString();
 
-  // Vague terminée quand toutes les provinces ont été servies. C'est SEULEMENT à ce
-  // moment que `taux:dernier` bouge — tant qu'il porte l'ancienne valeur, une exécution
-  // interrompue reprend d'elle-même au passage suivant.
-  const fini = Object.keys(PROV_TZ).every((z) => vague.zones[z]);
-  if (fini) {
-    await env.SUBSCRIBERS.put('taux:dernier', JSON.stringify({ percent: p.percent, observed: p.observed, depuis: at.toISOString(), envoyes: vague.envoyes, rates: vague.rates }));
+  // Vague close dès que tout ce qui était à servir a été tenté. Les ratés d'un lot
+  // repartiront au passage suivant, puisqu'ils ne sont pas dans `faits`.
+  if (!r.rates) {
+    await env.SUBSCRIBERS.put('taux:dernier', JSON.stringify({ percent: p.percent, observed: p.observed, depuis: at.toISOString(), envoyes: vague.envoyes }));
     await env.SUBSCRIBERS.delete('taux:vague');
     r.vagueFinie = true;
     r.totalVague = vague.envoyes;
@@ -3253,12 +3280,28 @@ export default {
       const observed = url.searchParams.get('observed') || reel?.observed || new Date().toISOString().slice(0, 10);
       const segment = ['optin', 'expert', 'prospect'].includes(url.searchParams.get('segment') ?? '')
         ? url.searchParams.get('segment') : 'optin';
+      // Prix de la ville demandée, pour montrer le bloc local tel qu'il partira.
+      const villeSlug = url.searchParams.get('ville') || (segment === 'optin' ? '' : 'montreal');
+      let ville = '', prix = null;
+      if (villeSlug) {
+        try {
+          const c = (await feed('/api/market.json')).cities.find((x) => x.slug === villeSlug);
+          if (c) {
+            ville = c.name; prix = refPriceOf(c);
+            // Même correction que dans l'envoi réel : market.json dit « Montreal », le feed
+            // d'experts dit « Montréal ». L'aperçu doit montrer ce qui part vraiment.
+            try {
+              const ex = (await feed(`/api/experts/${PROV_SLUG[c.province]}.json`)).experts ?? [];
+              const m = ex.find((x) => x.city === villeSlug && x.cityName);
+              if (m) ville = m.cityName;
+            } catch { /* le nom anglais fera l'affaire dans un aperçu */ }
+          }
+        } catch { /* sans prix, le bloc local se réduit au « par 100 000 $ » */ }
+      }
       const { subject, html } = renderAlerteTaux({
         nouveau, ancien, observed, lang, unsubUrl: '#apercu', postale: adressePostale(env),
-        segment,
-        nom: url.searchParams.get('nom') ?? (segment === 'expert' ? 'Marie Pronovost' : ''),
-        secteur: url.searchParams.get('secteur') ?? (segment === 'expert' ? 'Haute-Ville–Montcalm' : ''),
-        url: segment === 'expert' ? `${SITE}/canada/quebec/quebec-city/haute-ville-montcalm/mortgage-broker` : '',
+        segment, ville, prix,
+        nom: url.searchParams.get('nom') ?? (segment === 'optin' ? '' : 'Marie Pronovost'),
       });
       return new Response(
         `<!doctype html><meta charset="utf-8"><meta name="robots" content="noindex">`
@@ -3577,9 +3620,9 @@ export default {
       if (alerte.change) {
         console.log(`[alerte-taux] ${alerte.ancien} % → ${alerte.nouveau} % (${alerte.observed}) — `
           + (alerte.arrete ? `ARRÊTÉ (${alerte.arrete}), mouvement enregistré sans envoi`
-            : `${alerte.envoyes} envoyée(s), ${alerte.rates} ratée(s) · zones servies : `
-              + `${alerte.zones.join(', ') || '—'}${alerte.reste.length ? ` · en attente de 9 h : ${alerte.reste.join(', ')}` : ''}`
-              + (alerte.vagueFinie ? ` · VAGUE TERMINÉE (${alerte.totalVague} au total)` : '')));
+            : `${alerte.envoyes} envoyée(s), ${alerte.rates} ratée(s) sur ${alerte.audience} · `
+              + `${Object.entries(alerte.parSegment).map(([k, v]) => `${k} ${v}`).join(' · ')}`
+              + (alerte.vagueFinie ? ` · TERMINÉ (${alerte.totalVague} au total)` : ' · REPRISE au prochain passage')));
       } else if (alerte.note) {
         console.log(`[alerte-taux] ${alerte.note}`);
       }
