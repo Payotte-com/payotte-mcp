@@ -1757,6 +1757,12 @@ async function sendPulseBatch(env, envois, { from: fromDemande } = {}) {
       body: JSON.stringify(valides.map(({ e }) => ({
         from, to: [e.to], reply_to: REPLY_TO,
         subject: e.subject, html: e.html,
+        // ── L'ÉTIQUETTE (2026-08-19) ───────────────────────────────────────────────
+        // Sans elle, le webhook apprend qu'« un courriel a été ouvert » sans savoir
+        // lequel. On ne pourrait donc rien conclure sur un flux précis — or toute la
+        // question est « est-ce que l'alerte taux marche mieux que le reste ? ».
+        // Resend impose des étiquettes en [A-Za-z0-9_-] : on assainit.
+        tags: [{ name: 'flux', value: String(e.flux ?? e.segment ?? 'bulletin').replace(/[^A-Za-z0-9_-]/g, '-').slice(0, 40) }],
         ...(e.unsubUrl ? { headers: { 'List-Unsubscribe': `<${e.unsubUrl}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' } } : {}),
       }))),
     });
@@ -2299,7 +2305,7 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
       // récolte nocturne (`source` = l'URL où l'adresse a été relevée), donc non sollicité
       // → expéditeur outreach@. La règle lit la donnée existante, rien à migrer.
       if (fluxRec === 'outreach') report.outreachEnvoyes++;
-      file.push({ to: rec.email, subject, html, unsubUrl, cle: idReel,
+      file.push({ to: rec.email, subject, html, unsubUrl, cle: idReel, flux: 'bulletin-prospect',
                   flux: fluxRec,
                   etiquette: `prospect ${rec.email}` });
       if (file.length >= TAILLE_LOT) await viderFile();
@@ -2353,7 +2359,7 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
       done.add(e.slug); mailsDone.add(contact.email.toLowerCase());
       // L'escalier expert est de la prospection : personne n'a demandé à le recevoir.
       report.outreachEnvoyes++;
-      file.push({ to: contact.email, subject, html, unsubUrl, cle: e.slug, stage, prov,
+      file.push({ to: contact.email, subject, html, unsubUrl, cle: e.slug, stage, prov, flux: `bulletin-expert-${stage}`,
                   flux: 'outreach',
                   etiquette: e.slug });
       if (file.length >= TAILLE_LOT) await viderFile();
@@ -3010,7 +3016,7 @@ async function runAlerteTaux(env, { at = new Date(), dryRun = false } = {}) {
       segment, nom, ville: v?.nom ?? '', prix: v?.prix ?? null,
       prochaine: prochaine?.date ?? null, prochaineMpr: !!prochaine?.mpr,
     });
-    file.push({ to: e, subject, html, unsubUrl, segment });
+    file.push({ to: e, subject, html, unsubUrl, segment, flux: 'alerte-taux' });
     r.parSegment[segment] = (r.parSegment[segment] || 0) + 1;
   };
 
@@ -3298,7 +3304,7 @@ async function runSequence(env, { at = new Date(), dryRun = false } = {}) {
     const { subject, html } = renderSequence({ etape, expert, city, seq: etat, lang: etat.lang || expert.lang || 'fr', unsubUrl, macro, postale: adressePostale(env) });
     r.parEtape[`S${etape}`] = (r.parEtape[`S${etape}`] || 0) + 1;
     if (dryRun) continue;
-    file.push({ to: dest, subject, html, unsubUrl, slug, etape, etat });
+    file.push({ to: dest, subject, html, unsubUrl, slug, etape, etat, flux: `sequence-S${etape}` });
   }
 
   if (dryRun || !file.length) return r;
@@ -3530,6 +3536,45 @@ export default {
       return json(sortie);
     }
 
+    // Ce que chaque flux a donné, mois par mois. C'est la seule réponse possible à
+    // « est-ce que ça marche ? » — et elle n'existait pas.
+    // ⚠️ PAS `/stats` : cette route existe déjà et elle est PUBLIQUE (compteurs du site).
+    // L'écraser aurait cassé une donnée que le site publie.
+    if (request.method === 'GET' && url.pathname === '/flux-stats') {
+      if (!env.CONTACTS_TOKEN || url.searchParams.get('t') !== env.CONTACTS_TOKEN) {
+        return json({ error: 'unauthorized' }, 401);
+      }
+      const cles = env.SUBSCRIBERS ? await kvKeys(env.SUBSCRIBERS, 'stat:') : [];
+      const par = {};
+      for (const c of cles) {
+        const [flux, mois, quoi] = c.split(':');
+        if (!flux || !mois || !quoi) continue;
+        const v = Number((await env.SUBSCRIBERS.get(`stat:${c}`)) || 0);
+        ((par[mois] ??= {})[flux] ??= {})[quoi] = v;
+      }
+      // Les taux se calculent sur les LIVRÉS, pas sur les envoyés : un courriel qui rebondit
+      // n'a jamais eu de lecteur, l'inclure au dénominateur écraserait le résultat.
+      for (const mois of Object.keys(par)) {
+        for (const [flux, d] of Object.entries(par[mois])) {
+          const base = d.livres || d.envoyes || 0;
+          if (base) {
+            d._taux = {
+              ouverture_unique: d.ouvreurs ? `${(d.ouvreurs / base * 100).toFixed(1)} %` : '0 %',
+              clic_unique: d.cliqueurs ? `${(d.cliqueurs / base * 100).toFixed(1)} %` : '0 %',
+              plainte: d.plaintes ? `${(d.plaintes / base * 100).toFixed(2)} %` : '0 %',
+            };
+          }
+        }
+      }
+      return json({
+        _lecture: 'Compteurs alimentés par le webhook Resend. Les OUVERTURES sont un signal faible '
+          + '(Apple Mail Privacy Protection les gonfle, les bloqueurs d\'images les effacent) ; '
+          + 'les CLICS sont le signal fiable. Taux calculés sur les livrés.',
+        _webhook: env.RESEND_WEBHOOK_SECRET ? 'configuré' : '⚠️ ABSENT — aucun événement ne peut arriver',
+        parMois: par,
+      });
+    }
+
     if (request.method === 'POST' && url.pathname === '/resend-webhook') {
       const secret = env.RESEND_WEBHOOK_SECRET;
       if (!secret) return json({ error: 'webhook non configuré' }, 503);
@@ -3558,6 +3603,47 @@ export default {
       const dest = String(ev?.data?.to?.[0] ?? ev?.data?.email ?? '').toLowerCase().trim();
       const jour = new Date().toISOString().slice(0, 10);
       if (!dest || !env.SUBSCRIBERS) return json({ ok: true, ignore: true });
+
+      // ── LE COMPTAGE (2026-08-19) ─────────────────────────────────────────────────
+      // Le webhook ne traitait que les rebonds et les plaintes. Il enregistrait donc les
+      // ÉCHECS et rien d'autre : impossible de dire si un envoi avait marché.
+      //
+      // C'est exactement le trou qui a produit « j'ai envoyé 80 brouillons et je n'ai eu
+      // aucun retour » — sans savoir si personne n'ouvrait, ou si tout tombait en spam.
+      // Un flux qu'on ne mesure pas ne s'améliore pas, il se répète.
+      //
+      // Compteurs par FLUX et par MOIS (l'étiquette posée à l'envoi), TTL 400 jours pour
+      // garder l'historique d'une année complète de comparaisons.
+      //
+      // ⚠️ CE QUE VALENT CES CHIFFRES. Les CLICS sont un signal solide. Les OUVERTURES,
+      // non : Apple Mail Privacy Protection charge le pixel sans que personne ne lise,
+      // ce qui les gonfle, tandis que les clients qui bloquent les images les effacent.
+      // Une ouverture ne prouve rien ; un clic prouve un geste.
+      const flux = String(ev?.data?.tags?.find?.((t) => t?.name === 'flux')?.value ?? 'inconnu');
+      const mois = jour.slice(0, 7);
+      const compte = async (quoi) => {
+        const cle = `stat:${flux}:${mois}:${quoi}`;
+        const n = Number((await env.SUBSCRIBERS.get(cle)) || 0);
+        await env.SUBSCRIBERS.put(cle, String(n + 1), { expirationTtl: 400 * 24 * 3600 });
+      };
+      const COMPTABLES = {
+        'email.sent': 'envoyes', 'email.delivered': 'livres',
+        'email.opened': 'ouvertures', 'email.clicked': 'clics',
+        'email.bounced': 'rebonds', 'email.complained': 'plaintes',
+        'email.delivery_delayed': 'retards',
+      };
+      if (COMPTABLES[type]) await compte(COMPTABLES[type]);
+
+      // Ouvertures et clics UNIQUES : un même destinataire qui rouvre cinq fois ne fait
+      // pas cinq lecteurs. Sans ça, un seul curieux gonflerait le taux de tout un flux.
+      if (type === 'email.opened' || type === 'email.clicked') {
+        const quoi = type === 'email.opened' ? 'ouvreurs' : 'cliqueurs';
+        const marque = `vu:${flux}:${mois}:${quoi}:${dest}`;
+        if (!(await env.SUBSCRIBERS.get(marque))) {
+          await env.SUBSCRIBERS.put(marque, '1', { expirationTtl: 70 * 24 * 3600 });
+          await compte(quoi);
+        }
+      }
 
       if (type === 'email.bounced') {
         const genre = String(ev?.data?.bounce?.type ?? ev?.data?.type ?? '').toLowerCase();
