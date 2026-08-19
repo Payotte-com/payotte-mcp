@@ -2926,9 +2926,26 @@ async function runAlerteTaux(env, { at = new Date(), dryRun = false } = {}) {
     }
     return { ...r, note: dateEst + ' — pas une date d’annonce' };
   }
-  // Jour d'annonce mais avant 9 h 45 HE : la décision n'existe pas encore. On attend le
-  // passage suivant du cron. (Le test porte sur l'heure : à 10 h HE on est sûr.)
+  // Jour d'annonce mais avant 9 h 45 HE : la décision n'existe pas encore.
   if (heureEst < 10 && !dryRun) return { ...r, note: 'annonce du jour pas encore publiée (9 h 45 HE)' };
+
+  // ⚠️ LE GARDE-FOU QUI COMPTE, ET IL N'EST PAS HORAIRE MAIS FACTUEL.
+  //
+  // L'heure ne prouve rien : la Banque du Canada annonce à 9 h 45, mais son API (Valet) ne
+  // publie pas forcément l'observation du jour à cette minute-là. Vérifié le 19 août à 13 h :
+  // la dernière observation disponible était celle de la VEILLE.
+  //
+  // Envoyer sur la seule foi de l'heure produirait le pire message possible : « Taux directeur
+  // maintenu à 2,25 % » un matin où la Banque vient de le baisser — parce qu'on aurait lu une
+  // valeur d'hier en croyant lire celle d'aujourd'hui. À 455 courtiers hypothécaires, dont
+  // c'est le métier. Une seule fois suffirait à ruiner la crédibilité de l'alerte.
+  //
+  // On exige donc que l'observation PORTE LA DATE DE L'ANNONCE. Tant qu'elle ne l'a pas, on
+  // ne sait rien et on se tait — quitte à envoyer au passage suivant, ou le lendemain matin.
+  // Un retard est réparable ; une fausse annonce, non.
+  if (String(p.observed ?? '') < dateEst && !dryRun) {
+    return { ...r, note: `Banque du Canada pas encore publiée pour le ${dateEst} (dernière observation : ${p.observed ?? '—'}) — on attend` };
+  }
 
   // Déjà envoyé pour CETTE annonce ? La clé survit 60 jours, bien au-delà de l'écart entre
   // deux annonces : c'est ce qui empêche sept passages de cron d'envoyer sept fois.
