@@ -878,7 +878,12 @@ async function macroCourant() {
     // Tous les champs à null (Valet injoignable) : autant ne rien annoncer.
     const utile = (o) => o && Object.values(o).some((v) => v?.percent != null);
     if (!utile(rates) && !utile(bonds)) return null;
-    return { rates, bonds, fetched: new Date().toISOString() };
+    // Le calendrier des annonces voyage avec les taux : c'est lui qui déclenche l'alerte.
+    return {
+      rates, bonds, fetched: new Date().toISOString(),
+      decisions: t?.recentDecisions ?? [],
+      aVenir: (t?.upcomingDecisions ?? []).map((x) => ({ date: x.date, mpr: !!x.mpr })),
+    };
   } catch {
     return null;
   }
@@ -2640,14 +2645,15 @@ function impactVariable({ ecartPct, prix }) {
 }
 
 function renderAlerteTaux({ nouveau, ancien, observed, lang, unsubUrl, postale = '',
-                           segment = 'optin', nom = '', ville = '', prix = null }) {
+                           segment = 'optin', nom = '', ville = '', prix = null,
+                           prochaine = null, prochaineMpr = false }) {
   const fr = lang === 'fr';
   const L = fr ? 'fr-CA' : 'en-CA';
   // Deux décimales, toujours. « 2 % » pour un taux directeur fait négligé auprès de gens
   // dont c'est le métier ; « 2,00 % » est la convention de la Banque du Canada elle-même.
   const nb = (v) => v.toLocaleString(L, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const arg = (v) => v.toLocaleString(L, { maximumFractionDigits: 0 }) + (fr ? ' $' : '');
-  const argEn = (v) => (fr ? arg(v) : '$' + v.toLocaleString(L, { maximumFractionDigits: 0 }));
+  const arg = (v) => (fr ? `${v.toLocaleString(L, { maximumFractionDigits: 0 })} $` : `$${v.toLocaleString(L, { maximumFractionDigits: 0 })}`);
+  const pc = (v) => `${nb(v)}${fr ? ' %' : '%'}`;
   // Date en toutes lettres : « 2026-08-18 » dans un courriel fait sortie de machine.
   const jour = (iso) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(String(iso ?? ''))) return String(iso ?? '');
@@ -2658,35 +2664,44 @@ function renderAlerteTaux({ nouveau, ancien, observed, lang, unsubUrl, postale =
     return fr ? `${j} ${mois[m - 1]} ${a}` : `${mois[m - 1]} ${j}, ${a}`;
   };
 
-  const sens = ancien == null ? null : nouveau > ancien ? 'hausse' : 'baisse';
-  const ecart = ancien == null ? null : Math.round(Math.abs(nouveau - ancien) * 100);
+  // ⚠️ LE MAINTIEN EST UNE NOUVELLE (décision de Grégory, 19 août). Le taux directeur n'a
+  // pas bougé depuis le 30 octobre 2025 : une alerte réservée aux CHANGEMENTS n'aurait rien
+  // envoyé en dix mois. Un courtier veut savoir que c'est stable — et l'apprendre de Payotte
+  // plutôt qu'ailleurs. On écrit donc à CHAQUE annonce, huit fois par an.
+  const bouge = ancien != null && nouveau !== ancien;
+  const sens = !bouge ? null : nouveau > ancien ? 'hausse' : 'baisse';
+  const ecart = !bouge ? 0 : Math.round(Math.abs(nouveau - ancien) * 100);
   const baisse = sens === 'baisse';
 
   const titre = fr
-    ? (sens === 'hausse' ? `La Banque du Canada monte son taux à ${nb(nouveau)} %`
-      : baisse ? `La Banque du Canada baisse son taux à ${nb(nouveau)} %`
-        : `Taux directeur : ${nb(nouveau)} %`)
-    : (sens === 'hausse' ? `Bank of Canada raises its rate to ${nb(nouveau)}%`
-      : baisse ? `Bank of Canada cuts its rate to ${nb(nouveau)}%`
-        : `Policy rate: ${nb(nouveau)}%`);
+    ? (!bouge ? `Taux directeur maintenu à ${pc(nouveau)}`
+      : baisse ? `La Banque du Canada baisse son taux à ${pc(nouveau)}`
+        : `La Banque du Canada monte son taux à ${pc(nouveau)}`)
+    : (!bouge ? `Policy rate held at ${pc(nouveau)}`
+      : baisse ? `Bank of Canada cuts its rate to ${pc(nouveau)}`
+        : `Bank of Canada raises its rate to ${pc(nouveau)}`);
 
   const salut = nom
     ? `<p style="margin:0 0 14px 0;font-size:15px;line-height:1.6;color:#4a4446;">${fr ? 'Bonjour' : 'Hello'} ${esc(String(nom).split(' ')[0])},</p>`
     : '';
 
-  const mouvement = ecart == null ? '' : fr
-    ? `<p style="margin:0 0 20px 0;font-size:15px;line-height:1.6;color:#4a4446;">Le taux directeur passe de <strong>${nb(ancien)} %</strong> à <strong>${nb(nouveau)} %</strong> — ${ecart} points de base à la ${sens}, observation du ${jour(observed)}.</p>`
-    : `<p style="margin:0 0 20px 0;font-size:15px;line-height:1.6;color:#4a4446;">The policy rate moves from <strong>${nb(ancien)}%</strong> to <strong>${nb(nouveau)}%</strong> — ${ecart} basis points ${baisse ? 'down' : 'up'}, observed ${jour(observed)}.</p>`;
+  const mouvement = bouge
+    ? (fr
+      ? `<p style="margin:0 0 20px 0;font-size:15px;line-height:1.6;color:#4a4446;">Le taux directeur passe de <strong>${pc(ancien)}</strong> à <strong>${pc(nouveau)}</strong> — ${ecart} points de base à la ${sens}, observation du ${jour(observed)}.</p>`
+      : `<p style="margin:0 0 20px 0;font-size:15px;line-height:1.6;color:#4a4446;">The policy rate moves from <strong>${pc(ancien)}</strong> to <strong>${pc(nouveau)}</strong> — ${ecart} basis points ${baisse ? 'down' : 'up'}, observed ${jour(observed)}.</p>`)
+    : (fr
+      ? `<p style="margin:0 0 20px 0;font-size:15px;line-height:1.6;color:#4a4446;">Aucun changement : le taux directeur reste à <strong>${pc(nouveau)}</strong>, où il est depuis le 30 octobre 2025. Observation du ${jour(observed)}.</p>`
+      : `<p style="margin:0 0 20px 0;font-size:15px;line-height:1.6;color:#4a4446;">No change: the policy rate stays at <strong>${pc(nouveau)}</strong>, where it has been since October 30, 2025. Observed ${jour(observed)}.</p>`);
 
   // ── Le bloc utile ───────────────────────────────────────────────────────────────
-  const imp = ecart == null ? null : impactVariable({ ecartPct: (nouveau - ancien), prix });
   const moins = baisse ? (fr ? 'de moins' : 'less') : (fr ? 'de plus' : 'more');
   let utile = '';
-  if (imp) {
+  if (bouge) {
+    const imp = impactVariable({ ecartPct: nouveau - ancien, prix });
     const ligneVille = imp.montant
       ? (fr
         ? `<p style="margin:0 0 10px 0;font-size:15px;line-height:1.65;color:#211c1e;">À <strong>${esc(ville)}</strong>, la propriété de référence est à ${arg(imp.prix)}. Sur une hypothèque variable de ${arg(imp.montant)} (20 % de mise de fonds, 25 ans), cet écart de ${ecart} points de base représente environ <strong style="color:#C8102E;">${arg(imp.mensuel)} par mois ${moins}</strong>.</p>`
-        : `<p style="margin:0 0 10px 0;font-size:15px;line-height:1.65;color:#211c1e;">In <strong>${esc(ville)}</strong>, the reference property sits at ${argEn(imp.prix)}. On a ${argEn(imp.montant)} variable mortgage (20% down, 25 years), those ${ecart} bps are roughly <strong style="color:#C8102E;">${argEn(imp.mensuel)} a month ${moins}</strong>.</p>`)
+        : `<p style="margin:0 0 10px 0;font-size:15px;line-height:1.65;color:#211c1e;">In <strong>${esc(ville)}</strong>, the reference property sits at ${arg(imp.prix)}. On a ${arg(imp.montant)} variable mortgage (20% down, 25 years), those ${ecart} bps are roughly <strong style="color:#C8102E;">${arg(imp.mensuel)} a month ${moins}</strong>.</p>`)
       : '';
     utile = `
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#faf8f8;border:1px solid #f1ecec;border-left:3px solid #C8102E;border-radius:6px;margin:0 0 18px 0;">
@@ -2695,51 +2710,76 @@ function renderAlerteTaux({ nouveau, ancien, observed, lang, unsubUrl, postale =
           ${ligneVille}
           <p style="margin:0;font-size:14px;line-height:1.6;color:#6f6769;">${fr
             ? `Par tranche de 100 000 $ d’hypothèque : environ <strong>${arg(imp.cent)} par mois ${moins}</strong>. Calcul valable si le taux préférentiel suit d’autant.`
-            : `Per $100,000 of mortgage: about <strong>${argEn(imp.cent)} a month ${moins}</strong>. Holds if prime moves by the same amount.`}</p>
+            : `Per $100,000 of mortgage: about <strong>${arg(imp.cent)} a month ${moins}</strong>. Holds if prime moves by the same amount.`}</p>
+        </td></tr>
+      </table>`;
+  } else {
+    // Un maintien a sa propre utilité : c'est ce que le courtier va répondre aujourd'hui
+    // aux clients qui appellent. On le lui donne formulé, pas à déduire.
+    utile = `
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#faf8f8;border:1px solid #f1ecec;border-left:3px solid #b9b2b3;border-radius:6px;margin:0 0 18px 0;">
+        <tr><td style="padding:18px 20px;">
+          <div style="font-size:10.5px;letter-spacing:1.3px;text-transform:uppercase;color:#a49c9e;margin-bottom:10px;">${fr ? 'Pour vos clients' : 'For your clients'}</div>
+          <p style="margin:0;font-size:15px;line-height:1.65;color:#211c1e;">${fr
+            ? `Rien ne bouge sur les taux variables aujourd’hui${ville ? ` à ${esc(ville)}` : ''} : le préférentiel suit le taux directeur, et le taux directeur ne change pas.${prochaine ? ` La prochaine fenêtre est le <strong>${jour(prochaine)}</strong>.` : ''}`
+            : `Nothing moves on variable rates today${ville ? ` in ${esc(ville)}` : ''}: prime follows the policy rate, and the policy rate is unchanged.${prochaine ? ` The next window is <strong>${jour(prochaine)}</strong>.` : ''}`}</p>
         </td></tr>
       </table>`;
   }
 
+  // ── Le bas du courriel : la prochaine annonce ───────────────────────────────────
+  const suite = prochaine ? `
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid #f1ecec;margin:4px 0 0 0;">
+        <tr><td style="padding:16px 0 0 0;">
+          <span style="font-size:10.5px;letter-spacing:1.3px;text-transform:uppercase;color:#a49c9e;">${fr ? 'Prochaine annonce' : 'Next announcement'}</span><br>
+          <span style="font-size:16px;color:#211c1e;font-weight:bold;">${jour(prochaine)}</span>
+          <span style="font-size:12px;color:#8a8284;"> &middot; ${fr ? '9 h 45, heure de l’Est' : '9:45 a.m. ET'}${prochaineMpr ? (fr ? ' &middot; avec le Rapport sur la politique monétaire' : ' &middot; with the Monetary Policy Report') : ''}</span>
+          <div style="font-size:13px;line-height:1.55;color:#6f6769;margin-top:7px;">${fr
+            ? 'Vous recevrez cette alerte ce matin-là, qu’il y ait mouvement ou non.'
+            : 'You will get this alert that morning, whether or not the rate moves.'}</div>
+        </td></tr>
+      </table>` : '';
+
   const corps = `
-    <tr><td style="padding:34px 32px 0 32px;">
-      <div style="font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:#a49c9e;margin-bottom:10px;">${fr ? 'Alerte taux' : 'Rate alert'}</div>
+    <tr><td style="padding:26px 32px 22px 32px;border-bottom:1px solid #f1ecec;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+        <td valign="middle"><a href="${SITE}"><img src="${LOGO}" width="140" height="29" alt="Payotte" style="display:block;border:0;"></a></td>
+        <td align="right" valign="middle" style="font-size:11px;letter-spacing:.5px;color:#9a9294;">${fr ? 'ALERTE TAUX' : 'RATE ALERT'}</td>
+      </tr></table>
+    </td></tr>
+    <tr><td style="padding:30px 32px 0 32px;">
       <h1 style="margin:0 0 16px 0;font-size:23px;line-height:1.3;color:#211c1e;font-weight:normal;">${titre}</h1>
       ${salut}${mouvement}
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#faf8f8;border:1px solid #f1ecec;border-radius:6px;margin:0 0 18px 0;">
         <tr><td style="padding:16px 20px;">
           <span style="font-size:13px;color:#8a8284;">${fr ? 'Taux directeur' : 'Policy interest rate'}</span><br>
-          <span style="font-size:28px;color:#C8102E;font-weight:bold;">${nb(nouveau)}${fr ? ' %' : '%'}</span>
+          <span style="font-size:28px;color:#C8102E;font-weight:bold;">${pc(nouveau)}</span>
           <span style="font-size:11px;color:#a49c9e;"> &middot; ${jour(observed)}</span>
         </td></tr>
       </table>
       ${utile}
-      <p style="margin:0 0 26px 0;font-size:14px;line-height:1.65;">
+      <p style="margin:0 0 4px 0;font-size:14px;line-height:1.65;">
         <a href="${SITE}${fr ? '/taux-directeur-canada' : '/en/canada-policy-rate'}" style="color:#C8102E;font-weight:bold;">${fr ? 'Tous les taux à jour, et l’historique des décisions →' : 'All current rates, and the decision history →'}</a>
       </p>
+      ${suite}
+      <div style="height:22px"></div>
     </td></tr>`;
 
-  // ⚠️ LE MOTIF DOIT ÊTRE VRAI. Une première version disait « parce que vous l'avez
-  // demandée » à TOUT LE MONDE — faux pour les 455 destinataires réels. Mentir sur la
-  // raison d'un envoi est précisément ce que la LCAP sanctionne.
+  // ⚠️ LE MOTIF DOIT ÊTRE VRAI, ET SUFFIRE. « parce que vous êtes courtier hypothécaire »
+  // n'est pas une formule de politesse : c'est le test même de la LCAP pour le consentement
+  // tacite — l'adresse professionnelle est publiée en évidence ET le message est pertinent
+  // à la fonction. Mentionner un « abonnement » brouillait ce fondement au lieu de l'énoncer.
   const MOTIFS = {
     optin: [
-      'Vous recevez cette alerte parce que vous l’avez demandée sur payotte.com. Elle ne part que lorsque le taux directeur change.',
-      'You receive this alert because you asked for it on payotte.com. It only goes out when the policy rate changes.',
+      'Vous recevez cette alerte parce que vous l’avez demandée sur payotte.com.',
+      'You receive this alert because you asked for it on payotte.com.',
     ],
-    expert: [
-      'Vous recevez ceci parce que vous êtes le courtier hypothécaire retenu par Payotte pour votre secteur. On ne vous écrit que lorsque le taux directeur change — deux à quatre fois par an.',
-      'You receive this because you are the mortgage broker Payotte lists for your sector. We only write when the policy rate changes — two to four times a year.',
-    ],
-    prospect: [
-      'Vous recevez ceci parce que vous êtes courtier hypothécaire et abonné à Payotte. On ne vous écrit que lorsque le taux directeur change — deux à quatre fois par an.',
-      'You receive this because you are a mortgage broker subscribed to Payotte. We only write when the policy rate changes — two to four times a year.',
+    pro: [
+      'Vous recevez cette alerte parce que vous êtes courtier hypothécaire. Payotte l’envoie à chaque annonce de la Banque du Canada — huit fois par an, jamais plus.',
+      'You receive this alert because you are a mortgage broker. Payotte sends it at every Bank of Canada announcement — eight times a year, never more.',
     ],
   };
-  // L'attribution de la Banque du Canada est une CONDITION DE LICENCE, pas un ornement :
-  // elle reste, mais dans le pied, à la taille du pied. Le pavé de mise en garde qui
-  // occupait le tiers du courriel est retiré (demande de Grégory, 19 août) : à un courtier
-  // hypothécaire, expliquer que Payotte ne fait pas de prévision est du remplissage.
-  const motif = `${(MOTIFS[segment] ?? MOTIFS.optin)[fr ? 0 : 1]} ${BOC_ATTRIBUTION}`;
+  const motif = `${(segment === 'optin' ? MOTIFS.optin : MOTIFS.pro)[fr ? 0 : 1]} ${BOC_ATTRIBUTION}`;
   const pied = FOOT(motif, unsubUrl, fr ? 'Se désabonner' : 'Unsubscribe', postale);
 
   const html = `<div style="background:#f5f3f2;margin:0;padding:28px 12px;font-family:Arial,Helvetica,sans-serif;"><table role="presentation" width="580" cellpadding="0" cellspacing="0" border="0" align="center" style="max-width:580px;width:100%;background:#ffffff;border:1px solid #eae5e5;border-radius:8px;">${corps}${pied}</table></div>`;
@@ -2855,33 +2895,65 @@ async function runAlerteTaux(env, { at = new Date(), dryRun = false } = {}) {
   const p = macro?.rates?.policyRate;
   if (p?.percent == null) return { ...r, note: 'taux directeur illisible' };
 
+  // ── LE DÉCLENCHEUR : LE CALENDRIER, PAS LA VALEUR (changé le 19 août) ──────────
+  // Version précédente : n'envoyer QUE si le taux avait changé. Vérification faite, cette
+  // règle n'aurait envoyé AUCUN courriel depuis le 30 octobre 2025 — dix mois de silence,
+  // trois maintiens d'affilée. Or un maintien est une information : le courtier veut savoir
+  // que c'est stable, et l'apprendre de Payotte plutôt qu'ailleurs.
+  // On écrit donc à chaque annonce programmée de la Banque du Canada : huit fois par an.
+  const annonces = [
+    ...(macro?.decisions ?? []).map((x) => ({ date: x.date, mpr: !!x.mpr })),
+    ...(macro?.aVenir ?? []),
+  ].filter((x) => /^\d{4}-\d{2}-\d{2}$/.test(String(x.date ?? '')));
+
+  // Jour et heure de l'Est : l'annonce tombe à 9 h 45 HE. Avant, il n'y a rien à dire.
+  const dateEst = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Toronto', year: 'numeric', month: '2-digit', day: '2-digit' }).format(at);
+  const heureEst = Number(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Toronto', hour: 'numeric', hour12: false }).format(at));
+  const aujourdhuiAnnonce = annonces.find((x) => x.date === dateEst);
+  const prochaine = annonces.filter((x) => x.date > dateEst).sort((a, b) => a.date.localeCompare(b.date))[0] ?? null;
+
   let memoire = null;
   try { memoire = JSON.parse((await env.SUBSCRIBERS.get('taux:dernier')) || 'null'); } catch { /* clé abîmée */ }
+  const ancienTaux = memoire?.percent ?? null;
 
-  // Première exécution : on MÉMORISE sans envoyer, sinon la mise en service annoncerait
-  // comme une nouvelle un taux inchangé depuis des mois.
-  if (!memoire || memoire.percent == null) {
-    if (!dryRun) await env.SUBSCRIBERS.put('taux:dernier', JSON.stringify({ percent: p.percent, observed: p.observed, depuis: at.toISOString() }));
-    return { ...r, note: 'mémoire initialisée — aucun envoi' };
+  Object.assign(r, { jourEst: dateEst, annonce: Boolean(aujourdhuiAnnonce), nouveau: p.percent, ancien: ancienTaux, observed: p.observed, prochaine: prochaine?.date ?? null });
+
+  // Pas un jour d'annonce : on tient seulement `taux:dernier` à jour, en silence. C'est le
+  // cas 357 jours sur 365, et ça ne coûte qu'une écriture KV.
+  if (!aujourdhuiAnnonce) {
+    if (!dryRun && ancienTaux !== p.percent) {
+      await env.SUBSCRIBERS.put('taux:dernier', JSON.stringify({ percent: p.percent, observed: p.observed, depuis: at.toISOString(), horsAnnonce: true }));
+    }
+    return { ...r, note: dateEst + ' — pas une date d’annonce' };
   }
-  if (memoire.percent === p.percent) return r;      // le cas normal, 361 jours sur 365
+  // Jour d'annonce mais avant 9 h 45 HE : la décision n'existe pas encore. On attend le
+  // passage suivant du cron. (Le test porte sur l'heure : à 10 h HE on est sûr.)
+  if (heureEst < 10 && !dryRun) return { ...r, note: 'annonce du jour pas encore publiée (9 h 45 HE)' };
 
-  Object.assign(r, { change: true, ancien: memoire.percent, nouveau: p.percent, observed: p.observed });
+  // Déjà envoyé pour CETTE annonce ? La clé survit 60 jours, bien au-delà de l'écart entre
+  // deux annonces : c'est ce qui empêche sept passages de cron d'envoyer sept fois.
+  const dejaFait = await env.SUBSCRIBERS.get(`taux:annonce:${dateEst}`);
+  if (dejaFait && !dryRun) return { ...r, note: `annonce du ${dateEst} déjà servie (${dejaFait})` };
+
+  r.change = ancienTaux != null && ancienTaux !== p.percent;
 
   // ⚠️ En DRY-RUN on ne s'arrête pas ici. Une répétition doit montrer ce qui PARTIRAIT —
   // sinon, tant que l'interrupteur est posé, il devient impossible de vérifier l'audience,
   // c'est-à-dire précisément la chose qu'on veut contrôler avant de le lever.
   const stop = await env.SUBSCRIBERS.get('stop:all');
   if (stop && !dryRun) {
+    // On MARQUE quand même l'annonce comme traitée. Sans ça, lever l'interrupteur des
+    // semaines plus tard ferait partir une alerte sur une annonce périmée.
     await env.SUBSCRIBERS.put('taux:dernier', JSON.stringify({ percent: p.percent, observed: p.observed, depuis: at.toISOString(), nonEnvoye: `stop:all ${stop}` }));
+    await env.SUBSCRIBERS.put(`taux:annonce:${dateEst}`, `non envoyée — stop:all`, { expirationTtl: 60 * 86400 });
     await env.SUBSCRIBERS.delete('taux:vague');
-    return { ...r, arrete: 'stop:all', note: 'mouvement enregistré, aucune alerte envoyée' };
+    return { ...r, arrete: 'stop:all', note: 'annonce enregistrée, aucune alerte envoyée' };
   }
   if (stop) r.arrete = 'stop:all';
 
   let vague = null;
   try { vague = JSON.parse((await env.SUBSCRIBERS.get('taux:vague')) || 'null'); } catch { /* clé abîmée */ }
-  if (!vague || vague.percent !== p.percent) vague = { percent: p.percent, debut: at.toISOString(), faits: [], envoyes: 0, rates: 0 };
+  if (!vague || vague.annonce !== dateEst) vague = { annonce: dateEst, percent: p.percent, debut: at.toISOString(), faits: [], envoyes: 0, rates: 0 };
   const faits = new Set(vague.faits ?? []);
 
   // ── LIRE LES EXCLUSIONS EN BLOC, PAS UNE PAR UNE (leçon du 13 août) ─────────────
@@ -2916,9 +2988,10 @@ async function runAlerteTaux(env, { at = new Date(), dryRun = false } = {}) {
     const v = villes[citySlug] ?? null;
     const unsubUrl = `${WORKER_ORIGIN}/unsubscribe?a=taux&e=${encodeURIComponent(e)}&t=${await hmacHex(env, `a:${e}`)}`;
     const { subject, html } = renderAlerteTaux({
-      nouveau: p.percent, ancien: memoire.percent, observed: p.observed,
+      nouveau: p.percent, ancien: ancienTaux, observed: p.observed,
       lang: lang === 'en' ? 'en' : 'fr', unsubUrl, postale,
       segment, nom, ville: v?.nom ?? '', prix: v?.prix ?? null,
+      prochaine: prochaine?.date ?? null, prochaineMpr: !!prochaine?.mpr,
     });
     file.push({ to: e, subject, html, unsubUrl, segment });
     r.parSegment[segment] = (r.parSegment[segment] || 0) + 1;
@@ -2979,11 +3052,14 @@ async function runAlerteTaux(env, { at = new Date(), dryRun = false } = {}) {
 
   r.audience = file.length;
   if (dryRun) return { ...r, dryRun: true, apercu: file.slice(0, 3).map((f) => `${f.to} (${f.segment})`) };
-  if (!file.length) {
-    // Personne à servir : soit tout est parti, soit il n'y a personne. Dans les deux cas
-    // la vague est close — sinon le cron redétecterait le changement à chaque passage.
+  const clore = async () => {
     await env.SUBSCRIBERS.put('taux:dernier', JSON.stringify({ percent: p.percent, observed: p.observed, depuis: at.toISOString(), envoyes: vague.envoyes }));
+    await env.SUBSCRIBERS.put(`taux:annonce:${dateEst}`, `${vague.envoyes} envoyée(s) — ${p.percent} %`, { expirationTtl: 60 * 86400 });
     await env.SUBSCRIBERS.delete('taux:vague');
+  };
+
+  if (!file.length) {
+    await clore();
     return { ...r, vagueFinie: true, totalVague: vague.envoyes };
   }
 
@@ -3005,8 +3081,7 @@ async function runAlerteTaux(env, { at = new Date(), dryRun = false } = {}) {
   // Vague close dès que tout ce qui était à servir a été tenté. Les ratés d'un lot
   // repartiront au passage suivant, puisqu'ils ne sont pas dans `faits`.
   if (!r.rates) {
-    await env.SUBSCRIBERS.put('taux:dernier', JSON.stringify({ percent: p.percent, observed: p.observed, depuis: at.toISOString(), envoyes: vague.envoyes }));
-    await env.SUBSCRIBERS.delete('taux:vague');
+    await clore();
     r.vagueFinie = true;
     r.totalVague = vague.envoyes;
   } else {
@@ -3276,7 +3351,9 @@ export default {
       const macro = await macroCourant();
       const reel = macro?.rates?.policyRate;
       const nouveau = Number(url.searchParams.get('nouveau') ?? reel?.percent ?? 2.25);
-      const ancien = Number(url.searchParams.get('ancien') ?? (nouveau + 0.25));
+      // Par défaut : un MAINTIEN — le cas le plus fréquent (aucun mouvement depuis
+      // le 30 octobre 2025). Passer ?ancien= pour voir la variante « ça bouge ».
+      const ancien = url.searchParams.get('ancien') != null ? Number(url.searchParams.get('ancien')) : nouveau;
       const observed = url.searchParams.get('observed') || reel?.observed || new Date().toISOString().slice(0, 10);
       const segment = ['optin', 'expert', 'prospect'].includes(url.searchParams.get('segment') ?? '')
         ? url.searchParams.get('segment') : 'optin';
@@ -3298,10 +3375,14 @@ export default {
           }
         } catch { /* sans prix, le bloc local se réduit au « par 100 000 $ » */ }
       }
+      const m = await macroCourant();
+      const pr = (m?.aVenir ?? [])[0] ?? null;
       const { subject, html } = renderAlerteTaux({
         nouveau, ancien, observed, lang, unsubUrl: '#apercu', postale: adressePostale(env),
         segment, ville, prix,
         nom: url.searchParams.get('nom') ?? (segment === 'optin' ? '' : 'Marie Pronovost'),
+        prochaine: url.searchParams.get('prochaine') || pr?.date || null,
+        prochaineMpr: url.searchParams.get('mpr') === '1' || !!pr?.mpr,
       });
       return new Response(
         `<!doctype html><meta charset="utf-8"><meta name="robots" content="noindex">`
@@ -3421,6 +3502,10 @@ export default {
         tauxLu: macro?.rates?.policyRate ?? null,
         changement: memoire && macro?.rates?.policyRate?.percent != null
           ? memoire.percent !== macro.rates.policyRate.percent : null,
+        // Le déclencheur, désormais : le CALENDRIER. Une alerte part à chaque annonce,
+        // mouvement ou non — le taux n'a pas bougé depuis le 30 octobre 2025.
+        prochaineAnnonce: (macro?.aVenir ?? [])[0] ?? null,
+        annoncesServies: env.SUBSCRIBERS ? await kvKeys(env.SUBSCRIBERS, 'taux:annonce:') : [],
         stopAll: (await env.SUBSCRIBERS?.get('stop:all')) ?? null,
         desabonnes: env.SUBSCRIBERS ? (await kvKeys(env.SUBSCRIBERS, 'unsub:taux:')).length : 0,
       };
