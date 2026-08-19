@@ -840,6 +840,50 @@ async function tauxCourants() {
   };
 }
 
+/**
+ * macroCourant() — les chiffres nationaux des COURRIELS, lus en direct comme ceux de l'outil.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────────
+ * POURQUOI (2026-08-19)
+ * ─────────────────────────────────────────────────────────────────────────────────
+ * Le bulletin lisait `/api/rates.json` et `/api/bonds.json` — deux fichiers STATIQUES du
+ * site, régénérés seulement quand Grégory déploie. Entre deux déploiements ils vieillissent
+ * sans le dire. Or `taux_courants`, l'outil MCP, interroge la Banque du Canada en direct :
+ * le même worker pouvait donc répondre 2,25 % à une IA et écrire 2,50 % dans un courriel
+ * parti la même heure. À des COURTIERS HYPOTHÉCAIRES, dont c'est le métier de connaître le
+ * taux du jour. Une divergence pareille coûte la crédibilité de tout le reste du message.
+ *
+ * `tauxCourants()` fait déjà le travail (Valet, cache 1 h côté Cloudflare) : cette fonction
+ * ne fait que traduire sa forme vers celle qu'attend `nationalBlock()`.
+ *
+ * ⚠️ ET ELLE RÉPARE UN BOGUE. `nationalBlock()` lit `macro.bonds`, alors que `tauxCourants()`
+ * renvoie ses rendements sous `bondYields.yields`. Le courriel S3 de la séquence recevait
+ * directement la sortie de `tauxCourants()` (l. ~2693) : `macro.bonds` valait `{}`, et le
+ * bloc obligation disparaissait — dans le SEUL courriel de la séquence dont le sujet est
+ * précisément l'obligation 5 ans qui mène le taux fixe. Sans erreur, sans trace.
+ *
+ * Les variations (pb) et le canal 52 semaines restent CALCULÉS PAR LE SITE : `tauxCourants()`
+ * les fusionne depuis `/api/bonds.json`. Le worker ne recalcule aucun delta (Règle #3) — il
+ * lit la valeur du jour à la source, et l'historique là où il est déjà établi.
+ *
+ * Panne de la Banque du Canada → `null`, et `nationalBlock()` rend une chaîne vide : le bloc
+ * disparaît, aucun envoi n'est bloqué. Un courriel sans encadré de taux part quand même ;
+ * un courriel avec un FAUX taux, non.
+ */
+async function macroCourant() {
+  try {
+    const t = await tauxCourants();
+    const rates = t?.rates ?? null;
+    const bonds = t?.bondYields?.yields ?? null;
+    // Tous les champs à null (Valet injoignable) : autant ne rien annoncer.
+    const utile = (o) => o && Object.values(o).some((v) => v?.percent != null);
+    if (!utile(rates) && !utile(bonds)) return null;
+    return { rates, bonds, fetched: new Date().toISOString() };
+  } catch {
+    return null;
+  }
+}
+
 // ---------------------------------------------------------------- contacter_expert
 
 const DAY_CAP_GLOBAL = 40;      // marge sous le palier Resend gratuit (100/jour)
@@ -1142,7 +1186,7 @@ async function sendBulletin(env, origin, email, city, lang, welcome = false) {
     body: JSON.stringify({
       from: env.MAIL_FROM_BULLETIN || 'Payotte <bulletin@payotte.com>',
       to: [email],
-      reply_to: 'gregory@payotte.com',
+      reply_to: REPLY_TO,
       subject: fr ? `Le pouls du marché — ${city.name}` : `Market pulse — ${city.name}`,
       text: bulletinText(city, lang, unsubUrl, welcome),
       headers: { 'List-Unsubscribe': `<${unsubUrl}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' },
@@ -1165,6 +1209,23 @@ const LOGO = 'https://payotte.com/payotte-logo-transparent.png';
 // À la place, UN récapitulatif par exécution — sans lui, un envoi raté ne laisse aucune trace.
 const REPORT_TO = 'gpayotte@gmail.com';
 
+// ⚠️ ADRESSE DE RÉPONSE — corrigée le 2026-08-19, et c'est une PANNE, pas une préférence.
+// `gregory@payotte.com` était le reply_to de TOUS les envois (bulletin, experts, lots).
+// Or `payotte.com` n'a AUCUN enregistrement MX (`dig payotte.com MX` → vide) : le renvoi
+// GoDaddy est mort. Dernier courriel reçu à cette adresse : 26 mai 2026. Chaque courriel
+// qui disait « répondez à ce courriel » depuis au moins trois mois envoyait la réponse
+// dans le vide — y compris les 217 présentations ⓪ et les vagues de relance d'août.
+// Le même constat était DÉJÀ écrit plus bas pour le formulaire de contact (relais du
+// 2026-08-17, « testé le 17 août : le message n'arrive nulle part ») sans que le reply_to
+// des envois n'en tire la conséquence.
+// Si un jour un MX est rétabli sur payotte.com, cette constante redevient l'adresse de
+// marque — mais seulement après un test d'arrivée horodaté, pas sur la foi du réglage.
+const REPLY_TO = 'gpayotte@gmail.com';
+
+// Jours entre le relevé d'une fiche (`verifiedDate`) et le droit de présenter Payotte à
+// son professionnel. Voir `expertStage()`.
+const QUARANTAINE_INTRO_JOURS = 7;
+
 // Étape d'un expert d'après son état vivant. `introduced` = il a déjà reçu la présentation ⓪.
 // OPT-OUT (décision proprio, 2 août 2026) : personne n'a à dire « oui ». Après la présentation,
 // l'expert monte dans l'escalier ①②③④ d'office, chaque mois, jusqu'à ce qu'il dise non
@@ -1172,6 +1233,20 @@ const REPORT_TO = 'gpayotte@gmail.com';
 function expertStage(expert, introduced) {
   const c = expert?.score?.color;
   if (!c || c === 'red') return null;          // rouge = non publié → pas de bulletin
+  // ── QUARANTAINE DE LA PRÉSENTATION (2026-08-19) ──────────────────────────────────
+  // La ⓪ dit « c'est vous que j'ai retenu, sur la foi de données publiques » : elle ne
+  // doit jamais partir sur une fiche qui vient d'être relevée et pas encore relue. Sept
+  // jours après `verifiedDate`, c'est le délai pendant lequel une erreur de relevé se
+  // corrige encore sans que personne dehors ne l'ait vue. Précédent : les deux agents qui
+  // ont FABRIQUÉ une ancienneté en juillet (« licensed since 2005 » introuvable sur le
+  // site cité) — une ⓪ partie le jour même aurait porté ce chiffre inventé au principal
+  // intéressé. Le coût du délai est nul : l'expert entre au cycle suivant.
+  // Une fiche sans `verifiedDate` n'est pas retenue en quarantaine (le champ manque sur
+  // ~10 fiches anciennes) — on ne bloque pas sur une donnée absente, on ne devine pas.
+  if (!introduced && expert?.verifiedDate) {
+    const jours = (Date.now() - Date.parse(expert.verifiedDate)) / 86400000;
+    if (Number.isFinite(jours) && jours < QUARANTAINE_INTRO_JOURS) return null;
+  }
   if (!introduced) return 'intro';             // ⓪ présentation (une seule fois dans la vie)
   if (c === 'yellow') return 'yellow';         // ① monter vers le vert
   if (!expert.ownerVerified) return 'green';   // ② confirmer → Recommandé
@@ -1282,7 +1357,21 @@ const CLOSE = (bg, border, inner) => `<tr><td style="padding:20px 32px 4px 32px;
 const BTN = (href, txt) => `<a href="${href}" style="display:inline-block;background:#c8102e;color:#ffffff;font-size:14px;font-weight:bold;text-decoration:none;padding:11px 20px;border-radius:9px;">${txt}</a>`;
 const H3 = (t) => `<div style="font-family:Georgia,'Times New Roman',serif;font-size:19px;line-height:1.25;color:#211c1e;margin-bottom:10px;">${t}</div>`;
 const P = (t) => `<div style="font-size:14px;line-height:1.6;color:#443e40;margin-bottom:14px;">${t}</div>`;
-const FOOT = (why, unsubUrl, unsubTxt) => `<tr><td style="padding:22px 32px 26px 32px;"><div style="border-top:1px solid #f1ecec;padding-top:16px;font-size:11.5px;line-height:1.6;color:#a49c9e;">${why} <a href="${unsubUrl}" style="color:#8a8284;">${unsubTxt}</a> &middot; payotte.com</div></td></tr>`;
+// ── ADRESSE POSTALE DE L'EXPÉDITEUR (2026-08-19) ──────────────────────────────────
+// La LCAP l'EXIGE dans tout message commercial électronique : le Règlement (art. 2(2))
+// impose « l'adresse postale » de l'expéditeur, en plus de son nom et d'un moyen de le
+// joindre. Le pied ne portait que le nom et payotte.com — il manquait la pièce la plus
+// simple, et c'est celle qu'un plaignant cite en premier parce qu'elle se vérifie d'un
+// coup d'œil.
+//
+// ⚠️ ELLE N'EST PAS ÉCRITE ICI, ET C'EST VOULU. Aucune adresse de Payotte n'existe dans
+// le dépôt ; en inventer une serait une fausse mention légale — bien pire que l'absence.
+// Elle se pose en variable (`ADRESSE_POSTALE` dans wrangler.toml) par le propriétaire.
+// Tant qu'elle manque, le pied s'affiche sans elle et `runBulletin` le crie dans le
+// journal à chaque passage : mieux vaut un manque visible qu'un manque oublié.
+const adressePostale = (env) => (env?.ADRESSE_POSTALE || '').trim();
+
+const FOOT = (why, unsubUrl, unsubTxt, postale = '') => `<tr><td style="padding:22px 32px 26px 32px;"><div style="border-top:1px solid #f1ecec;padding-top:16px;font-size:11.5px;line-height:1.6;color:#a49c9e;">${why} <a href="${unsubUrl}" style="color:#8a8284;">${unsubTxt}</a> &middot; payotte.com${postale ? `<br>${postale}` : ''}</div></td></tr>`;
 
 // Page de la VILLE, pas l'accueil du pays. Le bouton du bulletin pointait sur /canada :
 // on servait à quelqu'un le marché de Charlottetown pour le renvoyer choisir sa province
@@ -1320,7 +1409,7 @@ function ligneIA(metier, fr) {
 }
 
 // Rendu complet d'un courriel : {subject, html}. segment='prospect'|'expert' ; stage pour les experts.
-function renderPulse({ segment, stage, city, expert, lang, unsubUrl, macro = null, metier = '' }) {
+function renderPulse({ segment, stage, city, expert, lang, unsubUrl, macro = null, metier = '', postale = '' }) {
   const fr = lang !== 'en';
   const url = expert?.url || `${SITE}`;
   const eyebrow = `${fr ? 'Le pouls du marché' : 'Market pulse'}<br><span style="color:#c8102e;letter-spacing:1px;">${city.name}${city.referenceMonth ? ' &middot; ' + city.referenceMonth : ''}</span>`;
@@ -1328,30 +1417,30 @@ function renderPulse({ segment, stage, city, expert, lang, unsubUrl, macro = nul
   if (segment === 'prospect') {
     subject = fr ? `${city.name} : le pouls du marché` : `${city.name}: your market pulse`;
     close = CLOSE('#eef3f0', '#cfe4d7', `${H3(fr ? `Les experts vérifiés de ${city.name}` : `${city.name}'s verified experts`)}${P(fr ? `Payotte a vérifié <b>un seul</b> expert de référence par secteur et par métier — sans commission, sans publicité.` : `Payotte verified <b>one</b> reference expert per sector and trade — no commission, no ads.`)}${BTN(cityUrl(city), fr ? `Voir les experts de ${city.name} →` : `See ${city.name}'s experts →`)}${ligneIA(metier, fr)}`);
-    foot = FOOT(fr ? `Vous recevez le pouls de ${city.name}, une fois par mois.` : `You get the ${city.name} pulse once a month.`, unsubUrl, fr ? 'Se désabonner' : 'Unsubscribe');
+    foot = FOOT(fr ? `Vous recevez le pouls de ${city.name}, une fois par mois.` : `You get the ${city.name} pulse once a month.`, unsubUrl, fr ? 'Se désabonner' : 'Unsubscribe', postale);
   } else {
     const ask = expert ? missingAsk(expert, fr) : '';
     const proWho = fr ? `l'expert vérifié en ${expert?.professionLabel ?? ''} pour ${city.name}` : `the verified ${expert?.professionLabel ?? ''} for ${city.name}`;
     if (stage === 'intro') {
       subject = fr ? `Pourquoi je vous ai retenu comme référence à ${city.name}` : `Why I chose you as the reference in ${city.name}`;
       close = CLOSE('#faf8f7', '#eee9e8', `${P(fr ? `Je m'appelle Grégory Payotte. J'ai bâti <b>Payotte</b>, un annuaire indépendant qui recommande un seul expert vérifié par ville et par métier — gratuit, sans commission. Pour ${proWho}, c'est vous que j'ai retenu, sur la foi de données publiques. Le pouls ci-dessus, je le publie chaque mois.` : `I'm Grégory Payotte. I built <b>Payotte</b>, an independent directory recommending one verified expert per city and trade — free, no commission. For ${proWho}, I chose you, based on public data. I publish the pulse above every month.`)}${P(fr ? `Je vous l'enverrai <b>chaque mois</b>, gratuitement — rien à faire de votre côté. Si vous n'en voulez pas, un clic en bas de ce courriel et vous n'entendrez plus jamais parler de moi.` : `I'll send it to you <b>every month</b>, free — nothing to do on your end. If you'd rather not, one click at the bottom of this email and you'll never hear from me again.`)}${BTN(url, fr ? 'Voir votre fiche →' : 'See your profile →')}`);
-      foot = FOOT(fr ? `Vous recevez ce courriel parce que vous êtes ${proWho}. Le pouls du marché part une fois par mois.` : `You're receiving this because you are ${proWho}. The market pulse goes out once a month.`, unsubUrl, fr ? 'Ne plus rien recevoir' : 'Unsubscribe');
+      foot = FOOT(fr ? `Vous recevez ce courriel parce que vous êtes ${proWho}. Le pouls du marché part une fois par mois.` : `You're receiving this because you are ${proWho}. The market pulse goes out once a month.`, unsubUrl, fr ? 'Ne plus rien recevoir' : 'Unsubscribe', postale);
     } else if (stage === 'yellow') {
       subject = fr ? `Votre marché à ${city.name} — et la donnée qui vous ferait monter` : `Your ${city.name} market — and the data that would lift you`;
       close = CLOSE('#fdf6e9', '#f2e4c4', `${H3(fr ? 'Pendant qu\'on y est : votre fiche.' : 'While we\'re at it: your profile.')}${P(fr ? `Votre fiche Payotte est à <b>${expert?.score?.total ?? ''}/100</b>. La donnée la plus payante qui vous manque : <b>${ask}</b>. Répondez à ce courriel avec — je mets à jour le jour même.` : `Your profile is at <b>${expert?.score?.total ?? ''}/100</b>. The most valuable missing piece: <b>${ask}</b>. Reply with it — I update the same day.`)}${BTN(url, fr ? 'Voir ma fiche →' : 'See my profile →')}`);
-      foot = FOOT(fr ? `Vous recevez ce courriel parce que vous êtes ${proWho}.` : `You get this because you are ${proWho}.`, unsubUrl, fr ? 'Ne plus recevoir' : 'Unsubscribe');
+      foot = FOOT(fr ? `Vous recevez ce courriel parce que vous êtes ${proWho}.` : `You get this because you are ${proWho}.`, unsubUrl, fr ? 'Ne plus recevoir' : 'Unsubscribe', postale);
     } else if (stage === 'green') {
       subject = fr ? `Vous êtes la référence vérifiée de ${city.name} — une dernière étape` : `You're the verified reference in ${city.name} — one last step`;
       close = CLOSE('#eef5f0', '#cfe4d7', `${H3(fr ? 'Vous êtes déjà au vert.' : 'You\'re already in the green.')}${P(fr ? `Une seule étape pour le plus haut niveau du site : <b>confirmer votre fiche</b> et devenir <b style="color:#1f7a44;">Recommandé N&ordm; 1</b>. Deux minutes, par réponse à ce courriel.` : `One step to the top tier: <b>confirm your profile</b> and become <b style="color:#1f7a44;">Recommended #1</b>. Two minutes, just reply.`)}${BTN(url, fr ? 'Confirmer ma fiche →' : 'Confirm my profile →')}`);
-      foot = FOOT(fr ? `Vous recevez ce courriel parce que vous êtes ${proWho}.` : `You get this because you are ${proWho}.`, unsubUrl, fr ? 'Ne plus recevoir' : 'Unsubscribe');
+      foot = FOOT(fr ? `Vous recevez ce courriel parce que vous êtes ${proWho}.` : `You get this because you are ${proWho}.`, unsubUrl, fr ? 'Ne plus recevoir' : 'Unsubscribe', postale);
     } else if (stage === 'reco') {
       subject = fr ? `Vous êtes Recommandé N° 1 à ${city.name} — rendez-le visible` : `You're Recommended #1 in ${city.name} — make it visible`;
       close = CLOSE('#fbedef', '#f0d3d9', `<div style="font-size:11px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;color:#c8102e;margin-bottom:8px;">&#10003; ${fr ? 'Recommandé par Payotte' : 'Recommended by Payotte'}</div>${H3(fr ? 'Rendez-le visible sur votre site.' : 'Show it on your site.')}${P(fr ? `Affichez le badge « Recommandé » : un <b>lien réciproque dofollow</b> — bon pour votre référencement, et un signal de confiance. Je fournis le code (ou je m'arrange avec votre webmestre).` : `Display the "Recommended" badge: a <b>reciprocal dofollow link</b> — good for your SEO and a trust signal. I provide the code (or work with your webmaster).`)}${BTN(`${SITE}/badge/${expert?.slug ?? ''}`, fr ? 'Obtenir mon badge →' : 'Get my badge →')}`);
-      foot = FOOT(fr ? `Vous recevez ce courriel parce que vous êtes Recommandé à ${city.name}.` : `You get this because you are Recommended in ${city.name}.`, unsubUrl, fr ? 'Ne plus recevoir' : 'Unsubscribe');
+      foot = FOOT(fr ? `Vous recevez ce courriel parce que vous êtes Recommandé à ${city.name}.` : `You get this because you are Recommended in ${city.name}.`, unsubUrl, fr ? 'Ne plus recevoir' : 'Unsubscribe', postale);
     } else { // partner
       subject = fr ? `Votre marché à ${city.name} ce mois-ci` : `Your ${city.name} market this month`;
       close = `<tr><td style="padding:18px 32px 4px 32px;"><div style="border-top:1px solid #f1ecec;padding-top:18px;font-size:14px;line-height:1.62;color:#443e40;">${fr ? `Tout est en place : vous êtes Recommandé et votre badge est en ligne. Rien à demander — juste votre marché, chaque mois.` : `All set: you're Recommended and your badge is live. Nothing to ask — just your market, monthly.`}<div style="margin-top:14px;font-size:13px;color:#6f6769;">${fr ? `Un confrère d'un secteur voisin mériterait d'être vérifié ? <b>Transmettez-lui ce courriel.</b>` : `Know a peer worth verifying? <b>Forward this email.</b>`}</div></div></td></tr>`;
-      foot = FOOT(fr ? `Vous êtes Recommandé et partenaire vérifié à ${city.name}.` : `You are Recommended and a verified partner in ${city.name}.`, unsubUrl, fr ? 'Ne plus recevoir' : 'Unsubscribe');
+      foot = FOOT(fr ? `Vous êtes Recommandé et partenaire vérifié à ${city.name}.` : `You are Recommended and a verified partner in ${city.name}.`, unsubUrl, fr ? 'Ne plus recevoir' : 'Unsubscribe', postale);
     }
   }
   const html = `<div style="background:#f5f3f2;margin:0;padding:28px 12px;font-family:Arial,Helvetica,sans-serif;"><table role="presentation" width="580" cellpadding="0" cellspacing="0" border="0" align="center" style="max-width:580px;width:100%;background:#ffffff;border:1px solid #eae5e5;border-radius:8px;">${marketCore(city, fr, eyebrow)}${nationalBlock(macro, fr)}${close}${foot}</table></div>`;
@@ -1361,6 +1450,240 @@ function renderPulse({ segment, stage, city, expert, lang, unsubUrl, macro = nul
 // Resend limite à 2 requêtes/seconde (429 au-delà). La boucle du bulletin tire en rafale :
 // on espace les appels pour rester sous la barre. 600 ms ≈ 1,6 envoi/s.
 const RESEND_MIN_GAP_MS = 600;
+
+// ═══════════════════════════════════════════════════════════════════════════════════
+// SÉQUENCE DE SIX SEMAINES (2026-08-19)
+// ═══════════════════════════════════════════════════════════════════════════════════
+//
+// CE QUE C'EST. Une suite FINIE de six courriels hebdomadaires à un expert publié, chacun
+// portant SON chiffre à lui. Elle ne remplace pas l'escalier mensuel : elle le suspend le
+// temps qu'elle dure, puis l'expert y retourne.
+//
+// L'ÉQUILIBRE, ET C'EST LA RAISON D'ÊTRE DE L'ORDRE. Quatre des six semaines donnent
+// quelque chose sans rien demander ; une seule vend. Une première version en avait quatre
+// qui parlaient de Payotte — un pro n'a aucune raison de lire ça. Chaque semaine « pour
+// eux » doit rester utile même s'ils ne confirment jamais leur fiche.
+//
+//   S1  le virage IA de SON métier ............ contenu pur, aucune demande
+//   S2  la lisibilité IA de SON site .......... diagnostic de son bien à lui
+//   S3  le marché de SON secteur + les taux ... contenu pur, aucune demande
+//   S4  sa fiche : confirmer .................. première demande, légère
+//   S5  le badge .............................. un outil pour lui (lien retour)
+//   S6  la tribune ............................ la seule offre payante
+//
+// TROIS RÈGLES QUI NE SE NÉGOCIENT PAS, chacune payée par une erreur passée :
+//
+//  1. ON NE DIT JAMAIS QUE SA FICHE EST CITÉE. Au relevé du 14 août, AUCUNE fiche
+//     individuelle n'apparaît dans les pages citées par Copilot — ce sont les pages de
+//     coûts en anglais et deux hubs. On écrit « le site est cité », jamais « votre fiche ».
+//     (Règle #3, et la phrase serait fausse le jour où le pro la vérifie.)
+//
+//  2. RÈGLE NAZAR — S6 ne propose JAMAIS une tribune dans le secteur où le destinataire
+//     est classé. Vendre une tribune à celui qu'on classe N° 1 de ce même secteur, c'est
+//     exactement ce que le council du 12 août a interdit. S6 dit d'emblée « pas dans votre
+//     secteur, par construction ».
+//
+//  3. ON N'ANNONCE JAMAIS LA FIN. Pas de « dernier courriel », pas de compte à rebours.
+//     Le lien de désabonnement est là depuis S1 : qui veut sortir sort. Annoncer la fin
+//     transforme une suite de courriels utiles en entonnoir de vente affiché.
+//
+// L'ÉTAT VIVANT PRIME SUR LE SCRIPT. À chaque envoi on relit la fiche : si le pro a
+// confirmé entre S2 et S4, S4 devient un remerciement. La séquence ne rejoue pas un script
+// écrit d'avance devant quelqu'un qui a déjà répondu.
+
+/** Le chiffre du virage IA, par métier. Chaque valeur porte sa source et son année. */
+const IA_METIER = {
+  'real-estate-broker': {
+    fr: { n: '36 %', quoi: 'des vendeurs trouvent leur courtier en ligne — le double de 2018',
+          src: 'NAR, Profile of Home Buyers and Sellers 2024' },
+    en: { n: '36%', quoi: 'of sellers find their agent through online channels — double 2018',
+          src: 'NAR, Profile of Home Buyers and Sellers 2024' } },
+  'mortgage-broker': {
+    fr: { n: '83 %', quoi: 'des recherches ne mènent à AUCUN site quand un résumé IA s’affiche',
+          src: 'Bain–Dynata Generative AI Consumer Survey, 2024' },
+    en: { n: '83%', quoi: 'of searches lead to NO site at all when an AI summary appears',
+          src: 'Bain–Dynata Generative AI Consumer Survey, 2024' } },
+  'home-inspector': {
+    fr: { n: '46 %', quoi: 'des recherches Google ont une intention locale (« près de moi », nom de quartier)',
+          src: 'Google / BrightLocal, Local SEO Statistics 2025' },
+    en: { n: '46%', quoi: 'of Google searches carry local intent (“near me”, neighbourhood names)',
+          src: 'Google / BrightLocal, Local SEO Statistics 2025' } },
+  'notary-lawyer': {
+    fr: { n: '87 %', quoi: 'des consommateurs consultent les avis en ligne pour juger un professionnel local',
+          src: 'BrightLocal, Local Consumer Review Survey 2024' },
+    en: { n: '87%', quoi: 'of consumers use online reviews to judge a local professional',
+          src: 'BrightLocal, Local Consumer Review Survey 2024' } },
+  appraiser: {
+    fr: { n: '+30 à 40 %', quoi: 'de chances d’être cité par une IA pour une page en données structurées',
+          src: 'Frase.io, GEO Playbook 2025' },
+    en: { n: '+30 to 40%', quoi: 'more likely to be cited by an AI when a page carries structured data',
+          src: 'Frase.io, GEO Playbook 2025' } },
+};
+
+/** Les cinq piliers de l'Indice IA, pour nommer celui qui coûte le plus. */
+const PILIERS_IA = [
+  { cle: 'structure', max: 25, fr: 'données structurées (JSON-LD)', en: 'structured data (JSON-LD)' },
+  { cle: 'acces', max: 30, fr: 'accès des robots d’IA', en: 'AI crawler access' },
+  { cle: 'aeo', max: 20, fr: 'réponse prélevable', en: 'extractable answer' },
+  { cle: 'ancrage', max: 15, fr: 'ancrage local lisible', en: 'machine-readable local anchoring' },
+  { cle: 'technique', max: 10, fr: 'hygiène technique', en: 'technical hygiene' },
+];
+
+/** Le pilier au plus gros écart — celui qu'on nomme, jamais une liste de cinq reproches. */
+function pilierLePlusCher(ia, fr) {
+  if (!ia) return null;
+  let pire = null;
+  for (const p of PILIERS_IA) {
+    const v = Number(ia[p.cle] ?? 0);
+    const manque = p.max - v;
+    if (!pire || manque > pire.manque) pire = { ...p, v, manque };
+  }
+  return pire && pire.manque > 0 ? { nom: fr ? pire.fr : pire.en, v: pire.v, max: pire.max } : null;
+}
+
+/**
+ * Rend l'étape `etape` (1..6) de la séquence. Même gabarit visuel que le pouls mensuel.
+ * `seq.ia` vient de l'enrôlement (ai-readiness.csv) ; `expert` est relu à chaque envoi.
+ */
+function renderSequence({ etape, expert, city, seq, lang, unsubUrl, macro = null, postale = '' }) {
+  const fr = lang !== 'en';
+  const url = expert?.url || SITE;
+  const nom = expert?.professional?.name || expert?.name || '';
+  const prenom = String(nom).trim().split(/\s+/)[0] || '';
+  const salut = fr ? (prenom ? `Bonjour ${prenom},` : 'Bonjour,') : (prenom ? `Hello ${prenom},` : 'Hello,');
+  const secteur = expert?.sectorName || city?.name || '';
+  const metier = expert?.professionLabel || '';
+  const eyebrow = `${fr ? 'Espace professionnels' : 'For professionals'}<br><span style="color:#c8102e;letter-spacing:1px;">${secteur}</span>`;
+  const sig = P(fr ? `À bientôt,<br><span style="font-family:Georgia,serif;font-style:italic;">Grégory</span>`
+                  : `Best,<br><span style="font-family:Georgia,serif;font-style:italic;">Grégory</span>`);
+  const pied = (quoi) => FOOT(quoi, unsubUrl, fr ? 'Se désabonner' : 'Unsubscribe', postale);
+  const pourquoi = fr
+    ? `Vous recevez ce courriel parce que vous êtes le ${metier} vérifié de ${secteur} sur Payotte.`
+    : `You are receiving this because you are the verified ${metier} for ${secteur} on Payotte.`;
+
+  // L'état VIVANT commande : confirmé entre-temps → S4 remercie au lieu de redemander.
+  const confirme = expert?.ownerVerified === true;
+  const badgePose = expert?.badgeExchange === true;
+
+  let subject, corps;
+
+  if (etape === 1) {
+    const st = IA_METIER[expert?.profession] ?? IA_METIER['real-estate-broker'];
+    const d = fr ? st.fr : st.en;
+    subject = fr ? `${secteur} : ${d.n} — ce qui a changé dans la façon dont on vous trouve`
+                 : `${secteur}: ${d.n} — what changed in how people find you`;
+    corps = CLOSE('#faf8f7', '#eee9e8',
+      `${P(salut)}${H3(fr ? 'Quand l’IA répond, elle ne nomme qu’un seul expert' : 'When AI answers, it names one expert')}`
+      + P(fr ? `Un chiffre de votre métier, pour commencer : <b>${d.n}</b> ${d.quoi}.`
+             : `One figure from your trade: <b>${d.n}</b> ${d.quoi}.`)
+      + P(fr ? `La recherche ne se partage plus entre dix liens : elle se résume en une réponse, et cette réponse nomme <b>un</b> professionnel. Ce n’est pas le classement qui décide qui elle nomme — c’est ce qu’une machine peut vérifier sur vous.`
+             : `Search no longer spreads across ten links: it collapses into one answer, and that answer names <b>one</b> professional. What decides is not ranking — it is what a machine can verify about you.`)
+      + BTN(`${SITE}${fr ? '/ia-en-immobilier' : '/en/ai-in-real-estate'}`, fr ? 'Le virage IA, pour votre métier →' : 'The AI shift, for your trade →')
+      + sig);
+    return { subject, html: enveloppe(city, fr, eyebrow, corps, pied(`${pourquoi} ${fr ? `Source : ${d.src}.` : `Source: ${d.src}.`}`), macro, false) };
+  }
+
+  if (etape === 2) {
+    const ia = seq?.ia;
+    const pire = pilierLePlusCher(ia, fr);
+    subject = ia?.score != null
+      ? (fr ? `${ia.domaine} : ${ia.score}/100 pour les moteurs de réponse` : `${ia.domaine}: ${ia.score}/100 for answer engines`)
+      : (fr ? `Ce que les IA voient de votre site` : `What AI engines see of your site`);
+    corps = CLOSE('#fdf6e9', '#f2e4c4',
+      `${P(salut)}${H3(fr ? 'Ce que ChatGPT et Copilot voient de votre site' : 'What ChatGPT and Copilot see of your site')}`
+      + P(ia?.score != null
+        ? (fr ? `J’ai passé <b>${ia.domaine}</b> dans le protocole de notre étude sur 446 cabinets : <b>${ia.score}/100</b>, pour une médiane de 49. Ce n’est pas un jugement sur votre pratique — c’est une mesure de ce que le CODE de vos pages rend lisible à une machine, pas à un humain.`
+              : `I ran <b>${ia.domaine}</b> through the protocol of our study of 446 firms: <b>${ia.score}/100</b>, against a median of 49. This is not a judgement on your practice — it measures what the CODE of your pages makes readable to a machine, not to a human.`)
+        : (fr ? `Notre étude a mesuré 446 cabinets sur 100 points de lisibilité par les moteurs de réponse. La médiane est de 49.`
+              : `Our study measured 446 firms on 100 points of answer-engine readability. The median is 49.`))
+      + (pire ? P(fr ? `Le pilier qui vous coûte le plus : <b>${pire.nom}</b>, à ${pire.v}/${pire.max}. C’est aussi le plus rapide à corriger.`
+                     : `The pillar costing you most: <b>${pire.nom}</b>, at ${pire.v}/${pire.max}. It is also the quickest to fix.`) : '')
+      + BTN(`${SITE}${fr ? '/etudes/lisibilite-ia-experts-immobiliers' : '/en/studies/ai-readiness-real-estate-experts'}`,
+            fr ? 'L’étude complète, méthode incluse →' : 'The full study, method included →')
+      + sig);
+    return { subject, html: enveloppe(city, fr, eyebrow, corps, pied(pourquoi), macro, false) };
+  }
+
+  if (etape === 3) {
+    subject = fr ? `Le marché de ${city?.name ?? secteur} — et les taux` : `${city?.name ?? secteur}'s market — and rates`;
+    corps = CLOSE('#f3f6f8', '#dde6ea',
+      `${P(salut)}`
+      + P(fr ? `Les chiffres du mois pour votre marché, et les taux qui les commandent. Rien à faire de votre côté : c’est de la matière pour vos conversations de la semaine.`
+             : `This month's figures for your market, and the rates that drive them. Nothing to do on your side: it is material for your conversations this week.`)
+      + P(fr ? `Ces chiffres sont publics et structurés — le genre de donnée qu’une IA cite directement quand un client lui demande comment va le marché.`
+             : `These figures are public and structured — the kind of data an AI cites directly when a client asks how the market is doing.`)
+      + BTN(cityUrl(city), fr ? `Les chiffres de ${city?.name ?? secteur} →` : `${city?.name ?? secteur} figures →`)
+      + sig);
+    // Seule étape qui porte la grille de marché ET le bloc taux : c'est son contenu.
+    return { subject, html: enveloppe(city, fr, eyebrow, corps, pied(pourquoi), macro, true) };
+  }
+
+  if (etape === 4) {
+    if (confirme) {
+      subject = fr ? `Votre fiche est confirmée — merci` : `Your profile is confirmed — thank you`;
+      corps = CLOSE('#eef5f0', '#cfe4d7',
+        `${P(salut)}${H3(fr ? 'C’est fait, et c’est le plus haut niveau du site.' : 'Done — and it is the site’s highest tier.')}`
+        + P(fr ? `Votre fiche est confirmée : elle porte le statut <b style="color:#1f7a44;">Recommandé N° 1</b>, avec vos sources vérifiables et votre numéro de permis publié pour que le lecteur le contrôle lui-même.`
+               : `Your profile is confirmed: it carries the <b style="color:#1f7a44;">Recommended #1</b> status, with your verifiable sources and your licence number published for readers to check themselves.`)
+        + BTN(url, fr ? 'Voir votre fiche →' : 'See your profile →') + sig);
+    } else {
+      const manque = missingAsk(expert, fr);
+      subject = fr ? `Votre fiche à ${secteur} : ${expert?.score?.total ?? ''}/100` : `Your ${secteur} profile: ${expert?.score?.total ?? ''}/100`;
+      corps = CLOSE('#eef5f0', '#cfe4d7',
+        `${P(salut)}${H3(fr ? 'Vous êtes déjà la référence vérifiée du secteur' : 'You are already the sector’s verified reference')}`
+        + P(fr ? `Votre fiche est à <b>${expert?.score?.total ?? ''}/100</b>. Elle n’est pas encore confirmée par vous : c’est la seule chose qui vous sépare du niveau <b style="color:#1f7a44;">Recommandé N° 1</b> — et du jeu de données le plus complet qu’une machine puisse lire à votre sujet.`
+               : `Your profile sits at <b>${expert?.score?.total ?? ''}/100</b>. It is not yet confirmed by you: that is the only thing between you and <b style="color:#1f7a44;">Recommended #1</b> — and the most complete data set a machine can read about you.`)
+        + P(fr ? `La donnée qu’on ne peut pas confirmer nous-mêmes : <b>${manque}</b>. Répondez à ce courriel avec, je mets à jour le jour même, daté et sourcé.`
+               : `The one piece we cannot confirm ourselves: <b>${manque}</b>. Reply with it and I update the same day, dated and sourced.`)
+        + BTN(url, fr ? 'Voir ma fiche →' : 'See my profile →') + sig);
+    }
+    return { subject, html: enveloppe(city, fr, eyebrow, corps, pied(pourquoi), macro, false) };
+  }
+
+  if (etape === 5) {
+    if (badgePose) {
+      subject = fr ? `Votre badge est en ligne — merci` : `Your badge is live — thank you`;
+      corps = CLOSE('#fbedef', '#f0d3d9',
+        `${P(salut)}${H3(fr ? 'Le lien est posé.' : 'The link is live.')}`
+        + P(fr ? `Votre badge est en ligne sur votre site. C’est un lien retour permanent vers votre fiche — et l’un des rares signaux qu’une machine relie durablement à votre nom. Rien d’autre à faire.`
+               : `Your badge is live on your site. It is a permanent link back to your profile — one of the few signals a machine ties durably to your name. Nothing else to do.`)
+        + sig);
+    } else {
+      subject = fr ? `Le badge de ${secteur} : le code, prêt à coller` : `The ${secteur} badge: code ready to paste`;
+      corps = CLOSE('#fbedef', '#f0d3d9',
+        `${P(salut)}${H3(fr ? 'Un actif pour votre site, pas une récompense' : 'An asset for your site, not a reward')}`
+        + P(fr ? `Le badge fait deux choses à la fois : un <b>lien retour</b> vers votre fiche depuis votre propre domaine — bon pour votre référencement — et un second signal structuré qu’une machine peut relier à votre nom. C’est exactement le levier dont parlait le courriel sur les données structurées.`
+               : `The badge does two things at once: a <b>backlink</b> to your profile from your own domain — good for your SEO — and a second structured signal a machine can tie to your name. It is precisely the lever the structured-data email described.`)
+        + P(fr ? `Le code est prêt à coller, ou à transmettre à qui gère votre site. Deux minutes. C’est gratuit, et ça le restera : le classement ne s’achète pas, c’est ce qui lui donne sa valeur.`
+               : `The code is ready to paste, or to forward to whoever runs your site. Two minutes. It is free and will stay free: ranking is not for sale, which is what gives it value.`)
+        + BTN(`${SITE}/badge/${expert?.slug ?? ''}`, fr ? 'Obtenir mon badge →' : 'Get my badge →') + sig);
+    }
+    return { subject, html: enveloppe(city, fr, eyebrow, corps, pied(pourquoi), macro, false) };
+  }
+
+  // S6 — la seule offre payante. RÈGLE NAZAR : jamais dans son propre secteur.
+  subject = fr ? `La tribune — la seule chose que Payotte facture` : `The column — the only thing Payotte charges for`;
+  corps = CLOSE('#f8f0dc', '#e9d9ad',
+    `${P(salut)}${H3(fr ? 'Depuis cinq semaines, rien ne vous a été facturé' : 'For five weeks, nothing has been billed to you')}`
+    + P(fr ? `Votre fiche, votre score et votre rang ne sont pas à vendre — à personne. Le seul service que Payotte facture est la <b>tribune commanditée</b> : une chronique signée de votre nom, marquée comme commanditée, qui ne touche jamais au classement.`
+           : `Your profile, your score and your rank are not for sale — to anyone. The only service Payotte charges for is the <b>sponsored column</b>: a piece signed by you, labelled as sponsored, which never touches the ranking.`)
+    + P(fr ? `Et pour être clair : <b>pas dans votre secteur</b>, par construction. Vous y êtes déjà la référence classée ; vous y vendre une tribune reviendrait à vendre la place que vous occupez déjà. Les secteurs voisins de votre ville, eux, sont ouverts.`
+           : `And to be clear: <b>not in your own sector</b>, by construction. You are already the ranked reference there; selling you a column there would mean selling the place you already hold. Neighbouring sectors in your city are open.`)
+    + BTN(`${SITE}${fr ? '/tribunes' : '/en/sponsored-columns'}`, fr ? 'Le tarif, sans engagement →' : 'Pricing, no commitment →') + sig);
+  return { subject, html: enveloppe(city, fr, eyebrow, corps, pied(pourquoi), macro, false) };
+}
+
+/** Enveloppe commune — même coquille que le pouls mensuel (logo, largeur, bordures). */
+function enveloppe(city, fr, eyebrow, corps, pied, macro, avecMarche) {
+  const tete = avecMarche && city ? marketCore(city, fr, eyebrow) : `<tr><td style="padding:26px 32px 22px 32px;border-bottom:1px solid #f1ecec;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+      <td valign="middle"><a href="${SITE}"><img src="${LOGO}" width="140" height="29" alt="Payotte" style="display:block;border:0;"></a></td>
+      <td align="right" valign="middle" style="font-size:11px;letter-spacing:.5px;color:#9a9294;line-height:1.5;">${eyebrow}</td>
+    </tr></table></td></tr>`;
+  const taux = avecMarche ? nationalBlock(macro, fr) : '';
+  return `<div style="background:#f5f3f2;margin:0;padding:28px 12px;font-family:Arial,Helvetica,sans-serif;"><table role="presentation" width="580" cellpadding="0" cellspacing="0" border="0" align="center" style="max-width:580px;width:100%;background:#ffffff;border:1px solid #eae5e5;border-radius:8px;">${tete}${taux}${corps}${pied}</table></div>`;
+}
+
 let lastPulseAt = 0;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -1383,13 +1706,26 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 //
 // Renvoie un tableau ALIGNÉ sur `envois` : `{ ok }` par courriel. Si l'appel entier échoue,
 // rien n'est parti — tout le lot repart demain (on ne marque `sent:` que sur acceptation).
-async function sendPulseBatch(env, envois) {
+//
+// ── EXPÉDITEUR PAR FLUX (2026-08-19) ───────────────────────────────────────────────
+// `from` était figé sur MAIL_FROM_BULLETIN : TOUT partait de la même adresse — le
+// bulletin opt-in de 2 132 abonnés, les prospects récoltés (non sollicités), et
+// l'escalier expert. Un seul mauvais mardi de prospection abîmait donc la réputation
+// du flux que des gens ont DEMANDÉ à recevoir, et celle du relais client↔pro qui est
+// le produit.
+// Trois expéditeurs, trois réputations :
+//   bulletin@   abonnés du formulaire — ils ont dit oui
+//   outreach@   prospects récoltés, escalier expert, séquence — non sollicité
+//   relais@     mise en contact client↔pro (double opt-in) — inchangé, à ne jamais mêler
+// La séparation ne rend pas une plainte inoffensive (le domaine organisationnel reste
+// lié) : elle empêche qu'un flux en tue deux autres. C'est une mitigation, pas un mur.
+async function sendPulseBatch(env, envois, { from: fromDemande } = {}) {
   if (!envois.length) return [];
   if (!env.RESEND_API_KEY) return envois.map(() => ({ ok: false, simulated: true }));
   const wait = RESEND_MIN_GAP_MS - (Date.now() - lastPulseAt);
   if (wait > 0) await sleep(wait);
   lastPulseAt = Date.now();
-  const from = env.MAIL_FROM_BULLETIN || 'Payotte <bulletin@payotte.com>';
+  const from = fromDemande || env.MAIL_FROM_BULLETIN || 'Payotte <bulletin@payotte.com>';
 
   // ── QUARANTAINE DES ADRESSES INVALIDES (2026-08-13) ────────────────────────────────
   // Resend valide le lot ENTIER : une seule adresse malformée le fait répondre 422, et
@@ -1414,7 +1750,7 @@ async function sendPulseBatch(env, envois) {
       method: 'POST',
       headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(valides.map(({ e }) => ({
-        from, to: [e.to], reply_to: 'gregory@payotte.com',
+        from, to: [e.to], reply_to: REPLY_TO,
         subject: e.subject, html: e.html,
         ...(e.unsubUrl ? { headers: { 'List-Unsubscribe': `<${e.unsubUrl}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' } } : {}),
       }))),
@@ -1577,7 +1913,60 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
   // Ce que les exécutions PRÉCÉDENTES du jour ont déjà consommé (les 7 passages horaires se
   // partagent un seul plafond quotidien).
   const daySoFar = Number((env.SUBSCRIBERS ? await env.SUBSCRIBERS.get(`day:${dayKey}`) : 0) || 0);
-  const dayCap = Math.min(dailySendCap(at), RESEND_DAY_CAP);
+  let dayCap = Math.min(dailySendCap(at), RESEND_DAY_CAP);
+
+  // ── COUPE-CIRCUIT ET SEUILS (2026-08-19) ─────────────────────────────────────────
+  // Deux mécanismes, et ils ne se confondent pas :
+  //
+  //   `stop:all`      arrêt MANUEL de tout. Posé à la main quand quelque chose cloche
+  //                   (`wrangler kv key put --remote stop:all 1`). Aucune automatisation
+  //                   ne l'écrit : c'est la main sur le disjoncteur, elle reste humaine.
+  //   `stop:outreach` arrêt de la PROSPECTION seule. Peut être posé automatiquement par
+  //                   les seuils ci-dessous. Le bulletin opt-in continue.
+  //
+  // Les seuils lisent les compteurs du webhook (/resend-webhook). Ils regardent les
+  // 24 h écoulées, pas un cumul depuis toujours : une mauvaise journée doit se voir tout
+  // de suite, et une bonne semaine ne doit pas la masquer.
+  // Ce que la journée a DÉJÀ envoyé en prospection, tous passages horaires confondus —
+  // la rampe est un plafond quotidien, pas un plafond par passage.
+  // Adresse postale LCAP : lue une fois, criée si absente (voir `adressePostale`).
+  const postale = adressePostale(env);
+  if (!postale && !dryRun) {
+    console.log('[bulletin] ⚠️ ADRESSE POSTALE MANQUANTE — exigée par la LCAP (Règlement art. 2(2)). '
+      + 'Poser ADRESSE_POSTALE dans wrangler.toml. Les envois continuent, la mention légale est incomplète.');
+  }
+  const dejaOutreach = Number((await env.SUBSCRIBERS?.get(`day:${dayKey}:outreach`)) || 0);
+  const stopTout = env.SUBSCRIBERS ? await env.SUBSCRIBERS.get('stop:all') : null;
+  if (stopTout && !dryRun) {
+    console.log(`[bulletin] ARRÊT MANUEL (stop:all = ${stopTout}) — aucun envoi.`);
+    return { arrete: 'stop:all', motif: String(stopTout) };
+  }
+  const hier = new Date(at.getTime() - 86400000).toISOString().slice(0, 10);
+  const somme = async (prefixe) => Number((await env.SUBSCRIBERS?.get(`${prefixe}:${dayKey}`)) || 0)
+                                 + Number((await env.SUBSCRIBERS?.get(`${prefixe}:${hier}`)) || 0);
+  const envoyes24 = Number((await env.SUBSCRIBERS?.get(`day:${dayKey}:outreach`)) || 0)
+                  + Number((await env.SUBSCRIBERS?.get(`day:${hier}:outreach`)) || 0);
+  const plaintes = env.SUBSCRIBERS ? await somme('plainte') : 0;
+  const rebonds = env.SUBSCRIBERS ? await somme('rebond') : 0;
+  // Sous 200 envois, un pourcentage ne veut rien dire (une plainte ferait 0,5 %) : on
+  // s'en remet alors au compte brut de 3 plaintes, qui reste un signal fort à petit volume.
+  const tauxP = envoyes24 >= 200 ? plaintes / envoyes24 : 0;
+  const tauxR = envoyes24 >= 200 ? rebonds / envoyes24 : 0;
+  let stopOutreach = env.SUBSCRIBERS ? await env.SUBSCRIBERS.get('stop:outreach') : null;
+  if (!stopOutreach && !dryRun && (tauxP >= 0.003 || plaintes >= 3 || tauxR >= 0.04)) {
+    const motif = plaintes >= 3 && tauxP < 0.003
+      ? `${plaintes} plaintes en 24 h`
+      : tauxR >= 0.04 ? `rebonds durs ${(tauxR * 100).toFixed(1)} %`
+        : `plaintes ${(tauxP * 100).toFixed(2)} %`;
+    await env.SUBSCRIBERS?.put('stop:outreach', `auto ${dayKey} — ${motif}`);
+    stopOutreach = `auto ${dayKey} — ${motif}`;
+    console.log(`[bulletin] ARRÊT AUTOMATIQUE de la prospection : ${motif}`);
+  } else if (!stopOutreach && (tauxP >= 0.001 || tauxR >= 0.02)) {
+    // Palier d'alerte : on ralentit de moitié au lieu d'arrêter. Le but est de laisser le
+    // temps de regarder, pas de tout figer sur un frisson.
+    dayCap = Math.max(1, Math.floor(dayCap / 2));
+    console.log(`[bulletin] ralenti ×0,5 — plaintes ${plaintes}, rebonds ${rebonds} sur ${envoyes24} envois`);
+  }
 
   // ── PART ÉQUITABLE DU PLAFOND QUOTIDIEN (2026-08-17) ──────────────────────────────
   // LE FUSEAU LE PLUS À L'OUEST MOURAIT DE FAIM. Le plafond du jour est GLOBAL et les
@@ -1616,9 +2005,36 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
   // et on vide par lots de 100 — un seul appel, donc UNE sous-requête, par lot.
   const file = [];
   const lotsAPrevoir = () => Math.ceil((file.length + 1) / TAILLE_LOT);
-  const canSend = () => dryRun
+  // ── PART RÉSERVÉE AUX EXPERTS (2026-08-19) ─────────────────────────────────────────
+  // MESURÉ le 18 août en KV : `sent:2026-08:` = 623 prospects contre 217 experts, et le
+  // compte des experts est FIGÉ depuis le 13 août. 351 experts publiés n'ont rien reçu du
+  // mois. Surtout : les 217 `intro:` sont tous restés à l'étape ⓪ — pas UN SEUL courriel
+  // ② « confirmez votre fiche » n'est jamais parti, alors que c'est l'étape qui produit
+  // les Recommandés, donc les badges, donc les liens retour — le seul levier d'autorité
+  // du site (10 liens externes pour 1 962 pages).
+  //
+  // LA CAUSE, dans ce fichier : la boucle des prospects (plus haut) s'exécute AVANT celle
+  // des experts et partage le même `canSend()`. Les prospects sont ~2 300 et grossissent
+  // de ~150/nuit par la récolte ; les experts sont ~625 et ne bougent pas. À part égale
+  // dans une file unique, les premiers mangent tout : ce n'est pas un bug, c'est l'ordre
+  // des boucles qui devient une famine dès que la récolte dépasse le catalogue.
+  //
+  // LE CORRECTIF, minimal : les prospects ne peuvent plus consommer que (1 − EXPERTS_SHARE)
+  // de la part du passage ; les experts gardent l'accès à la part entière. On ne change ni
+  // le plafond du jour, ni le partage entre fuseaux, ni l'ordre des boucles — seulement le
+  // droit de tirage des prospects.
+  //
+  // Ce n'est PAS un gaspillage quand il n'y a pas d'expert à servir : la réserve non
+  // utilisée n'est pas consommée, donc `daySoFar` ne monte pas, et l'auto-correcteur
+  // décrit plus haut (reste plus gros ÷ diviseur plus petit) la rend au passage suivant.
+  const EXPERTS_SHARE = Number(env.EXPERTS_SHARE ?? 0.30);
+  const partProspects = Math.max(1, Math.floor(partPassage * (1 - EXPERTS_SHARE)));
+
+  // `kind` vaut 'expert' ou 'prospect'. Défaut 'expert' : un appel non qualifié garde le
+  // comportement d'avant (part entière) plutôt que de se retrouver bridé en silence.
+  const canSend = (kind = 'expert') => dryRun
     || (left() - lotsAPrevoir() >= 0
-        && report.attempts < partPassage                 // sa part, pour laisser vivre l'Ouest
+        && report.attempts < (kind === 'prospect' ? partProspects : partPassage)
         && daySoFar + report.attempts < dayCap);         // et jamais plus que le jour
 
   // ── ESPACEMENT PAR DOMAINE (2026-08-12) ────────────────────────────────────────────
@@ -1688,11 +2104,46 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
   // acceptation par Resend, courriel par courriel : un refus repart demain, intact — la
   // règle n'a pas bougé, seul le moment où on la vérifie a changé.
   const echecsParProv = {};
+  // ── RAMPE DU SOUS-DOMAINE NEUF (2026-08-19) ──────────────────────────────────────
+  // `outreach.payotte.com` n'a aucun historique d'envoi. Un domaine neuf qui passe de 0 à
+  // 400 courriels/jour se fait classer en pourriel — la montée doit être progressive et
+  // CONDITIONNELLE. Les paliers sont datés dans wrangler.toml (OUTREACH_RAMPE) ; à défaut,
+  // on reste au plancher. Le passage au palier suivant n'est PAS automatique dans le temps :
+  // il exige que le webhook n'ait vu ni plainte ni rebond au-delà des seuils (voir
+  // `fluxCoupe()` plus bas) — sinon le plafond reste où il est.
+  const rampeOutreach = () => {
+    const brut = env.OUTREACH_RAMPE || '';        // ex. « 2026-08-20:100,2026-08-27:200 »
+    let plafond = Number(env.OUTREACH_PLANCHER ?? 50);
+    for (const p of brut.split(',').map((x) => x.trim()).filter(Boolean)) {
+      const [d, n] = p.split(':');
+      if (d && n && dayKey >= d.trim()) plafond = Number(n);
+    }
+    return Math.max(0, plafond);
+  };
+
   const viderFile = async () => {
     while (file.length) {
       const lot = file.splice(0, TAILLE_LOT);
       ctr.subs++;
-      const reponses = await sendPulseBatch(env, lot);
+      // Un lot peut mêler prospects et experts : on n'envoie donc pas le lot entier sous un
+      // seul expéditeur, on le fend par flux. Deux appels au pire, toujours ≤ 2 sous-requêtes.
+      const parFlux = new Map();
+      for (const e of lot) {
+        const f = e.flux === 'bulletin' ? 'bulletin' : 'outreach';
+        (parFlux.get(f) ?? parFlux.set(f, []).get(f)).push(e);
+      }
+      const reponses = new Array(lot.length);
+      for (const [flux, sousLot] of parFlux) {
+        const fromFlux = flux === 'bulletin'
+          ? (env.MAIL_FROM_BULLETIN || 'Payotte <bulletin@payotte.com>')
+          : (env.MAIL_FROM_OUTREACH || env.MAIL_FROM_BULLETIN || 'Payotte <bulletin@payotte.com>');
+        const r = await sendPulseBatch(env, sousLot, { from: fromFlux });
+        sousLot.forEach((e, k) => { reponses[lot.indexOf(e)] = r[k]; });
+        // Compteur par flux — c'est lui que la rampe et les seuils de plainte lisent.
+        const cle = `day:${dayKey}:${flux}`;
+        const dejaFlux = Number((await env.SUBSCRIBERS?.get(cle)) || 0);
+        await env.SUBSCRIBERS?.put(cle, String(dejaFlux + sousLot.length), { expirationTtl: 3 * 24 * 3600 });
+      }
       for (let i = 0; i < lot.length; i++) {
         const e = lot[i];
         const r = reponses[i];
@@ -1724,6 +2175,9 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
     // Reportés au lendemain parce que leur domaine avait déjà eu ses MAX_PAR_DOMAINE
     // du jour. À zéro tant qu'aucune bannière ne sature : c'est le témoin de l'espacement.
     reportesDomaine: 0,
+    // Envois de PROSPECTION mis en file à ce passage — sert à faire respecter la rampe du
+    // sous-domaine neuf sans relire le compteur KV à chaque courriel.
+    outreachEnvoyes: 0,
     prospects: 0, experts: { intro: 0, yellow: 0, green: 0, reco: 0, partner: 0 },
     activeCities: 0, errors: [], skipped: [], recipients: [], budgetUsed: 0,
     zones: [], dayUsedBefore: daySoFar, dayCap, partPassage, passagesRestants,
@@ -1748,10 +2202,7 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
   // Taux et obligations : NATIONAUX, donc identiques pour tout le monde. Deux sous-requêtes
   // pour l'exécution entière, jamais deux par courriel. Feeds indisponibles → `macro` reste
   // null et le bloc disparaît simplement du gabarit : aucun envoi n'est bloqué pour ça.
-  const macro = await Promise.all([
-    F('/api/rates.json').catch(() => null),
-    F('/api/bonds.json').catch(() => null),
-  ]).then(([r, b]) => (r || b ? { rates: r?.rates ?? null, bonds: b?.bonds ?? null, fetched: r?.fetched ?? b?.fetched ?? null } : null));
+  const macro = await macroCourant();
   report.macro = macro ? 'taux+obligations' : 'indisponible';
 
   // État du cycle : 3 lectures KV, pas une seule sous-requête.
@@ -1801,7 +2252,7 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
       if (!city) continue;                           // hors du fuseau servi à cette heure
       const id = `prospect:${key}`;
       if (done.has(id)) continue;                    // déjà servi ce cycle
-      if (!canSend()) { report.pending++; continue; }
+      if (!canSend('prospect')) { report.pending++; continue; }
       // DRY-RUN : ni lecture de valeur, ni rendu. Le dry-run ne filtre pas par fuseau
       // (il doit montrer l'audience du mois entier), donc il tombait sur les 2 100 clés :
       // 2 100 lectures KV + 2 100 courriels fabriqués pour être jetés à la ligne suivante.
@@ -1814,6 +2265,16 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
       }
       const rec = JSON.parse((await env.SUBSCRIBERS.get(`s:${key}`)) || '{}');
       if (!rec.email) continue;
+      // Rebond dur connu (webhook) : l'adresse est morte, elle ne repart jamais.
+      const courrielBas = String(rec.email).toLowerCase();
+      if (await env.SUBSCRIBERS.get(`bounce:${courrielBas}`)) { report.skipped.push(`${rec.email} (rebond)`); continue; }
+      // Désabonné (lien, ou plainte convertie en désabonnement par le webhook).
+      if (await env.SUBSCRIBERS.get(`unsub:prospect:${courrielBas}`)) continue;
+      // Prospection arrêtée : un abonné du formulaire continue d'être servi, pas un
+      // contact récolté. La distinction est celle du flux, pas celle de la personne.
+      const fluxRec = rec.source === 'form-ville' ? 'bulletin' : 'outreach';
+      if (stopOutreach && fluxRec === 'outreach') { report.pending++; continue; }
+      if (fluxRec === 'outreach' && dejaOutreach + report.outreachEnvoyes >= rampeOutreach()) { report.pending++; continue; }
       // Garde-fou : si la valeur stockée ne concordait pas avec sa clé, l'identifiant
       // calculé plus haut serait faux et on risquerait un doublon. On revérifie sur
       // l'identifiant RÉEL avant d'engager quoi que ce soit.
@@ -1823,12 +2284,18 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
       // l'adresse repassera telle quelle au prochain passage.
       if (!await prendreCreneauDomaine(rec.email)) { report.pending++; continue; }
       const unsubUrl = `${origin}/unsubscribe?e=${encodeURIComponent(rec.email)}&c=${encodeURIComponent(rec.city)}&t=${await hmacHex(env, `u:${rec.email}:${rec.city}`)}`;
-      const { subject, html } = renderPulse({ segment: 'prospect', city, lang: rec.lang, unsubUrl, macro, metier: rec.metier });
+      const { subject, html } = renderPulse({ segment: 'prospect', city, lang: rec.lang, unsubUrl, macro, metier: rec.metier , postale });
       report.prospects++; report.recipients.push({ to: rec.email, kind: 'prospect', city: rec.city });
       if (dryRun) continue;
       report.attempts++;
       done.add(idReel);                // servi pour ce cycle dès la mise en file
+      // FLUX (2026-08-19) : `source: 'form-ville'` = l'abonné a rempli le formulaire du
+      // site, il a DEMANDÉ le bulletin → expéditeur bulletin@. Tout le reste vient de la
+      // récolte nocturne (`source` = l'URL où l'adresse a été relevée), donc non sollicité
+      // → expéditeur outreach@. La règle lit la donnée existante, rien à migrer.
+      if (fluxRec === 'outreach') report.outreachEnvoyes++;
       file.push({ to: rec.email, subject, html, unsubUrl, cle: idReel,
+                  flux: fluxRec,
                   etiquette: `prospect ${rec.email}` });
       if (file.length >= TAILLE_LOT) await viderFile();
     }
@@ -1859,6 +2326,9 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
       const contact = dir[e.slug];
       if (!contact?.email) { report.skipped.push(`${e.slug} (pas de courriel)`); continue; }
       if (mailsDone.has(contact.email.toLowerCase())) continue;   // doublon d'adresse : au prochain cycle
+      if (await env.SUBSCRIBERS?.get(`bounce:${contact.email.toLowerCase()}`)) { report.skipped.push(`${e.slug} (rebond)`); continue; }
+      if (stopOutreach) { restants++; report.pending++; continue; }   // l'escalier est de la prospection
+      if (dejaOutreach + report.outreachEnvoyes >= rampeOutreach()) { restants++; report.pending++; continue; }
       const stage = expertStage(e, intro.has(e.slug) && !reIntro.has(e.slug));
       if (!stage) continue;
       if (!canSend()) { restants++; report.pending++; continue; }
@@ -1871,12 +2341,15 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
       // audience gonflée des doublons d'adresse que l'envoi réel, lui, écarte.
       if (dryRun) { done.add(e.slug); mailsDone.add(contact.email.toLowerCase()); continue; }
       const unsubUrl = await expertUnsubUrl(env, origin, e.slug);
-      const { subject, html } = renderPulse({ segment: 'expert', stage, city, expert: e, lang: contact.lang || e.lang, unsubUrl, macro });
+      const { subject, html } = renderPulse({ segment: 'expert', stage, city, expert: e, lang: contact.lang || e.lang, unsubUrl, macro, postale });
       report.attempts++;
       // Marqué « servi » DÈS la mise en file : l'envoi n'étant plus immédiat, un pro
       // inscrit sur deux secteurs serait sinon empilé deux fois dans le même lot.
       done.add(e.slug); mailsDone.add(contact.email.toLowerCase());
+      // L'escalier expert est de la prospection : personne n'a demandé à le recevoir.
+      report.outreachEnvoyes++;
       file.push({ to: contact.email, subject, html, unsubUrl, cle: e.slug, stage, prov,
+                  flux: 'outreach',
                   etiquette: e.slug });
       if (file.length >= TAILLE_LOT) await viderFile();
     }
@@ -1946,6 +2419,45 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
 
 // Un seul courriel par exécution, pour le proprio : ce qui est parti, ce qui a raté, ce qui
 // reste. C'est la seule trace — le worker n'a pas de journal persistant.
+
+/**
+ * Le compte rendu d'une vague de séquence, en texte, au propriétaire.
+ *
+ * POURQUOI EN TEXTE, ET POURQUOI SI COURT. Le rapport n'existe pas pour archiver : il
+ * existe pour qu'une anomalie saute aux yeux dans une notification de téléphone. Ce qui
+ * compte est en haut (combien partis, combien ratés), le détail suit, et la seule ligne
+ * qui demande une action est isolée à la fin.
+ */
+async function envoyerRapportSequence(env, r) {
+  if (!env.RESEND_API_KEY) return;
+  const etapes = Object.entries(r.parEtape).sort().map(([k, v]) => `${k} ${v}`).join(' · ') || '—';
+  const lignes = [
+    `Vague du ${r.vague} — provinces servies : ${r.zones.join(', ') || '—'}`,
+    ``,
+    `Partis   : ${r.envoyes}`,
+    `Ratés    : ${r.rates}`,
+    `Par étape: ${etapes}`,
+    ``,
+    r.sorties.length ? `Sorties de la séquence (${r.sorties.length}) :` : `Aucune sortie.`,
+    ...r.sorties.map((x) => `  · ${x}`),
+    ``,
+    `À FAIRE : répondre aux réponses reçues. C'est là que la valeur se crée —`,
+    `la machine ne fait qu'envoyer.`,
+    ``,
+    `État complet : GET /sequence-status?t={CONTACTS_TOKEN}`,
+  ].join('\n');
+  await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      from: env.MAIL_FROM_BULLETIN || 'Payotte <bulletin@payotte.com>',
+      to: [REPORT_TO], reply_to: REPLY_TO,
+      subject: `Séquence — ${r.vague} — ${r.envoyes} partis · ${r.rates} ratés · ${etapes}`,
+      text: lignes,
+    }),
+  }).catch(() => {});
+}
+
 async function sendRunReport(env, report) {
   if (!env.RESEND_API_KEY) return;
   // `pending` ne compte que les candidats VUS après épuisement du budget : les provinces
@@ -2049,8 +2561,230 @@ async function handleSubscribe(request, env, url) {
     cityUrl);
 }
 
+/* ════════════════════════════════════════════════════════════════════════════════
+   ALERTE TAUX — le seul courriel que les gens DEMANDENT (2026-08-19)
+   ════════════════════════════════════════════════════════════════════════════════
+
+   POURQUOI CELUI-LÀ ET PAS UN AUTRE. Tout le reste des envois Payotte est poussé : le
+   bulletin mensuel (opt-out), la prospection, la séquence. Leur rendement mesuré est
+   mauvais — 0 réponse sur 550 en juillet, aucune sur ~80 brouillons le 18 août. Ce n'est
+   pas un problème de gabarit, c'est un problème de demande : personne n'a rien demandé.
+
+   L'alerte taux est l'inverse exact. Elle part QUAND la Banque du Canada bouge son taux
+   directeur, à des gens qui ont coché une case pour ça. Huit annonces par an, et le taux
+   ne change pas à chacune : en 2026, cinq réunions, un seul mouvement. On parle donc de
+   deux à quatre courriels par an et par personne — le volume le plus faible du système,
+   et le seul dont la pertinence est garantie par l'événement lui-même.
+
+   LA MÉCANIQUE, EN TROIS FAITS.
+   1. `taux:{courriel}` — un inscrit. Clé PLATE, pas par ville : le taux directeur est
+      national. Quelqu'un abonné à trois villes reçoit UNE alerte, pas trois.
+   2. `taux:dernier` — la dernière valeur CONNUE du taux directeur, avec sa date. C'est la
+      mémoire qui permet de dire « ça a bougé ». Sans elle, chaque passage du cron
+      renverrait la même annonce.
+   3. Le déclenchement lit la Banque du Canada EN DIRECT (`macroCourant`), jamais un feed
+      statique — c'est précisément le genre de courriel où être en retard d'une journée
+      détruit la crédibilité.
+
+   ⚠️ CE QU'ELLE NE FAIT PAS. Aucun commentaire, aucune prévision, aucun conseil. On
+   annonce le chiffre, l'ancien, la date, et on renvoie à la page. Écrire « les fixes vont
+   suivre » serait une prédiction — donc une donnée inventée (Règle #3), doublée d'un
+   conseil financier que Payotte n'a pas qualité pour donner.
+
+   ⚠️ ELLE RESPECTE `stop:all`. Le 19 août, Grégory a coupé tous les envois Resend. Une
+   alerte est un envoi : elle s'arrête avec le reste. Le jour où le taux bouge alors que
+   l'interrupteur est posé, le worker journalise le fait et met à jour `taux:dernier`
+   SANS envoyer — sinon la levée de l'interrupteur déclencherait une annonce périmée.
+   ════════════════════════════════════════════════════════════════════════════════ */
+
+const ALERTE_TAUX_LOT = 100;   // taille de lot Resend
+
+/** Rendu de l'alerte. Deux chiffres, une date, un lien. Rien de plus. */
+function renderAlerteTaux({ nouveau, ancien, observed, lang, unsubUrl, postale = '' }) {
+  const fr = lang === 'fr';
+  const nb = (v) => v.toLocaleString(fr ? 'fr-CA' : 'en-CA');
+  const sens = ancien == null ? null : nouveau > ancien ? 'hausse' : 'baisse';
+  const ecart = ancien == null ? null : Math.round(Math.abs(nouveau - ancien) * 100);
+
+  const titre = fr
+    ? (sens === 'hausse' ? `La Banque du Canada monte son taux à ${nb(nouveau)} %`
+      : sens === 'baisse' ? `La Banque du Canada baisse son taux à ${nb(nouveau)} %`
+        : `Taux directeur : ${nb(nouveau)} %`)
+    : (sens === 'hausse' ? `Bank of Canada raises its rate to ${nb(nouveau)}%`
+      : sens === 'baisse' ? `Bank of Canada cuts its rate to ${nb(nouveau)}%`
+        : `Policy rate: ${nb(nouveau)}%`);
+
+  const mouvement = ecart == null ? '' : fr
+    ? `<p style="margin:0 0 18px 0;font-size:15px;line-height:1.6;color:#4a4446;">Le taux directeur passe de <strong>${nb(ancien)} %</strong> à <strong>${nb(nouveau)} %</strong>, soit ${ecart} points de base à la ${sens}. Observation datée du ${observed}.</p>`
+    : `<p style="margin:0 0 18px 0;font-size:15px;line-height:1.6;color:#4a4446;">The policy rate moves from <strong>${nb(ancien)}%</strong> to <strong>${nb(nouveau)}%</strong> — ${ecart} basis points ${sens === 'hausse' ? 'up' : 'down'}. Observation dated ${observed}.</p>`;
+
+  const corps = `
+    <tr><td style="padding:34px 32px 0 32px;">
+      <div style="font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:#a49c9e;margin-bottom:10px;">${fr ? 'Alerte taux' : 'Rate alert'}</div>
+      <h1 style="margin:0 0 18px 0;font-size:23px;line-height:1.3;color:#211c1e;font-weight:normal;">${titre}</h1>
+      ${mouvement}
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#faf8f8;border:1px solid #f1ecec;border-radius:6px;margin:0 0 20px 0;">
+        <tr><td style="padding:18px 20px;">
+          <span style="font-size:13px;color:#8a8284;">${fr ? 'Taux directeur' : 'Policy interest rate'}</span><br>
+          <span style="font-size:28px;color:#C8102E;font-weight:bold;">${nb(nouveau)} %</span>
+          <span style="font-size:11px;color:#a49c9e;"> &middot; ${observed}</span>
+        </td></tr>
+      </table>
+      <p style="margin:0 0 20px 0;font-size:14px;line-height:1.65;color:#6f6769;">${fr
+        ? 'Payotte ne commente pas cette décision et n’en tire aucune prévision : le taux préférentiel, les taux fixes et les rendements obligataires réagissent à leur propre rythme, et personne ne peut le dater d’avance.'
+        : 'Payotte does not comment on this decision or forecast from it: prime, fixed rates and bond yields each react on their own schedule, and no one can date that in advance.'}</p>
+      <p style="margin:0 0 26px 0;font-size:14px;line-height:1.65;">
+        <a href="${SITE}${fr ? '/taux-directeur-canada' : '/en/canada-policy-rate'}" style="color:#C8102E;">${fr ? 'Voir tous les taux courants sur payotte.com →' : 'See all current rates on payotte.com →'}</a>
+      </p>
+      <div style="font-size:11.5px;line-height:1.6;color:#a49c9e;border-top:1px solid #f1ecec;padding-top:14px;">${BOC_ATTRIBUTION}</div>
+    </td></tr>`;
+
+  const pied = FOOT(
+    fr ? 'Vous recevez cette alerte parce que vous l’avez demandée. Elle ne part que lorsque le taux directeur change — deux à quatre fois par an.'
+      : 'You receive this alert because you asked for it. It only goes out when the policy rate changes — two to four times a year.',
+    unsubUrl, fr ? 'Se désabonner' : 'Unsubscribe', postale);
+
+  const html = `<div style="background:#f5f3f2;margin:0;padding:28px 12px;font-family:Arial,Helvetica,sans-serif;"><table role="presentation" width="580" cellpadding="0" cellspacing="0" border="0" align="center" style="max-width:580px;width:100%;background:#ffffff;border:1px solid #eae5e5;border-radius:8px;">${corps}${pied}</table></div>`;
+  return { subject: titre, html };
+}
+
+/**
+ * L'inscription. Deux chemins, un seul enregistrement :
+ *   POST /alerte-taux  {email, lang}            — depuis un formulaire du site
+ *   GET  /alerte-taux?e={courriel}&t={hmac}     — un clic depuis le bulletin
+ * L'HMAC du lien empêche d'inscrire quelqu'un d'autre en devinant l'URL.
+ */
+async function handleAlerteTauxInscription(request, env, url) {
+  let email = '', lang = 'fr', honeypot = '';
+  if (request.method === 'GET') {
+    email = String(url.searchParams.get('e') ?? '').trim().toLowerCase();
+    lang = url.searchParams.get('l') === 'en' ? 'en' : 'fr';
+    const t = url.searchParams.get('t') ?? '';
+    if (!email || t !== (await hmacHex(env, `a:${email}`))) {
+      return subPage(lang, 'Lien invalide / Invalid link', 'Ce lien d’inscription est invalide. / This sign-up link is invalid.');
+    }
+  } else {
+    const ct = request.headers.get('Content-Type') || '';
+    if (ct.includes('json')) {
+      const b = await request.json().catch(() => ({}));
+      email = b.email; lang = b.lang; honeypot = b.website;
+    } else {
+      const f = await request.formData().catch(() => null);
+      if (f) { email = f.get('email'); lang = f.get('lang'); honeypot = f.get('website'); }
+    }
+    email = String(email ?? '').trim().toLowerCase();
+    lang = String(lang ?? '') === 'en' ? 'en' : 'fr';
+    if (honeypot) return subPage(lang, 'Merci', 'Inscription reçue.');   // robot
+  }
+  const fr = lang === 'fr';
+  if (!EMAIL_RE.test(email)) return subPage(lang, fr ? 'Oups' : 'Oops', fr ? 'Adresse manquante ou invalide.' : 'Missing or invalid address.');
+
+  if (env.SUBSCRIBERS) {
+    // Un désabonnement antérieur est DÉFINITIF (LCAP art. 11) — sauf si la personne
+    // revient d'elle-même s'inscrire, ce qui est exactement ce qui se passe ici. On lève
+    // donc la pierre tombale plutôt que de refuser en silence : refuser sans le dire
+    // laisserait quelqu'un croire qu'il est inscrit alors qu'il ne l'est pas.
+    await env.SUBSCRIBERS.delete(`unsub:taux:${email}`);
+    if (await env.SUBSCRIBERS.get(`bounce:${email}`)) {
+      return subPage(lang, fr ? 'Adresse en rebond' : 'Address bouncing',
+        fr ? 'Nos envois vers cette adresse reviennent en erreur. Écrivez-nous et on règle ça.' : 'Our emails to this address bounce. Write to us and we will fix it.');
+    }
+    const day = new Date().toISOString().slice(0, 10);
+    const n = await bumpCounter(env, `alerte:${day}`, 3 * 86400);
+    if (n > SUB_CAP_DAY) return subPage(lang, fr ? 'Un instant' : 'One moment', fr ? 'Trop d’inscriptions aujourd’hui — réessayez demain.' : 'Too many sign-ups today — please try again tomorrow.');
+    await env.SUBSCRIBERS.put(`taux:${email}`, JSON.stringify({ email, lang, since: new Date().toISOString(), source: request.method === 'GET' ? 'bulletin' : 'form' }));
+  }
+  return subPage(lang, fr ? 'C’est noté !' : 'You’re in!',
+    fr ? 'Vous recevrez une alerte le jour où la Banque du Canada change son taux directeur — deux à quatre fois par an, jamais plus. Désabonnement en un clic dans chaque envoi.'
+      : 'You will get an alert the day the Bank of Canada changes its policy rate — two to four times a year, never more. One-click unsubscribe in every email.');
+}
+
+/**
+ * Le déclencheur, appelé à chaque passage du cron. Coût quand rien ne bouge : une lecture
+ * KV et une lecture Valet (mise en cache 1 h par Cloudflare) — c'est le cas 361 jours sur 365.
+ */
+async function runAlerteTaux(env, { at = new Date(), dryRun = false } = {}) {
+  const r = { change: false, envoyes: 0, rates: 0, inscrits: 0 };
+  if (!env.SUBSCRIBERS) return r;
+
+  const macro = await macroCourant();
+  const p = macro?.rates?.policyRate;
+  if (p?.percent == null) return { ...r, note: 'taux directeur illisible' };
+
+  const brut = await env.SUBSCRIBERS.get('taux:dernier');
+  let memoire = null;
+  try { memoire = brut ? JSON.parse(brut) : null; } catch { memoire = null; }
+
+  // Première exécution : on MÉMORISE sans envoyer. Sinon la mise en service enverrait une
+  // « alerte » pour un taux qui n'a pas bougé depuis des mois.
+  if (!memoire || memoire.percent == null) {
+    if (!dryRun) await env.SUBSCRIBERS.put('taux:dernier', JSON.stringify({ percent: p.percent, observed: p.observed, depuis: at.toISOString() }));
+    return { ...r, note: 'mémoire initialisée — aucun envoi' };
+  }
+  if (memoire.percent === p.percent) return r;      // le cas normal
+
+  r.change = true;
+  r.ancien = memoire.percent;
+  r.nouveau = p.percent;
+  r.observed = p.observed;
+
+  // Interrupteur posé : on enregistre le mouvement, on n'envoie pas. Ne PAS mettre à jour
+  // `taux:dernier` laisserait l'alerte partir au moment où l'interrupteur est levé —
+  // c'est-à-dire annoncer comme une nouvelle un changement vieux de plusieurs jours.
+  const stop = await env.SUBSCRIBERS.get('stop:all');
+  if (stop) {
+    if (!dryRun) await env.SUBSCRIBERS.put('taux:dernier', JSON.stringify({ percent: p.percent, observed: p.observed, depuis: at.toISOString(), nonEnvoye: `stop:all ${stop}` }));
+    return { ...r, arrete: 'stop:all', note: 'mouvement enregistré, aucune alerte envoyée' };
+  }
+
+  const emails = await kvKeys(env.SUBSCRIBERS, 'taux:');
+  const inscrits = emails.filter((e) => e !== 'dernier' && EMAIL_RE.test(e));
+  r.inscrits = inscrits.length;
+  if (!inscrits.length) {
+    if (!dryRun) await env.SUBSCRIBERS.put('taux:dernier', JSON.stringify({ percent: p.percent, observed: p.observed, depuis: at.toISOString() }));
+    return r;
+  }
+
+  const postale = adressePostale(env);
+  const file = [];
+  for (const email of inscrits) {
+    let rec = {};
+    try { rec = JSON.parse((await env.SUBSCRIBERS.get(`taux:${email}`)) ?? '{}'); } catch { /* clé abîmée : langue par défaut */ }
+    const lang = rec.lang === 'en' ? 'en' : 'fr';
+    const unsubUrl = `${WORKER_ORIGIN}/unsubscribe?a=taux&e=${encodeURIComponent(email)}&t=${await hmacHex(env, `a:${email}`)}`;
+    const { subject, html } = renderAlerteTaux({ nouveau: p.percent, ancien: memoire.percent, observed: p.observed, lang, unsubUrl, postale });
+    file.push({ to: email, subject, html, unsubUrl });
+  }
+
+  if (dryRun) return { ...r, envoyes: file.length, dryRun: true };
+
+  const from = env.MAIL_FROM_BULLETIN || 'Payotte <bulletin@payotte.com>';
+  for (let i = 0; i < file.length; i += ALERTE_TAUX_LOT) {
+    const lot = file.slice(i, i + ALERTE_TAUX_LOT);
+    const res = await sendPulseBatch(env, lot, { from });
+    res.forEach((x) => { if (x?.ok) r.envoyes++; else r.rates++; });
+  }
+  await env.SUBSCRIBERS.put('taux:dernier', JSON.stringify({ percent: p.percent, observed: p.observed, depuis: at.toISOString(), envoyes: r.envoyes }));
+  return r;
+}
+
 async function handleUnsubscribe(env, url) {
   const t = url.searchParams.get('t') ?? '';
+
+  // Alerte taux : /unsubscribe?a=taux&e={courriel}&t={hmac}. Même règle que partout —
+  // la pierre tombale `unsub:taux:` est DÉFINITIVE (LCAP art. 11) ; seule une réinscription
+  // volontaire de la personne la lève (voir handleAlerteTauxInscription).
+  if (url.searchParams.get('a') === 'taux') {
+    const email = String(url.searchParams.get('e') ?? '').trim().toLowerCase();
+    if (!email || t !== (await hmacHex(env, `a:${email}`))) {
+      return subPage('fr', 'Lien invalide / Invalid link', 'Ce lien de désabonnement est invalide. / This unsubscribe link is invalid.');
+    }
+    if (env.SUBSCRIBERS) {
+      await env.SUBSCRIBERS.put(`unsub:taux:${email}`, new Date().toISOString());
+      await env.SUBSCRIBERS.delete(`taux:${email}`);
+    }
+    return subPage('fr', 'C\'est fait / Done', "Vous ne recevrez plus d'alerte de taux. Vos autres abonnements Payotte, s'il y en a, ne sont pas touchés. / You will receive no further rate alerts. Your other Payotte subscriptions, if any, are unaffected.");
+  }
 
   // Expert : /unsubscribe?x={slug}&t={hmac}. Un clic, aucune question posée — c'est le seul
   // moyen de sortir de l'envoi mensuel (opt-out), et la clé posée est définitive.
@@ -2065,7 +2799,26 @@ async function handleUnsubscribe(env, url) {
   const ville = String(url.searchParams.get('c') ?? '');
   const expect = await hmacHex(env, `u:${email}:${ville}`);
   if (!email || !ville || t !== expect) return subPage('fr', 'Lien invalide', 'Ce lien de désabonnement est invalide ou expiré. / Invalid unsubscribe link.');
-  if (env.SUBSCRIBERS) await env.SUBSCRIBERS.delete(`s:${ville}:${email}`);
+  if (env.SUBSCRIBERS) {
+    // ── LE DÉSABONNEMENT DOIT ÊTRE MÉMORISÉ (corrigé le 2026-08-19) ────────────────
+    // BUG : on supprimait la clé `s:` et rien d'autre. Or la récolte nocturne reverse
+    // chaque nuit ce qu'elle trouve, et `verser-prospects.mjs` ne comparait qu'aux clés
+    // VIVANTES : une adresse désabonnée redevenait donc « inconnue » dès la suppression,
+    // et repartait au premier versement suivant. MESURÉ : 15 re-versements en 10 jours,
+    // dont `carly@movewithmichael.ca` versée les 12, 15 ET 17 août.
+    //
+    // C'est la plainte type sous la LCAP (art. 11) : un désabonnement doit être honoré
+    // sous 10 jours ouvrables et le rester. « Supprimer » n'est pas « se souvenir » —
+    // il faut une TOMBE, pas une absence.
+    //
+    // La clé est posée par COURRIEL, pas par ville : la même personne peut être inscrite
+    // sur deux villes, et elle a dit non à Payotte, pas à une ville.
+    // Éternelle, sans TTL : un désabonnement ne se périme jamais.
+    await env.SUBSCRIBERS.put(`unsub:prospect:${email}`, JSON.stringify({
+      jour: new Date().toISOString().slice(0, 10), ville, motif: 'lien de désabonnement',
+    }));
+    await env.SUBSCRIBERS.delete(`s:${ville}:${email}`);
+  }
   return subPage('fr', 'Désabonné / Unsubscribed', `${email} ne recevra plus le bulletin de ${ville}. / will no longer receive this bulletin.`);
 }
 
@@ -2128,6 +2881,122 @@ async function handleRpc(msg, env) {
   }
 }
 
+
+// ═══════════════════════════════════════════════════════════════════════════════════
+// runSequence — la vague du MARDI, 10 h locale, province par province.
+// ═══════════════════════════════════════════════════════════════════════════════════
+//
+// L'HORAIRE EST DÉJÀ RÉSOLU. `zonesAt10h()` sait quelles provinces sont à 10 h à cette
+// heure UTC, et le cron `0 12-18 * * *` couvre par construction les six fuseaux canadiens
+// (Terre-Neuve 13 h UTC → Pacifique 17 h UTC). Rien à programmer côté Resend : son
+// `scheduled_at` plafonne à 72 h ET n'existe pas en envoi par lots — il ne peut pas servir
+// pour « mardi prochain ». Le cron se réveille et envoie en direct, comme le bulletin.
+//
+// AVANT LE BULLETIN, ET C'EST VOULU. La séquence porte une DATE promise (mardi) ; le
+// bulletin mensuel, lui, s'étale sur tout le mois. À budget contraint, ce qui a une date
+// passe devant ce qui a un mois.
+//
+// UN EXPERT EN SÉQUENCE SORT DE L'ESCALIER MENSUEL le temps de ses six semaines : sans
+// ça il recevrait deux courriels la même semaine, dont un qui redemande ce que l'autre
+// vient de demander.
+//
+// ⚠️ GARDE-FOU D'ENRÔLEMENT. Le council du 18 août a conditionné cette machine à un test
+// préalable : 50 courriels envoyés à la main, ≥ 2 confirmations en 14 jours. La machine
+// est construite, mais elle n'enrôle PERSONNE toute seule — `scripts/sequence.mjs enroler`
+// refuse tant que `seq-feu-vert` n'est pas posé en KV. On ne code pas un entonnoir avant
+// de savoir si le premier courriel fait répondre.
+async function runSequence(env, { at = new Date(), dryRun = false } = {}) {
+  const r = { vague: at.toISOString().slice(0, 10), envoyes: 0, rates: 0, parEtape: {}, sorties: [], zones: [] };
+  if (!env.SUBSCRIBERS) return r;
+  if (at.getUTCDay() !== 2) return r;                       // mardi seulement
+  if (await env.SUBSCRIBERS.get('stop:all')) return { ...r, arrete: 'stop:all' };
+  if (await env.SUBSCRIBERS.get('stop:outreach')) return { ...r, arrete: 'stop:outreach' };
+
+  const zones = zonesAt10h(at);
+  r.zones = [...zones];
+  if (!zones.size) return r;
+
+  const cles = await kvKeys(env.SUBSCRIBERS, 'seq:');
+  if (!cles.length) return r;
+
+  const dayKey = at.toISOString().slice(0, 10);
+  const cycle = at.toISOString().slice(0, 7);
+  const file = [];
+  const feeds = new Map();
+  const villes = new Map();
+  let macro = null;
+
+  for (const cle of cles) {
+    const slug = cle.replace(/^seq:/, '');
+    let etat; try { etat = JSON.parse((await env.SUBSCRIBERS.get(`seq:${slug}`)) || '{}'); } catch { continue; }
+    if (!etat || etat.stop || (etat.etape ?? 0) >= 6) continue;
+    if (await env.SUBSCRIBERS.get(`unsub:${slug}`)) { r.sorties.push(`${slug} (désabonné)`); continue; }
+    if (await env.SUBSCRIBERS.get(`seq-sent:${dayKey}:${slug}`)) continue;   // déjà servi ce mardi
+    if (!zones.has(etat.province)) continue;                                  // pas son fuseau
+
+    // L'état VIVANT : on relit la fiche à chaque envoi plutôt que de rejouer l'enrôlement.
+    if (!feeds.has(etat.province)) {
+      feeds.set(etat.province, await feed(`/api/experts/${etat.province}.json`)
+        .then((d) => d.experts ?? []).catch(() => []));
+    }
+    const expert = feeds.get(etat.province).find((e) => e.slug === slug);
+    if (!expert || expert.score?.color === 'red') { r.sorties.push(`${slug} (non publié)`); continue; }
+    if (expert.emailBounced) { r.sorties.push(`${slug} (rebond)`); continue; }
+    const dest = String(etat.email || '').toLowerCase();
+    if (!dest) { r.sorties.push(`${slug} (pas de courriel)`); continue; }
+    if (await env.SUBSCRIBERS.get(`bounce:${dest}`)) { r.sorties.push(`${slug} (rebond dur)`); continue; }
+    if (await env.SUBSCRIBERS.get(`unsub:prospect:${dest}`)) { r.sorties.push(`${slug} (désabonné)`); continue; }
+
+    const etape = (etat.etape ?? 0) + 1;
+    if (!villes.has(expert.city)) {
+      const m = await feed('/api/market.json').catch(() => null);
+      villes.set(expert.city, (m?.cities ?? m?.villes ?? []).find((c) => c.slug === expert.city) ?? null);
+    }
+    const city = villes.get(expert.city) ?? { name: expert.cityName ?? expert.city, slug: expert.city };
+    if (etape === 3 && !macro) macro = await macroCourant();
+
+    const unsubUrl = await expertUnsubUrl(env, WORKER_ORIGIN, slug);
+    const { subject, html } = renderSequence({ etape, expert, city, seq: etat, lang: etat.lang || expert.lang || 'fr', unsubUrl, macro, postale: adressePostale(env) });
+    r.parEtape[`S${etape}`] = (r.parEtape[`S${etape}`] || 0) + 1;
+    if (dryRun) continue;
+    file.push({ to: dest, subject, html, unsubUrl, slug, etape, etat });
+  }
+
+  if (dryRun || !file.length) return r;
+
+  // Envoi par lots, sous l'expéditeur de prospection — jamais celui du bulletin opt-in.
+  const from = env.MAIL_FROM_OUTREACH || env.MAIL_FROM_BULLETIN || 'Payotte <bulletin@payotte.com>';
+  for (let i = 0; i < file.length; i += TAILLE_LOT) {
+    const lot = file.slice(i, i + TAILLE_LOT);
+    const rep = await sendPulseBatch(env, lot, { from });
+    for (let k = 0; k < lot.length; k++) {
+      const e = lot[k];
+      if (!rep[k]?.ok) { r.rates++; continue; }
+      // L'étape n'avance qu'à l'ACCEPTATION : un envoi raté se rejoue le mardi suivant
+      // plutôt que de sauter une semaine de la séquence.
+      e.etat.etape = e.etape;
+      e.etat.envoye = { ...(e.etat.envoye ?? {}), [String(e.etape)]: new Date().toISOString() };
+      await env.SUBSCRIBERS.put(`seq:${e.slug}`, JSON.stringify(e.etat), { expirationTtl: 200 * 24 * 3600 });
+      await env.SUBSCRIBERS.put(`seq-sent:${dayKey}:${e.slug}`, String(e.etape), { expirationTtl: 100 * 24 * 3600 });
+      // L'escalier mensuel ne doit pas doubler la séquence ce mois-ci.
+      await env.SUBSCRIBERS.put(`sent:${cycle}:${e.slug}`, new Date().toISOString(), { expirationTtl: CYCLE_TTL });
+      // Compteur de prospection du jour — la rampe et les seuils le lisent.
+      const cleJ = `day:${dayKey}:outreach`;
+      const deja = Number((await env.SUBSCRIBERS.get(cleJ)) || 0);
+      await env.SUBSCRIBERS.put(cleJ, String(deja + 1), { expirationTtl: 3 * 24 * 3600 });
+      r.envoyes++;
+      // Un spécimen par étape et par vague : le proprio voit ce qui est parti, sans
+      // recevoir une copie de chaque courriel (décision du 2 août : illisible à 500).
+      const cleSpec = `sample-seq:${dayKey}:${e.etape}`;
+      if (!(await env.SUBSCRIBERS.get(cleSpec))) {
+        await env.SUBSCRIBERS.put(cleSpec, '1', { expirationTtl: 3 * 24 * 3600 });
+        await envoyerEchantillon(REPORT_TO, `[spécimen S${e.etape} → ${e.slug}] ${e.subject}`, e.html);
+      }
+    }
+  }
+  return r;
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -2172,10 +3041,7 @@ export default {
       }
       // L'aperçu doit montrer le courriel RÉEL, bloc des taux compris — sinon il valide un
       // gabarit qui n'existe pas.
-      const macro = await Promise.all([
-        feed('/api/rates.json').catch(() => null),
-        feed('/api/bonds.json').catch(() => null),
-      ]).then(([r, b]) => (r || b ? { rates: r?.rates ?? null, bonds: b?.bonds ?? null, fetched: r?.fetched ?? b?.fetched ?? null } : null));
+      const macro = await macroCourant();
       const { subject, html } = renderPulse({ segment, stage, city, expert, lang, unsubUrl: '#preview', macro,
         metier: url.searchParams.get('metier') || '' });
       return new Response(`<!--${subject}-->\n${html}`, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'X-Robots-Tag': 'noindex' } });
@@ -2194,6 +3060,127 @@ export default {
     //
     // Auth : le même CONTACTS_TOKEN que /bulletin-dryrun. Refus = 401, et le PHP bascule
     // alors sur mail() en dernier recours.
+    // ── WEBHOOK RESEND — rebonds et plaintes (2026-08-19) ──────────────────────────
+    // CE QU'IL RÉSOUT. Jusqu'ici, un rebond dur partait dans la corbeille Gmail du proprio
+    // et l'adresse morte était RESSERVIE au cycle suivant, indéfiniment. Une plainte pour
+    // pourriel, elle, n'était visible nulle part. Or ce sont les deux seuls signaux qui
+    // disent qu'une campagne est en train de brûler la réputation du domaine — et à
+    // volume qui monte, on ne peut pas les découvrir en lisant ses courriels.
+    //
+    // CE QU'IL FAIT.
+    //   bounced (dur)  → `bounce:{courriel}` ÉTERNEL. L'adresse ne repart jamais, quel que
+    //                    soit le flux. Un rebond doux (mailbox_full…) n'est PAS retenu :
+    //                    une boîte pleine se vide.
+    //   complained     → `unsub:prospect:{courriel}` + `plainte:{jour}` incrémenté. Une
+    //                    plainte vaut un désabonnement : la personne a dit non de la façon
+    //                    la plus coûteuse pour nous, on ne la rappelle pas.
+    //
+    // LES SEUILS, ET POURQUOI CEUX-LÀ. Les fournisseurs (Gmail, Microsoft) coupent autour
+    // de 0,3 % de plaintes. On agit AVANT : à 0,10 % le plafond du jour est divisé par
+    // deux, à 0,30 % (ou 3 plaintes en 24 h, qui compte quand le volume est petit) le flux
+    // s'ARRÊTE. Rebonds durs : 2 % ÷ 2, 4 % arrêt — un taux élevé signale une liste sale,
+    // et une liste sale est ce qui déclenche les filtres.
+    // ⚠️ Seul `outreach` peut être coupé automatiquement. Le bulletin opt-in et le relais
+    // client↔pro (le produit) ne se coupent JAMAIS tout seuls : leur arrêt serait une panne
+    // plus grave que le risque qu'il évite.
+    //
+    // SIGNATURE. Resend signe en Svix (`svix-id`, `svix-timestamp`, `svix-signature`,
+    // HMAC-SHA256 base64 sur « id.timestamp.payload »). Sans `RESEND_WEBHOOK_SECRET`
+    // configuré, la route REFUSE tout : un webhook non signé serait un moyen offert à
+    // n'importe qui de désabonner nos adresses ou d'arrêter nos envois.
+    // État de la séquence — même jeton privé que /bulletin-dryrun. Lecture seule.
+    if (request.method === 'GET' && url.pathname === '/sequence-status') {
+      if (!env.CONTACTS_TOKEN || url.searchParams.get('t') !== env.CONTACTS_TOKEN) {
+        return json({ error: 'unauthorized' }, 401);
+      }
+      const cles = env.SUBSCRIBERS ? await kvKeys(env.SUBSCRIBERS, 'seq:') : [];
+      const parEtape = {}, parCohorte = {}, liste = [];
+      for (const cle of cles) {
+        const slug = cle.replace(/^seq:/, '');
+        let e; try { e = JSON.parse((await env.SUBSCRIBERS.get(`seq:${slug}`)) || '{}'); } catch { continue; }
+        const et = e.stop ? 'arrêtée' : `S${e.etape ?? 0}`;
+        parEtape[et] = (parEtape[et] || 0) + 1;
+        parCohorte[e.cohorte ?? '?'] = (parCohorte[e.cohorte ?? '?'] || 0) + 1;
+        liste.push({ slug, etape: e.etape ?? 0, cohorte: e.cohorte ?? null, province: e.province ?? null, stop: !!e.stop });
+      }
+      return json({
+        inscrits: liste.length, parEtape, parCohorte,
+        feuVert: Boolean(await env.SUBSCRIBERS?.get('seq-feu-vert')),
+        stopOutreach: (await env.SUBSCRIBERS?.get('stop:outreach')) ?? null,
+        liste: liste.sort((a, b) => a.slug.localeCompare(b.slug)),
+      });
+    }
+
+    // État de l'alerte taux, et sa répétition à blanc. `?dry=1` compose les courriels sans
+    // rien envoyer ni rien mémoriser — le seul moyen de vérifier le déclencheur sans
+    // attendre une décision de la Banque du Canada.
+    if (request.method === 'GET' && url.pathname === '/alerte-taux-status') {
+      if (!env.CONTACTS_TOKEN || url.searchParams.get('t') !== env.CONTACTS_TOKEN) {
+        return json({ error: 'unauthorized' }, 401);
+      }
+      const cles = env.SUBSCRIBERS ? await kvKeys(env.SUBSCRIBERS, 'taux:') : [];
+      const inscrits = cles.filter((e) => e !== 'dernier' && EMAIL_RE.test(e));
+      let memoire = null;
+      try { memoire = JSON.parse((await env.SUBSCRIBERS?.get('taux:dernier')) || 'null'); } catch { /* clé abîmée */ }
+      const macro = await macroCourant();
+      const sortie = {
+        inscrits: inscrits.length,
+        memoire,
+        tauxLu: macro?.rates?.policyRate ?? null,
+        changement: memoire && macro?.rates?.policyRate?.percent != null
+          ? memoire.percent !== macro.rates.policyRate.percent : null,
+        stopAll: (await env.SUBSCRIBERS?.get('stop:all')) ?? null,
+        desabonnes: env.SUBSCRIBERS ? (await kvKeys(env.SUBSCRIBERS, 'unsub:taux:')).length : 0,
+      };
+      if (url.searchParams.get('dry') === '1') sortie.repetition = await runAlerteTaux(env, { dryRun: true });
+      return json(sortie);
+    }
+
+    if (request.method === 'POST' && url.pathname === '/resend-webhook') {
+      const secret = env.RESEND_WEBHOOK_SECRET;
+      if (!secret) return json({ error: 'webhook non configuré' }, 503);
+      const brut = await request.text();
+      const id = request.headers.get('svix-id') || '';
+      const ts = request.headers.get('svix-timestamp') || '';
+      const sig = request.headers.get('svix-signature') || '';
+      if (!id || !ts || !sig) return json({ error: 'signature manquante' }, 401);
+      // Rejeu : au-delà de 5 minutes, on refuse même une signature valide.
+      if (Math.abs(Date.now() / 1000 - Number(ts)) > 300) return json({ error: 'horodatage hors fenêtre' }, 401);
+      let valide = false;
+      try {
+        const clef = secret.startsWith('whsec_') ? secret.slice(6) : secret;
+        const key = await crypto.subtle.importKey('raw',
+          Uint8Array.from(atob(clef), (c) => c.charCodeAt(0)),
+          { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+        const mac = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`${id}.${ts}.${brut}`));
+        const attendu = btoa(String.fromCharCode(...new Uint8Array(mac)));
+        // Svix envoie « v1,sig1 v1,sig2 » — une seule doit correspondre (rotation de clé).
+        valide = sig.split(' ').some((part) => part.split(',')[1] === attendu);
+      } catch { valide = false; }
+      if (!valide) return json({ error: 'signature invalide' }, 401);
+
+      let ev; try { ev = JSON.parse(brut); } catch { return json({ error: 'corps illisible' }, 400); }
+      const type = ev?.type || '';
+      const dest = String(ev?.data?.to?.[0] ?? ev?.data?.email ?? '').toLowerCase().trim();
+      const jour = new Date().toISOString().slice(0, 10);
+      if (!dest || !env.SUBSCRIBERS) return json({ ok: true, ignore: true });
+
+      if (type === 'email.bounced') {
+        const genre = String(ev?.data?.bounce?.type ?? ev?.data?.type ?? '').toLowerCase();
+        const dur = !genre || /hard|permanent|undetermined/.test(genre);
+        if (dur) {
+          await env.SUBSCRIBERS.put(`bounce:${dest}`, JSON.stringify({ jour, genre: genre || 'inconnu' }));
+          const n = Number((await env.SUBSCRIBERS.get(`rebond:${jour}`)) || 0);
+          await env.SUBSCRIBERS.put(`rebond:${jour}`, String(n + 1), { expirationTtl: 30 * 24 * 3600 });
+        }
+      } else if (type === 'email.complained') {
+        await env.SUBSCRIBERS.put(`unsub:prospect:${dest}`, JSON.stringify({ jour, motif: 'plainte' }));
+        const n = Number((await env.SUBSCRIBERS.get(`plainte:${jour}`)) || 0);
+        await env.SUBSCRIBERS.put(`plainte:${jour}`, String(n + 1), { expirationTtl: 90 * 24 * 3600 });
+      }
+      return json({ ok: true, type });
+    }
+
     if (request.method === 'POST' && url.pathname === '/contact-relay') {
       if (!env.CONTACTS_TOKEN || url.searchParams.get('key') !== env.CONTACTS_TOKEN) {
         return json({ error: 'unauthorized' }, 401);
@@ -2280,6 +3267,8 @@ export default {
 
     // Bulletin de marché (formulaire zéro-JS des pages ville).
     if (request.method === 'POST' && url.pathname === '/subscribe') return handleSubscribe(request, env, url);
+    // Alerte taux : POST depuis un formulaire, GET en un clic depuis le bulletin (HMAC).
+    if (url.pathname === '/alerte-taux' && (request.method === 'POST' || request.method === 'GET')) return handleAlerteTauxInscription(request, env, url);
     // POST accepté aussi : Gmail et Outlook déclenchent le désabonnement en un clic
     // (List-Unsubscribe-Post) sans jamais ouvrir la page.
     if ((request.method === 'GET' || request.method === 'POST') && url.pathname === '/unsubscribe') return handleUnsubscribe(env, url);
@@ -2329,6 +3318,38 @@ export default {
   // référence — filtrées, à chaque passage, par le fuseau horaire.
   async scheduled(event, env, ctx) {
     if (!env.RESEND_API_KEY) return;   // sans clé : aucun envoi (le dry-run reste dispo par route)
+    // L'ALERTE TAUX passe avant tout le reste : c'est le seul envoi daté par un ÉVÉNEMENT
+    // (la Banque du Canada a bougé) et non par un calendrier qu'on choisit. Un bulletin
+    // décalé d'une heure ne coûte rien ; une alerte de taux décalée n'est plus une alerte.
+    // Coût quand rien ne bouge — 361 jours sur 365 : une lecture KV et un appel Valet mis
+    // en cache. `try` isolé : elle ne doit jamais emporter les autres envois.
+    try {
+      const alerte = await runAlerteTaux(env, { at: new Date() });
+      if (alerte.change) {
+        console.log(`[alerte-taux] ${alerte.ancien} % → ${alerte.nouveau} % (${alerte.observed}) — `
+          + (alerte.arrete ? `ARRÊTÉ (${alerte.arrete}), mouvement enregistré sans envoi`
+            : `${alerte.envoyes} envoyée(s), ${alerte.rates} ratée(s) sur ${alerte.inscrits} inscrit(s)`));
+      } else if (alerte.note) {
+        console.log(`[alerte-taux] ${alerte.note}`);
+      }
+    } catch (err) {
+      console.log(`[alerte-taux] ERREUR : ${err?.message ?? err}`);
+    }
+
+    // La séquence AVANT le bulletin : elle porte une date promise (mardi 10 h locale),
+    // le bulletin s'étale sur le mois. À budget contraint, la date passe devant.
+    // `try` isolé : une séquence qui échoue ne doit jamais emporter le bulletin avec elle.
+    try {
+      const seq = await runSequence(env, { at: new Date() });
+      if (seq.envoyes || seq.rates) {
+        console.log(`[séquence] ${seq.vague} — ${seq.envoyes} envoyés, ${seq.rates} ratés, `
+          + `${Object.entries(seq.parEtape).map(([k, v]) => `${k} ${v}`).join(' · ')}`
+          + (seq.sorties.length ? ` — sorties : ${seq.sorties.join(', ')}` : ''));
+        await envoyerRapportSequence(env, seq).catch(() => {});
+      }
+    } catch (err) {
+      console.log(`[séquence] ERREUR : ${err?.message ?? err}`);
+    }
     await runBulletin(env, { dryRun: false });
   },
 };
