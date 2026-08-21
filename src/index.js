@@ -1155,16 +1155,32 @@ function subPage(lang, title, message, cityUrl) {
 const fmtMoney = (n, fr) => (n == null ? null : fr ? `${n.toLocaleString('fr-CA')} $` : `$${n.toLocaleString('en-CA')}`);
 const fmtPct = (p, fr) => (p == null ? null : `${p >= 0 ? '+' : ''}${p.toLocaleString(fr ? 'fr-CA' : 'en-CA')} %`);
 
+// Prix de référence du bulletin, avec la variation annuelle QUI LUI CORRESPOND.
+// Piège écarté ici : afficher benchmarkYoyPct à côté d'un prix moyen accolerait la
+// variation d'une mesure à la valeur d'une autre. Pour la médiane, benchmarkYoyPct
+// EST la bonne variation (les villes québécoises y rangent celle de leur médiane).
+const refOf = (c) => (
+  c?.benchmarkHpi != null ? { valeur: c.benchmarkHpi, yoy: c.benchmarkYoyPct ?? null, genre: 'benchmark' }
+  : c?.medianPrice != null ? { valeur: c.medianPrice, yoy: c.benchmarkYoyPct ?? null, genre: 'median' }
+  : c?.averagePrice != null ? { valeur: c.averagePrice, yoy: c.averageYoyPct ?? null, genre: 'average' }
+  : { valeur: null, yoy: null, genre: null });
+
+const refLabelOf = (genre, fr) => (
+  genre === 'benchmark' ? (fr ? 'Prix repère MLS' : 'MLS benchmark price')
+  : genre === 'median' ? (fr ? 'Prix médian' : 'Median price')
+  : (fr ? 'Prix moyen' : 'Average price'));
+
 // Compose le bulletin depuis /api/market.json — champs présents seulement, rien d'inventé.
 function bulletinText(city, lang, unsubUrl, welcome) {
   const fr = lang === 'fr';
-  const refPrice = city.benchmarkHpi ?? city.medianPrice;
-  const refLabel = city.benchmarkHpi ? (fr ? 'Prix repère MLS' : 'MLS benchmark price') : (fr ? 'Prix médian' : 'Median price');
+  const ref0 = refOf(city);
+  const refPrice = ref0.valeur;
+  const refLabel = refLabelOf(ref0.genre, fr);
   const L = [];
   L.push(fr ? `Le pouls du marché — ${city.name}` : `Market pulse — ${city.name}`);
   if (city.referenceMonth) L.push(fr ? `(données de référence : ${city.referenceMonth}, ${city.board ?? 'chambre immobilière'})` : `(reference data: ${city.referenceMonth}, ${city.board ?? 'real-estate board'})`);
   L.push('');
-  if (refPrice != null) L.push(`• ${refLabel} : ${fmtMoney(refPrice, fr)}${city.benchmarkYoyPct != null ? ` (${fmtPct(city.benchmarkYoyPct, fr)} ${fr ? 'sur un an' : 'year over year'})` : ''}`);
+  if (refPrice != null) L.push(`• ${refLabel} : ${fmtMoney(refPrice, fr)}${ref0.yoy != null ? ` (${fmtPct(ref0.yoy, fr)} ${fr ? 'sur un an' : 'year over year'})` : ''}`);
   if (city.sales != null) L.push(`• ${fr ? 'Ventes' : 'Sales'} : ${city.sales.toLocaleString(fr ? 'fr-CA' : 'en-CA')}${city.salesYoyPct != null ? ` (${fmtPct(city.salesYoyPct, fr)})` : ''}`);
   if (city.monthsOfInventory != null) L.push(`• ${fr ? "Mois d'inventaire" : 'Months of inventory'} : ${city.monthsOfInventory}`);
   if (city.avgDaysOnMarket != null) L.push(`• ${fr ? 'Délai de vente moyen' : 'Average days on market'} : ${city.avgDaysOnMarket} ${fr ? 'jours' : 'days'}`);
@@ -1272,11 +1288,12 @@ const S = (label, val) => `<td width="50%" style="padding:14px 0;border-bottom:1
 
 // Cœur commun : logo + repère + grille + source. eyebrow = texte à droite du logo.
 function marketCore(city, fr, eyebrow) {
-  const ref = city.benchmarkHpi ?? city.medianPrice;
-  const refYoy = city.benchmarkYoyPct;
+  const ref0 = refOf(city);
+  const ref = ref0.valeur;
+  const refYoy = ref0.yoy;
   const grn = (t) => `<span style="font-size:12px;color:#1f7a44;font-weight:normal;">${t}</span>`;
   const cells = [];
-  if (city.averagePrice != null) cells.push([fr ? 'Prix moyen' : 'Average price', fmtMoney(city.averagePrice, fr) + (city.averageYoyPct != null ? ' ' + grn(fmtPct(city.averageYoyPct, fr)) : '')]);
+  if (city.averagePrice != null && ref0.genre !== 'average') cells.push([fr ? 'Prix moyen' : 'Average price', fmtMoney(city.averagePrice, fr) + (city.averageYoyPct != null ? ' ' + grn(fmtPct(city.averageYoyPct, fr)) : '')]);
   if (city.sales != null) cells.push([fr ? 'Ventes du mois' : 'Sales', city.sales.toLocaleString(fr ? 'fr-CA' : 'en-CA') + (city.salesYoyPct != null ? ' ' + grn(fmtPct(city.salesYoyPct, fr)) : '')]);
   if (city.monthsOfInventory != null) cells.push([fr ? "Mois d'inventaire" : 'Months of inventory', String(city.monthsOfInventory)]);
   if (city.avgDaysOnMarket != null) cells.push([fr ? 'Délai de vente' : 'Days on market', city.avgDaysOnMarket + (fr ? ' jours' : ' days')]);
@@ -1284,7 +1301,7 @@ function marketCore(city, fr, eyebrow) {
   for (let i = 0; i < cells.length; i += 2) gridRows += `<tr>${S(cells[i][0], cells[i][1])}${cells[i + 1] ? S(cells[i + 1][0], cells[i + 1][1]) : '<td width="50%"></td>'}</tr>`;
   const refLine = ref != null
     ? `<div style="font-family:Georgia,'Times New Roman',serif;font-size:34px;color:#211c1e;line-height:1;">${fmtMoney(ref, fr)}</div>
-       <div style="font-size:13px;color:#6f6769;margin:9px 0 22px 0;">${fr ? 'Prix de référence' : 'Reference price'} (${city.benchmarkHpi ? (fr ? 'repère MLS' : 'MLS benchmark') : (fr ? 'médiane' : 'median')})${refYoy != null ? ` &middot; <span style="color:#1f7a44;font-weight:bold;">${fmtPct(refYoy, fr)} ${fr ? 'sur un an' : 'YoY'}</span>` : ''}</div>`
+       <div style="font-size:13px;color:#6f6769;margin:9px 0 22px 0;">${fr ? 'Prix de référence' : 'Reference price'} (${ref0.genre === 'benchmark' ? (fr ? 'repère MLS' : 'MLS benchmark') : ref0.genre === 'median' ? (fr ? 'médiane' : 'median') : (fr ? 'moyenne' : 'average')})${refYoy != null ? ` &middot; <span style="color:#1f7a44;font-weight:bold;">${fmtPct(refYoy, fr)} ${fr ? 'sur un an' : 'YoY'}</span>` : ''}</div>`
     : '';
   const src = Array.isArray(city.sources) && city.sources.length ? city.sources[0] : city.board;
   return `<tr><td style="padding:26px 32px 22px 32px;border-bottom:1px solid #f1ecec;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td valign="middle"><a href="${SITE}"><img src="${LOGO}" width="140" height="29" alt="Payotte" style="display:block;border:0;"></a></td><td align="right" valign="middle" style="font-size:11px;letter-spacing:.5px;color:#9a9294;line-height:1.5;">${eyebrow}</td></tr></table></td></tr>
@@ -1792,7 +1809,15 @@ async function sendPulseBatch(env, envois, { from: fromDemande } = {}) {
 // slug à tenir à jour : une ville entre dans le bulletin le jour où son prix entre dans
 // cityMarket.json, et en sort si la donnée disparaît. Le courriel s'ouvre sur ce prix —
 // sans lui, il n'y a rien à envoyer.
-const hasMarketStats = (c) => (c?.benchmarkHpi ?? c?.medianPrice) != null;
+// 2026-08-21 : le prix MOYEN devient un repère de dernier recours. Les rapports
+// mensuels d'AREA (5 villes albertaines) et l'infographie de la BDAR (Barrie) ne
+// publient NI repère NI médiane — que des moyennes. Le portier les écartait donc
+// alors que la donnée existait, officielle et mensuelle : 305 adresses récoltées
+// restaient injoignables faute d'un champ. L'ordre reste repère > médiane > moyenne,
+// et le gabarit ÉTIQUETTE le prix affiché pour ce qu'il est (voir refOf).
+const hasMarketStats = (c) => (c?.benchmarkHpi ?? c?.medianPrice ?? c?.averagePrice) != null;
+
+
 
 // Code province de market.json → slug du feed /api/experts/{slug}.json.
 const PROV_SLUG = {
