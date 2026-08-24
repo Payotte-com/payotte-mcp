@@ -3192,6 +3192,281 @@ async function handleUnsubscribe(env, url) {
   return subPage('fr', 'Désabonné / Unsubscribed', `${email} ne recevra plus le bulletin de ${ville}. / will no longer receive this bulletin.`);
 }
 
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// INDICE IA — audit public de lisibilité d'un site par les moteurs de réponse.
+//
+// Port du barème de `scripts/ai-readiness.mjs` (dépôt payotte-astro). MÊME barème,
+// mêmes seuils, mêmes pièges corrigés — un score rendu ici doit être identique à
+// celui du CLI, sinon l'étude publiée et l'outil se contrediraient en public.
+//
+//   30 ACCÈS · 25 STRUCTURE · 20 AEO · 15 ANCRAGE · 10 TECHNIQUE
+//
+// ⚠️ DEUX DIVERGENCES ASSUMÉES AVEC LE CLI, et elles portent toutes deux sur TLS.
+//
+//  1. Le CLI lit la date d'expiration du certificat via `openssl`. Un Worker n'a pas
+//     de sous-processus. Ici, la validité TLS est DÉDUITE : Cloudflare valide le
+//     certificat avant de rendre la réponse, donc un `fetch` HTTPS réussi prouve un
+//     certificat valide aujourd'hui. Les 4 points sont accordés, mais `certExpire`
+//     sort `null` — on ne devine pas une date qu'on n'a pas lue.
+//
+//  2. Le CLI rejoue la requête sans validation TLS pour auditer quand même un site
+//     à certificat expiré (correctif du 2026-08-17). Un Worker ne peut pas désactiver
+//     la validation. Un tel site sort donc `joignable: false` avec le motif `tls`,
+//     JAMAIS un score de 0 — un trou reste un trou, il ne devient pas une note.
+//
+// ⚠️ L'UA EST HONNÊTE, ET ÇA COÛTE. On s'annonce `PayotteAudit/1.0`. Des pare-feux
+// (Cloudflare, Wordfence) renvoient 403 à tout agent inconnu tout en servant GPTBot
+// et ClaudeBot — chrisallard.ca le fait, constaté le 2026-08-21. On rend alors l'état
+// `bloque`, pas un score : on ne se déguise pas en robot d'IA pour entrer.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const II_UA = 'PayotteAudit/1.0 (+https://payotte.com; audit de lisibilité IA)';
+const II_TIMEOUT = 10_000;
+const II_MAX_HTML = 3_000_000;   // 3 Mo : au-delà, on tronque plutôt que d'exploser la mémoire
+
+const II_BOTS = ['GPTBot', 'OAI-SearchBot', 'ChatGPT-User', 'ClaudeBot', 'anthropic-ai', 'Claude-Web',
+                 'PerplexityBot', 'Perplexity-User', 'Google-Extended', 'CCBot', 'Applebot-Extended', 'meta-externalagent'];
+
+/** Récupère une URL. Ne lève jamais. */
+async function iiGet(url) {
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), II_TIMEOUT);
+  try {
+    const r = await fetch(url, { redirect: 'follow', signal: ctl.signal, headers: { 'User-Agent': II_UA } });
+    const brut = await r.text();
+    return { ok: true, status: r.status, body: brut.slice(0, II_MAX_HTML), headers: r.headers, url: r.url };
+  } catch (e) {
+    const detail = [e?.message, e?.cause?.code, e?.cause?.message].filter(Boolean).join(' | ');
+    return { ok: false, status: 0, body: '', headers: new Headers(), erreur: String(detail || e) };
+  } finally { clearTimeout(t); }
+}
+
+/**
+ * Le fichier existe-t-il VRAIMENT ? (correctif « soft 404 » du 2026-08-17 : la plupart
+ * des hébergeurs répondent 200 + page d'accueil HTML au lieu d'un 404.)
+ */
+function iiFichierReel(rep, { xml = false } = {}) {
+  if (!rep.ok || rep.status !== 200) return false;
+  const ct = (rep.headers.get('content-type') ?? '').toLowerCase();
+  if (ct.includes('text/html')) return false;
+  const debut = rep.body.slice(0, 400).trim().toLowerCase();
+  if (debut.startsWith('<!doctype html') || debut.startsWith('<html') || debut.includes('<head')) return false;
+  if (xml) return debut.startsWith('<?xml') || debut.includes('<urlset') || debut.includes('<sitemapindex');
+  return rep.body.trim().length > 0;
+}
+
+/** Texte visible SANS exécuter le JS — le test qui décide de tout. */
+function iiMotsSansJs(html) {
+  const sansCode = html.replace(/<(script|style|noscript|template)[^>]*>[\s\S]*?<\/\1>/gi, '');
+  const txt = sansCode.replace(/<[^>]+>/g, ' ').replace(/&[a-z#0-9]+;/gi, ' ').replace(/\s+/g, ' ').trim();
+  return txt ? txt.split(' ').length : 0;
+}
+
+/** Tous les blocs JSON-LD, aplatis (@graph compris). */
+function iiJsonLd(html) {
+  const out = [];
+  for (const m of html.matchAll(/<script[^>]*application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)) {
+    let d; try { d = JSON.parse(m[1]); } catch { continue; }
+    for (const o of (Array.isArray(d) ? d : [d])) {
+      for (const n of (o && o['@graph'] ? o['@graph'] : [o])) if (n && typeof n === 'object') out.push(n);
+    }
+  }
+  return out;
+}
+const iiType = (n, t) => String(n['@type'] ?? '').includes(t);
+
+/** robots.txt → verdict par robot d'IA. */
+function iiRobots(txt) {
+  if (txt == null) return { presence: false, verdicts: {}, bloques: [], nommes: [], toutBloque: false };
+  const blocs = []; let courant = null;
+  for (const ligne of txt.split('\n')) {
+    const l = ligne.replace(/#.*/, '').trim();
+    if (!l) continue;
+    const ua = l.match(/^user-agent\s*:\s*(.+)$/i);
+    if (ua) {
+      if (!courant || courant.regles.length) { courant = { agents: [], regles: [] }; blocs.push(courant); }
+      courant.agents.push(ua[1].trim().toLowerCase());
+      continue;
+    }
+    const rg = l.match(/^(allow|disallow)\s*:\s*(.*)$/i);
+    if (rg && courant) courant.regles.push({ type: rg[1].toLowerCase(), chemin: rg[2].trim() });
+  }
+  const verdictPour = (bot) => {
+    const b = blocs.find((x) => x.agents.includes(bot.toLowerCase()));
+    const etoile = blocs.find((x) => x.agents.includes('*'));
+    const cible = b ?? etoile;
+    if (!cible) return 'non mentionné';
+    const bloqueRacine = cible.regles.some((r) => r.type === 'disallow' && (r.chemin === '/' || r.chemin === ''));
+    const disallowRacine = cible.regles.some((r) => r.type === 'disallow' && r.chemin === '/');
+    if (disallowRacine) return 'bloqué';
+    return b ? 'autorisé' : (bloqueRacine ? 'bloqué' : 'autorisé');
+  };
+  const verdicts = Object.fromEntries(II_BOTS.map((b) => [b, verdictPour(b)]));
+  return {
+    presence: true, verdicts,
+    bloques: II_BOTS.filter((b) => verdicts[b] === 'bloqué'),
+    nommes: II_BOTS.filter((b) => blocs.some((x) => x.agents.includes(b.toLowerCase()))),
+    toutBloque: II_BOTS.every((b) => verdicts[b] === 'bloqué'),
+  };
+}
+
+/**
+ * Normalise et VALIDE la cible. Rend { hote, base } ou { erreur }.
+ * Refuse tout ce qui n'est pas un nom d'hôte public : pas d'IP, pas de localhost,
+ * pas de TLD interne, pas d'autre schéma que http(s). Sans ce filtre, un endpoint
+ * public qui va chercher l'URL qu'on lui donne est un proxy pour réseau interne.
+ */
+function iiCible(saisie) {
+  let s = String(saisie ?? '').trim().toLowerCase();
+  if (!s) return { erreur: 'vide' };
+  if (s.length > 253) return { erreur: 'trop long' };
+  s = s.replace(/^https?:\/\//, '').replace(/\/.*$/, '').replace(/[:?#].*$/, '');
+  if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/.test(s)) return { erreur: 'format' };
+  if (/^\d+\.\d+\.\d+\.\d+$/.test(s)) return { erreur: 'ip' };
+  const tld = s.split('.').pop();
+  if (['local', 'localhost', 'internal', 'lan', 'home', 'test', 'invalid', 'example'].includes(tld)) return { erreur: 'interne' };
+  return { hote: s, base: `https://${s}` };
+}
+
+/** L'audit. Même barème que le CLI, à la lettre. */
+async function iiAuditer(saisie) {
+  const c = iiCible(saisie);
+  if (c.erreur) return { joignable: false, motif: 'domaine', detail: c.erreur, score: null };
+
+  const page = await iiGet(c.base);
+
+  if (!page.ok) {
+    const tls = /certificate|CERT_|altname|SSL|TLS/i.test(page.erreur ?? '');
+    return { hote: c.hote, joignable: false, score: null,
+             motif: tls ? 'tls' : 'injoignable', detail: page.erreur ?? '' };
+  }
+  if (page.status === 403 || page.status === 401 || page.status === 451) {
+    return { hote: c.hote, joignable: false, score: null, motif: 'bloque', status: page.status };
+  }
+  if (page.status >= 400) {
+    return { hote: c.hote, joignable: false, score: null, motif: 'injoignable', detail: `HTTP ${page.status}` };
+  }
+
+  const racine = `https://${c.hote}`;
+  const html = page.body;
+  const [robotsRep, llmsRep, sitemapRep] = await Promise.all([
+    iiGet(`${racine}/robots.txt`), iiGet(`${racine}/llms.txt`), iiGet(`${racine}/sitemap.xml`),
+  ]);
+  const rb = iiRobots(iiFichierReel(robotsRep) ? robotsRep.body : null);
+  const nodes = iiJsonLd(html);
+  const mots = iiMotsSansJs(html);
+  const d = {};
+
+  // ── ACCÈS (30) ──
+  let acces = 0;
+  d.robotsBloque = rb.bloques; d.robotsNommes = rb.nommes; d.robotsPresence = rb.presence;
+  if (rb.toutBloque) acces += 0;
+  else if (rb.bloques.length) acces += 6;
+  else acces += rb.nommes.length ? 15 : 12;
+  d.motsSansJs = mots;
+  acces += mots >= 600 ? 15 : mots >= 250 ? 10 : mots >= 80 ? 4 : 0;
+  d.contenuDependantJs = mots < 250;
+
+  // ── STRUCTURE (25) ──
+  let struct = 0;
+  const aOrg = nodes.some((n) => iiType(n, 'Organization') || iiType(n, 'LocalBusiness') || iiType(n, 'ProfessionalService'));
+  const aPersonne = nodes.some((n) => iiType(n, 'Person'));
+  const sameAs = nodes.flatMap((n) => (Array.isArray(n.sameAs) ? n.sameAs : n.sameAs ? [n.sameAs] : []));
+  d.typesJsonLd = [...new Set(nodes.map((n) => String(n['@type'])))];
+  d.sameAs = sameAs.length;
+  d.aOrganisation = aOrg;
+  d.aPersonne = aPersonne;
+  if (nodes.length) struct += 6;
+  if (aOrg) struct += 8;
+  if (aPersonne) struct += 3;
+  if (sameAs.length >= 2) struct += 8; else if (sameAs.length === 1) struct += 4;
+
+  // ── AEO (20) ──
+  let aeo = 0;
+  const questions = (html.match(/"@type"\s*:\s*"Question"/g) || []).length;
+  const h1 = (html.match(/<h1[\s>]/gi) || []).length;
+  const h2 = (html.match(/<h2[\s>]/gi) || []).length;
+  d.questionsFaq = questions; d.h1 = h1; d.h2 = h2;
+  if (questions >= 3) aeo += 10; else if (questions >= 1) aeo += 6;
+  if (h1 === 1) aeo += 4;
+  if (h2 >= 3) aeo += 3;
+  if (mots >= 400) aeo += 3;
+
+  // ── ANCRAGE (15) — NAP accepté sur Organization (correctif de barème du 2026-08-17) ──
+  let ancrage = 0;
+  const lb = nodes.find((n) => iiType(n, 'LocalBusiness') || iiType(n, 'ProfessionalService'))
+          ?? nodes.find((n) => iiType(n, 'Organization'));
+  d.nap = { address: !!lb?.address, telephone: !!lb?.telephone, geo: !!lb?.geo };
+  d.areaServed = !!lb?.areaServed;
+  if (lb?.address) ancrage += 5;
+  if (lb?.telephone) ancrage += 3;
+  if (lb?.geo) ancrage += 3;
+  if (lb?.areaServed) ancrage += 4;
+
+  // ── TECHNIQUE (10) ──
+  let tech = 0;
+  d.certValide = true;          // cf. divergence nº 1 : un fetch HTTPS réussi le prouve
+  d.certExpire = null;          // date non lisible depuis un Worker — on ne l'invente pas
+  d.sitemap = iiFichierReel(sitemapRep, { xml: true });
+  d.llmsTxt = iiFichierReel(llmsRep);
+  d.viewport = /name=["']viewport["']/i.test(html);
+  d.canonical = /rel=["']canonical["']/i.test(html);
+  tech += 4;                    // certificat valide
+  if (d.viewport) tech += 2;
+  if (d.canonical) tech += 2;
+  if (d.sitemap) tech += 2;
+
+  const piliers = { acces, structure: struct, aeo, ancrage, technique: tech };
+  return { hote: c.hote, joignable: true, score: acces + struct + aeo + ancrage + tech, piliers, detail: d };
+}
+
+
+/**
+ * INDICE IA — AGRÉGATS ANONYMES (2026-08-21).
+ *
+ * Pourquoi maintenant : un « observatoire de la lisibilité IA » nourri par l'outil
+ * ne se rattrape pas rétroactivement. Chaque analyse non comptée aujourd'hui est
+ * une donnée perdue pour toujours. Une heure de travail, une fenêtre qui se ferme.
+ *
+ * ⚠️ AUCUN DOMAINE N'EST CONSERVÉ, et ce n'est pas négociable : la page promet
+ * que « le domaine sert à faire l'analyse et n'est associé à aucune identité ».
+ * On ne garde que des COMPTEURS — combien d'analyses, la somme des notes, la
+ * distribution par tranche de dix, la somme par pilier. Rien qui permette de
+ * reconstituer qui a testé quoi. La FAQ de la page décrit exactement ceci ; si
+ * on élargit un jour la collecte, on change la FAQ D'ABORD.
+ *
+ * Compteurs séparés plutôt qu'un blob JSON lu-modifié-réécrit : sous concurrence,
+ * le read-modify-write perd des écritures en silence.
+ */
+async function addCounter(env, key, n, ttlSeconds) {
+  if (!env?.COUNTERS) return;
+  const v = parseInt((await env.COUNTERS.get(key)) ?? '0', 10) + n;
+  await env.COUNTERS.put(key, String(v), { expirationTtl: ttlSeconds });
+}
+
+const II_TTL = 400 * 86400;   // 400 jours : une année complète survit au relevé
+
+async function iiAgreger(env, r) {
+  if (!env?.COUNTERS || r?.score == null) return;
+  const mois = new Date().toISOString().slice(0, 7);
+  const k = (suffixe) => `iis:${mois}:${suffixe}`;
+  const tranche = Math.min(10, Math.floor(r.score / 10));
+  await Promise.all([
+    addCounter(env, k('n'), 1, II_TTL),
+    addCounter(env, k('somme'), r.score, II_TTL),
+    addCounter(env, k(`t${tranche}`), 1, II_TTL),
+    addCounter(env, k('acces'), r.piliers.acces, II_TTL),
+    addCounter(env, k('structure'), r.piliers.structure, II_TTL),
+    addCounter(env, k('aeo'), r.piliers.aeo, II_TTL),
+    addCounter(env, k('ancrage'), r.piliers.ancrage, II_TTL),
+    addCounter(env, k('technique'), r.piliers.technique, II_TTL),
+    r.detail?.contenuDependantJs ? addCounter(env, k('jsdep'), 1, II_TTL) : null,
+    r.detail?.sameAs === 0 ? addCounter(env, k('sansSameAs'), 1, II_TTL) : null,
+    r.detail?.questionsFaq === 0 ? addCounter(env, k('sansFaq'), 1, II_TTL) : null,
+  ].filter(Boolean));
+}
+
 // ---------------------------------------------------------------- JSON-RPC / MCP
 
 const CORS = {
@@ -3374,6 +3649,63 @@ export default {
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
 
     // Statistiques publiques agrégées (aucune donnée personnelle) — pour le rapport hebdo.
+    // INDICE IA — /indice-ia?domaine=exemple.ca
+    // Audit public, gratuit, sans jeton. Le garde-fou est le DÉBIT, pas l'identité :
+    // 15 audits par heure et par IP, 3 000 par jour au global. Chaque audit fait
+    // 4 requêtes sortantes ; sans plafond, l'endpoint devient un scanner pour autrui.
+    // Relecture des agrégats — c'est la matière de l'« observatoire » à publier.
+    // /indice-ia-stats?mois=2026-08 (défaut : le mois courant)
+    if (request.method === 'GET' && url.pathname === '/indice-ia-stats') {
+      const mois = (url.searchParams.get('mois') || new Date().toISOString().slice(0, 7));
+      if (!/^\d{4}-\d{2}$/.test(mois)) return json({ erreur: 'mois invalide (AAAA-MM)' }, 400);
+      const lire = async (k) => parseInt((await env.COUNTERS?.get(`iis:${mois}:${k}`)) ?? '0', 10);
+      const n = await lire('n');
+      const [somme, acces, structure, aeo, ancrage, technique, jsdep, sansSameAs, sansFaq] =
+        await Promise.all(['somme','acces','structure','aeo','ancrage','technique','jsdep','sansSameAs','sansFaq'].map(lire));
+      const tranches = {};
+      for (let i = 0; i <= 10; i++) tranches[`${i * 10}-${i === 10 ? 100 : i * 10 + 9}`] = await lire(`t${i}`);
+      return json({
+        mois, analyses: n,
+        moyenne: n ? Math.round((somme / n) * 10) / 10 : null,
+        piliers: n ? {
+          acces: Math.round((acces / n) * 10) / 10, structure: Math.round((structure / n) * 10) / 10,
+          aeo: Math.round((aeo / n) * 10) / 10, ancrage: Math.round((ancrage / n) * 10) / 10,
+          technique: Math.round((technique / n) * 10) / 10,
+        } : null,
+        tranches,
+        constats: { dependantJs: jsdep, sansSameAs, sansFaq },
+        _lecture: 'Agrégats anonymes. Aucun domaine analysé n\'est conservé.',
+      });
+    }
+
+    if (request.method === 'GET' && url.pathname === '/indice-ia') {
+      const domaine = url.searchParams.get('domaine') ?? url.searchParams.get('domain');
+      if (!domaine) return json({ erreur: 'domaine manquant', usage: '/indice-ia?domaine=exemple.ca' }, 400);
+
+      // Derrière Cloudflare, `CF-Connecting-IP` est TOUJOURS posé. Son absence signifie
+      // donc qu'on n'est pas en production : `wrangler dev`, ou un appel direct à l'origine.
+      // On garde un plafond dans ce cas — mais large, sinon quinze essais suffisent à
+      // bloquer une séance de mise au point, ce qui est arrivé le 2026-08-21.
+      const ip = request.headers.get('CF-Connecting-IP');
+      const local = !ip;
+      const PLAFOND_IP = local ? 500 : 15;
+      const heure = new Date().toISOString().slice(0, 13);
+      const jour = new Date().toISOString().slice(0, 10);
+      const parIp = await bumpCounter(env, 'ii:' + (ip ?? 'local') + ':' + heure, 3600);
+      const global = await bumpCounter(env, 'ii:global:' + jour, 86400);
+      if (parIp > PLAFOND_IP) return json({ erreur: 'trop de demandes', reessayer: 'dans une heure' }, 429);
+      if (global > 3000) return json({ erreur: 'plafond quotidien atteint' }, 429);
+
+      const r = await iiAuditer(domaine);
+      await iiAgreger(env, r);   // agrégats anonymes — jamais le domaine
+      return json({
+        bareme: { acces: 30, structure: 25, aeo: 20, ancrage: 15, technique: 10, total: 100 },
+        mesure: new Date().toISOString(),
+        agent: II_UA,
+        ...r,
+      });
+    }
+
     if (request.method === 'GET' && url.pathname === '/stats') {
       let subscribers = 0, relaysMonth = 0, relaysTotal = 0;
       if (env.SUBSCRIBERS) subscribers = (await env.SUBSCRIBERS.list({ prefix: 's:' })).keys.length;
