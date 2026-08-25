@@ -1190,7 +1190,19 @@ function bulletinText(city, lang, unsubUrl, welcome) {
     ? `Besoin d'un professionnel de confiance ? Un seul expert vérifié par secteur et par métier, permis publié : ${SITE}`
     : `Need a professional you can trust? One verified expert per sector and trade, licence published: ${SITE}`);
   if (Array.isArray(city.sources) && city.sources.length) L.push('', (fr ? 'Sources : ' : 'Sources: ') + city.sources.join(' · '));
-  L.push('', '—', fr
+  L.push('', '—');
+  // ── VOIE DE CONTACT (2026-08-25) ─────────────────────────────────────────────────
+  // Depuis le passage en no-reply, ces deux lignes ne sont PAS décoratives : le
+  // formulaire est le SEUL moyen de joindre Payotte, et c'est lui qui satisfait
+  // l'obligation LCAP d'un moyen de contact valide 60 jours (une adresse web y suffit).
+  // Ne jamais les retirer sans rétablir d'abord une adresse de réponse qui reçoit.
+  L.push(fr
+    ? `Ce courriel part d'une adresse qui ne reçoit pas. Pour nous écrire — correction,`
+    : `This message is sent from an address that does not accept replies. To reach us —`);
+  L.push(fr
+    ? `question, retrait — utilisez le formulaire : ${SITE}/contact`
+    : `a correction, a question, a removal — use the form: ${SITE}/contact`);
+  L.push('', fr
     ? `Vous recevez ce courriel parce que vous vous êtes abonné au bulletin de ${city.name} sur payotte.com.${welcome ? ' (Voici votre premier bulletin, envoyé sur-le-champ.)' : ''}`
     : `You are receiving this because you subscribed to the ${city.name} bulletin on payotte.com.${welcome ? ' (Here is your first bulletin, sent right away.)' : ''}`);
   L.push(fr ? `Se désabonner (un clic) : ${unsubUrl}` : `Unsubscribe (one click): ${unsubUrl}`);
@@ -1230,18 +1242,37 @@ const LOGO = 'https://payotte.com/payotte-logo-transparent.png';
 // À la place, UN récapitulatif par exécution — sans lui, un envoi raté ne laisse aucune trace.
 const REPORT_TO = 'gpayotte@gmail.com';
 
-// ⚠️ ADRESSE DE RÉPONSE — corrigée le 2026-08-19, et c'est une PANNE, pas une préférence.
-// `gregory@payotte.com` était le reply_to de TOUS les envois (bulletin, experts, lots).
-// Or `payotte.com` n'a AUCUN enregistrement MX (`dig payotte.com MX` → vide) : le renvoi
-// GoDaddy est mort. Dernier courriel reçu à cette adresse : 26 mai 2026. Chaque courriel
-// qui disait « répondez à ce courriel » depuis au moins trois mois envoyait la réponse
-// dans le vide — y compris les 217 présentations ⓪ et les vagues de relance d'août.
-// Le même constat était DÉJÀ écrit plus bas pour le formulaire de contact (relais du
-// 2026-08-17, « testé le 17 août : le message n'arrive nulle part ») sans que le reply_to
-// des envois n'en tire la conséquence.
-// Si un jour un MX est rétabli sur payotte.com, cette constante redevient l'adresse de
-// marque — mais seulement après un test d'arrivée horodaté, pas sur la foi du réglage.
-const REPLY_TO = 'gpayotte@gmail.com';
+// ⚠️ ADRESSE DE RÉPONSE — NO-REPLY ASSUMÉ (décision proprio, 2026-08-25).
+//
+// L'HISTOIRE. `gregory@payotte.com` a été le reply_to de TOUS les envois jusqu'au
+// 2026-08-19. Or `payotte.com` n'a AUCUN enregistrement MX : le renvoi GoDaddy est mort
+// (dernier courriel reçu : 26 mai 2026). Pendant au moins trois mois, chaque courriel qui
+// disait « répondez à ce courriel » envoyait la réponse dans le vide — les 217
+// présentations ⓪ comprises. Le 19 août, on a basculé sur `gpayotte@gmail.com` : ça
+// marchait, mais ça affichait une adresse Gmail sur un annuaire qui publie des numéros
+// de permis.
+//
+// POURQUOI PAS DE BOÎTE. Vérifié au compte GoDaddy le 2026-08-25 : l'abonnement
+// Microsoft 365 a expiré le 2026-08-06 et il portait `info@recharges.ca`, pas payotte.com ;
+// le produit de renvoi courriel est lié à `wheelster.com` (le formulaire « Add Forward » a
+// le domaine figé, sans sélecteur) ; l'onglet « Forwarding » du domaine ne fait que du
+// renvoi WEB. Aucune boîte disponible sans achat.
+//
+// LA DÉCISION. Plutôt que d'acheter une boîte, le contact passe par le SITE. C'est le
+// modèle des grosses agences, et la LCAP l'accepte : l'article 2(2) du Règlement demande
+// une adresse postale PLUS un moyen de contact valide 60 jours, et une ADRESSE WEB
+// satisfait ce second point. Le formulaire est donc la voie officielle, et il doit être
+// écrit NOIR SUR BLANC dans chaque message — voir `bulletinText()`, ce n'est pas
+// décoratif, c'est la conformité.
+//
+// CE QUE ÇA COÛTE, ET C'EST ASSUMÉ. Les réponses spontanées se perdent. Elles avaient de
+// la valeur : `19a27f6` — Chris Allard a répondu avec son année et son permis, sa fiche
+// est passée de 66 à 94. Ce chemin-là se ferme ; celui du formulaire s'ouvre.
+//
+// ⚠️ CE QUI RESTE OUVERT ET QUE CECI NE RÈGLE PAS : `ADRESSE_POSTALE` est toujours absent
+// (voir `adressePostale()`), et c'est l'AUTRE moitié de l'obligation LCAP. Le no-reply ne
+// la remplace pas — une adresse web sans adresse postale reste non conforme.
+const REPLY_TO = 'noreply@payotte.com';   // même orthographe que $FROM du contact-handler.php
 
 // Jours entre le relevé d'une fiche (`verifiedDate`) et le droit de présenter Payotte à
 // son professionnel. Voir `expertStage()`.
@@ -1393,7 +1424,19 @@ const P = (t) => `<div style="font-size:14px;line-height:1.6;color:#443e40;margi
 // journal à chaque passage : mieux vaut un manque visible qu'un manque oublié.
 const adressePostale = (env) => (env?.ADRESSE_POSTALE || '').trim();
 
-const FOOT = (why, unsubUrl, unsubTxt, postale = '') => `<tr><td style="padding:22px 32px 26px 32px;"><div style="border-top:1px solid #f1ecec;padding-top:16px;font-size:11.5px;line-height:1.6;color:#a49c9e;">${why} <a href="${unsubUrl}" style="color:#8a8284;">${unsubTxt}</a> &middot; payotte.com${postale ? `<br>${postale}` : ''}</div></td></tr>`;
+// ── VOIE DE CONTACT DANS LE PIED (2026-08-25, passage en no-reply) ────────────────
+// Le pied ne portait que « payotte.com » en texte brut — pas un lien, pas une voie de
+// contact. Ça pouvait passer tant que le `reply_to` recevait. Depuis le no-reply, plus
+// aucune adresse @payotte.com n'accepte de courrier, donc le FORMULAIRE est le seul
+// moyen de joindre Payotte — et la LCAP (Règlement, art. 2(2)) exige un moyen de contact
+// valide 60 jours, qu'une adresse web satisfait. Ces deux ajouts ne sont donc pas de la
+// mise en page : ils portent la conformité.
+//   1. un lien explicite vers /contact ;
+//   2. une phrase qui DIT que l'adresse ne reçoit pas — sans elle, le professionnel
+//      appuie sur « Répondre », ne reçoit rien, et conclut que Payotte l'ignore.
+// ⚠️ `postale` reste vide tant qu'ADRESSE_POSTALE n'est pas posée : c'est l'AUTRE moitié
+// de l'obligation, et le no-reply ne la remplace pas.
+const FOOT = (why, unsubUrl, unsubTxt, postale = '', fr = true) => `<tr><td style="padding:22px 32px 26px 32px;"><div style="border-top:1px solid #f1ecec;padding-top:16px;font-size:11.5px;line-height:1.6;color:#a49c9e;">${why} <a href="${unsubUrl}" style="color:#8a8284;">${unsubTxt}</a> &middot; <a href="${SITE}/contact" style="color:#8a8284;">${fr ? 'Nous joindre' : 'Contact us'}</a> &middot; payotte.com${postale ? `<br>${postale}` : ''}<br>${fr ? 'Cette adresse ne reçoit pas les réponses — écrivez-nous par le formulaire.' : 'This address does not accept replies — please write to us through the form.'}</div></td></tr>`;
 
 // Page de la VILLE, pas l'accueil du pays. Le bouton du bulletin pointait sur /canada :
 // on servait à quelqu'un le marché de Charlottetown pour le renvoyer choisir sa province
@@ -1439,30 +1482,30 @@ function renderPulse({ segment, stage, city, expert, lang, unsubUrl, macro = nul
   if (segment === 'prospect') {
     subject = fr ? `${city.name} : le pouls du marché` : `${city.name}: your market pulse`;
     close = CLOSE('#eef3f0', '#cfe4d7', `${H3(fr ? `Les experts vérifiés de ${city.name}` : `${city.name}'s verified experts`)}${P(fr ? `Payotte a vérifié <b>un seul</b> expert de référence par secteur et par métier — sans commission, sans publicité.` : `Payotte verified <b>one</b> reference expert per sector and trade — no commission, no ads.`)}${BTN(cityUrl(city), fr ? `Voir les experts de ${city.name} →` : `See ${city.name}'s experts →`)}${ligneIA(metier, fr)}`);
-    foot = FOOT(fr ? `Vous recevez le pouls de ${city.name}, une fois par mois.` : `You get the ${city.name} pulse once a month.`, unsubUrl, fr ? 'Se désabonner' : 'Unsubscribe', postale);
+    foot = FOOT(fr ? `Vous recevez le pouls de ${city.name}, une fois par mois.` : `You get the ${city.name} pulse once a month.`, unsubUrl, fr ? 'Se désabonner' : 'Unsubscribe', postale, fr);
   } else {
     const ask = expert ? missingAsk(expert, fr) : '';
     const proWho = fr ? `l'expert vérifié en ${expert?.professionLabel ?? ''} pour ${city.name}` : `the verified ${expert?.professionLabel ?? ''} for ${city.name}`;
     if (stage === 'intro') {
       subject = fr ? `Pourquoi je vous ai retenu comme référence à ${city.name}` : `Why I chose you as the reference in ${city.name}`;
       close = CLOSE('#faf8f7', '#eee9e8', `${P(fr ? `Je m'appelle Grégory Payotte. J'ai bâti <b>Payotte</b>, un annuaire indépendant qui recommande un seul expert vérifié par ville et par métier — gratuit, sans commission. Pour ${proWho}, c'est vous que j'ai retenu, sur la foi de données publiques. Le pouls ci-dessus, je le publie chaque mois.` : `I'm Grégory Payotte. I built <b>Payotte</b>, an independent directory recommending one verified expert per city and trade — free, no commission. For ${proWho}, I chose you, based on public data. I publish the pulse above every month.`)}${P(fr ? `Je vous l'enverrai <b>chaque mois</b>, gratuitement — rien à faire de votre côté. Si vous n'en voulez pas, un clic en bas de ce courriel et vous n'entendrez plus jamais parler de moi.` : `I'll send it to you <b>every month</b>, free — nothing to do on your end. If you'd rather not, one click at the bottom of this email and you'll never hear from me again.`)}${BTN(url, fr ? 'Voir votre fiche →' : 'See your profile →')}`);
-      foot = FOOT(fr ? `Vous recevez ce courriel parce que vous êtes ${proWho}. Le pouls du marché part une fois par mois.` : `You're receiving this because you are ${proWho}. The market pulse goes out once a month.`, unsubUrl, fr ? 'Ne plus rien recevoir' : 'Unsubscribe', postale);
+      foot = FOOT(fr ? `Vous recevez ce courriel parce que vous êtes ${proWho}. Le pouls du marché part une fois par mois.` : `You're receiving this because you are ${proWho}. The market pulse goes out once a month.`, unsubUrl, fr ? 'Ne plus rien recevoir' : 'Unsubscribe', postale, fr);
     } else if (stage === 'yellow') {
       subject = fr ? `Votre marché à ${city.name} — et la donnée qui vous ferait monter` : `Your ${city.name} market — and the data that would lift you`;
       close = CLOSE('#fdf6e9', '#f2e4c4', `${H3(fr ? 'Pendant qu\'on y est : votre fiche.' : 'While we\'re at it: your profile.')}${P(fr ? `Votre fiche Payotte est à <b>${expert?.score?.total ?? ''}/100</b>. La donnée la plus payante qui vous manque : <b>${ask}</b>. Répondez à ce courriel avec — je mets à jour le jour même.` : `Your profile is at <b>${expert?.score?.total ?? ''}/100</b>. The most valuable missing piece: <b>${ask}</b>. Reply with it — I update the same day.`)}${BTN(url, fr ? 'Voir ma fiche →' : 'See my profile →')}`);
-      foot = FOOT(fr ? `Vous recevez ce courriel parce que vous êtes ${proWho}.` : `You get this because you are ${proWho}.`, unsubUrl, fr ? 'Ne plus recevoir' : 'Unsubscribe', postale);
+      foot = FOOT(fr ? `Vous recevez ce courriel parce que vous êtes ${proWho}.` : `You get this because you are ${proWho}.`, unsubUrl, fr ? 'Ne plus recevoir' : 'Unsubscribe', postale, fr);
     } else if (stage === 'green') {
       subject = fr ? `Vous êtes la référence vérifiée de ${city.name} — une dernière étape` : `You're the verified reference in ${city.name} — one last step`;
       close = CLOSE('#eef5f0', '#cfe4d7', `${H3(fr ? 'Vous êtes déjà au vert.' : 'You\'re already in the green.')}${P(fr ? `Une seule étape pour le plus haut niveau du site : <b>confirmer votre fiche</b> et devenir <b style="color:#1f7a44;">Recommandé N&ordm; 1</b>. Deux minutes, par réponse à ce courriel.` : `One step to the top tier: <b>confirm your profile</b> and become <b style="color:#1f7a44;">Recommended #1</b>. Two minutes, just reply.`)}${BTN(url, fr ? 'Confirmer ma fiche →' : 'Confirm my profile →')}`);
-      foot = FOOT(fr ? `Vous recevez ce courriel parce que vous êtes ${proWho}.` : `You get this because you are ${proWho}.`, unsubUrl, fr ? 'Ne plus recevoir' : 'Unsubscribe', postale);
+      foot = FOOT(fr ? `Vous recevez ce courriel parce que vous êtes ${proWho}.` : `You get this because you are ${proWho}.`, unsubUrl, fr ? 'Ne plus recevoir' : 'Unsubscribe', postale, fr);
     } else if (stage === 'reco') {
       subject = fr ? `Vous êtes Recommandé N° 1 à ${city.name} — rendez-le visible` : `You're Recommended #1 in ${city.name} — make it visible`;
       close = CLOSE('#fbedef', '#f0d3d9', `<div style="font-size:11px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;color:#c8102e;margin-bottom:8px;">&#10003; ${fr ? 'Recommandé par Payotte' : 'Recommended by Payotte'}</div>${H3(fr ? 'Rendez-le visible sur votre site.' : 'Show it on your site.')}${P(fr ? `Affichez le badge « Recommandé » : un <b>lien réciproque dofollow</b> — bon pour votre référencement, et un signal de confiance. Je fournis le code (ou je m'arrange avec votre webmestre).` : `Display the "Recommended" badge: a <b>reciprocal dofollow link</b> — good for your SEO and a trust signal. I provide the code (or work with your webmaster).`)}${BTN(`${SITE}/badge/${expert?.slug ?? ''}`, fr ? 'Obtenir mon badge →' : 'Get my badge →')}`);
-      foot = FOOT(fr ? `Vous recevez ce courriel parce que vous êtes Recommandé à ${city.name}.` : `You get this because you are Recommended in ${city.name}.`, unsubUrl, fr ? 'Ne plus recevoir' : 'Unsubscribe', postale);
+      foot = FOOT(fr ? `Vous recevez ce courriel parce que vous êtes Recommandé à ${city.name}.` : `You get this because you are Recommended in ${city.name}.`, unsubUrl, fr ? 'Ne plus recevoir' : 'Unsubscribe', postale, fr);
     } else { // partner
       subject = fr ? `Votre marché à ${city.name} ce mois-ci` : `Your ${city.name} market this month`;
       close = `<tr><td style="padding:18px 32px 4px 32px;"><div style="border-top:1px solid #f1ecec;padding-top:18px;font-size:14px;line-height:1.62;color:#443e40;">${fr ? `Tout est en place : vous êtes Recommandé et votre badge est en ligne. Rien à demander — juste votre marché, chaque mois.` : `All set: you're Recommended and your badge is live. Nothing to ask — just your market, monthly.`}<div style="margin-top:14px;font-size:13px;color:#6f6769;">${fr ? `Un confrère d'un secteur voisin mériterait d'être vérifié ? <b>Transmettez-lui ce courriel.</b>` : `Know a peer worth verifying? <b>Forward this email.</b>`}</div></div></td></tr>`;
-      foot = FOOT(fr ? `Vous êtes Recommandé et partenaire vérifié à ${city.name}.` : `You are Recommended and a verified partner in ${city.name}.`, unsubUrl, fr ? 'Ne plus recevoir' : 'Unsubscribe', postale);
+      foot = FOOT(fr ? `Vous êtes Recommandé et partenaire vérifié à ${city.name}.` : `You are Recommended and a verified partner in ${city.name}.`, unsubUrl, fr ? 'Ne plus recevoir' : 'Unsubscribe', postale, fr);
     }
   }
   const html = `<div style="background:#f5f3f2;margin:0;padding:28px 12px;font-family:Arial,Helvetica,sans-serif;"><table role="presentation" width="580" cellpadding="0" cellspacing="0" border="0" align="center" style="max-width:580px;width:100%;background:#ffffff;border:1px solid #eae5e5;border-radius:8px;">${marketCore(city, fr, eyebrow)}${nationalBlock(macro, fr)}${close}${foot}</table></div>`;
@@ -1578,7 +1621,7 @@ function renderSequence({ etape, expert, city, seq, lang, unsubUrl, macro = null
   const eyebrow = `${fr ? 'Espace professionnels' : 'For professionals'}<br><span style="color:#c8102e;letter-spacing:1px;">${secteur}</span>`;
   const sig = P(fr ? `À bientôt,<br><span style="font-family:Georgia,serif;font-style:italic;">Grégory</span>`
                   : `Best,<br><span style="font-family:Georgia,serif;font-style:italic;">Grégory</span>`);
-  const pied = (quoi) => FOOT(quoi, unsubUrl, fr ? 'Se désabonner' : 'Unsubscribe', postale);
+  const pied = (quoi) => FOOT(quoi, unsubUrl, fr ? 'Se désabonner' : 'Unsubscribe', postale, fr);
   const pourquoi = fr
     ? `Vous recevez ce courriel parce que vous êtes le ${metier} vérifié de ${secteur} sur Payotte.`
     : `You are receiving this because you are the verified ${metier} for ${secteur} on Payotte.`;
@@ -2487,7 +2530,10 @@ async function envoyerRapportSequence(env, r) {
     headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       from: env.MAIL_FROM_BULLETIN || 'Payotte <bulletin@payotte.com>',
-      to: [REPORT_TO], reply_to: REPLY_TO,
+      // Rapport INTERNE : il part au proprio, pas à une audience. Son reply_to reste
+      // REPORT_TO et surtout PAS le no-reply — sinon Grégory ne peut plus répondre à son
+      // propre rapport pour se le renvoyer annoté.
+      to: [REPORT_TO], reply_to: REPORT_TO,
       subject: `Séquence — ${r.vague} — ${r.envoyes} partis · ${r.rates} ratés · ${etapes}`,
       text: lignes,
     }),
@@ -2811,7 +2857,7 @@ function renderAlerteTaux({ nouveau, ancien, observed, lang, unsubUrl, postale =
     ],
   };
   const motif = `${(segment === 'optin' ? MOTIFS.optin : MOTIFS.pro)[fr ? 0 : 1]} ${BOC_ATTRIBUTION}`;
-  const pied = FOOT(motif, unsubUrl, fr ? 'Se désabonner' : 'Unsubscribe', postale);
+  const pied = FOOT(motif, unsubUrl, fr ? 'Se désabonner' : 'Unsubscribe', postale, fr);
 
   const html = `<div style="background:#f5f3f2;margin:0;padding:28px 12px;font-family:Arial,Helvetica,sans-serif;"><table role="presentation" width="580" cellpadding="0" cellspacing="0" border="0" align="center" style="max-width:580px;width:100%;background:#ffffff;border:1px solid #eae5e5;border-radius:8px;">${corps}${pied}</table></div>`;
   return { subject: titre, html };

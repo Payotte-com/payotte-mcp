@@ -17,6 +17,26 @@ id = "773969ab7f814cdf8985b2f0e7edaf8d"
 MAIL_FROM = "Payotte <relais@payotte.com>"
 MAIL_FROM_BULLETIN = "Payotte <bulletin@payotte.com>"
 
+# ── ADRESSE POSTALE LCAP — EN SECRET, PAS ICI (2026-08-25) ───────────────────────
+# Le Règlement de la LCAP (art. 2(2)) impose l'adresse postale de l'expéditeur dans TOUT
+# message commercial électronique, en plus du nom et d'un moyen de contact. Le worker la
+# lit par `env.ADRESSE_POSTALE` (voir `adressePostale()`), et crie au journal si elle
+# manque.
+#
+# ⚠️ ELLE N'EST PAS ÉCRITE DANS CE FICHIER, ET C'EST DÉLIBÉRÉ. C'est une adresse
+# RÉSIDENTIELLE, et ce dépôt est PUBLIC (github.com/Payotte-com/payotte-mcp). Une
+# variable en clair ici la rendrait indexable, moissonnable par les robots qui ratissent
+# les dépôts publics, et surtout PRÉSENTE DANS L'HISTORIQUE GIT pour toujours — la
+# retirer plus tard demanderait une réécriture d'historique. Elle vit donc en SECRET
+# Cloudflare, qui ne quitte jamais le compte :
+#
+#     npx wrangler secret put ADRESSE_POSTALE
+#
+# ⚠️ NE JAMAIS la remettre en `[vars]` : Cloudflare refuse d'ailleurs le doublon
+# (« Binding name already in use », code 10053) — le garde-fou est réel, pas théorique.
+#
+# Elle doit rester VALIDE 60 JOURS après chaque envoi (exigence du Règlement).
+
 # Abonnés au bulletin de marché mensuel (clé s:{ville}:{courriel} → {email, city, lang, consent}).
 [[kv_namespaces]]
 binding = "SUBSCRIBERS"
