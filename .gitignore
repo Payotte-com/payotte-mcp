@@ -2,4 +2,8 @@ node_modules/
 .wrangler/
 .dev.vars
 # sauvegardes locales avant modification (jamais versionnées)
-src/*.bak-*
+# ⚠️ le motif doit être seul sur sa ligne : .gitignore ne gère pas les
+# commentaires en fin de ligne, ils feraient partie du motif.
+# Élargi de `src/*.bak-*` à toute la racine le 2026-08-26 (server.json,
+# package.json ont aussi leurs sauvegardes).
+*.bak-*
