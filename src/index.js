@@ -1359,6 +1359,42 @@ function missingAsk(expert, fr) {
 const S = (label, val) => `<td width="50%" style="padding:14px 0;border-bottom:1px solid #f1ecec;font-family:Arial,Helvetica,sans-serif;"><span style="font-size:13px;color:#8a8284;">${label}</span><br><span style="font-size:16px;color:#211c1e;font-weight:bold;">${val}</span></td>`;
 
 // Cœur commun : logo + repère + grille + source. eyebrow = texte à droite du logo.
+// ── DATE DE RÉFÉRENCE LISIBLE (2026-09-02, signalé par le proprio) ──────────────
+// Le gabarit servait le code brut du feed : « 2026-T1 » dans un courriel de septembre.
+// Illisible, et pire, ça a l'air d'une coquille. Deux formats coexistent selon la chambre :
+// « 2026-06 » (mensuel) et « 2026-T1 » (trimestriel — 17 des 73 villes).
+//
+// ⚠️ ON N'EFFACE PAS L'ÂGE, ON L'EXPLIQUE. Les chambres publient avec du retard : 56 des
+// 73 villes sont à trois ou quatre mois, c'est le rythme normal du marché immobilier, pas
+// un défaut à cacher. Au-delà de six mois en revanche, le lecteur doit le savoir — sinon
+// il croit lire le mois courant. Seuil à 7 pour ne pas crier sur le régime normal (mesuré
+// le 2026-09-02 : trois villes au-dessus, dont Barrie à douze mois).
+const MOIS_FR = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+const MOIS_EN = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+function moisLisible(rm, fr, at = new Date()) {
+  if (!rm) return '';
+  const s = String(rm);
+  let libelle = s, fin = null;
+  const t = s.match(/^(\d{4})-T(\d)$/);
+  if (t) {
+    const an = Number(t[1]), tri = Number(t[2]);
+    libelle = fr ? `${tri}${tri === 1 ? 'er' : 'e'} trimestre ${an}` : `Q${tri} ${an}`;
+    fin = new Date(Date.UTC(an, tri * 3 - 1, 28));
+  } else {
+    const m = s.match(/^(\d{4})-(\d{2})$/);
+    if (m) {
+      const an = Number(m[1]), mo = Number(m[2]);
+      libelle = `${(fr ? MOIS_FR : MOIS_EN)[mo - 1]} ${an}`;
+      fin = new Date(Date.UTC(an, mo - 1, 28));
+    }
+  }
+  if (!fin) return libelle;
+  const mois = Math.round((at - fin) / 86400000 / 30.4);
+  if (mois < 7) return libelle;
+  return libelle + (fr ? ' <span style="color:#b3261e;">(donnée la plus récente publiée)</span>'
+                       : ' <span style="color:#b3261e;">(latest published figure)</span>');
+}
+
 function marketCore(city, fr, eyebrow) {
   const ref0 = refOf(city);
   const ref = ref0.valeur;
@@ -1381,7 +1417,7 @@ function marketCore(city, fr, eyebrow) {
       <div style="font-family:Georgia,'Times New Roman',serif;font-size:21px;line-height:1.3;color:#211c1e;margin-bottom:20px;">${fr ? 'Le pouls du marché' : 'The market pulse'} &mdash; ${city.name}</div>
       ${refLine}
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid #f1ecec;">${gridRows}</table>
-      <div style="font-size:11.5px;color:#a49c9e;margin-top:14px;">${fr ? 'Source' : 'Source'} : ${src ?? 'chambre immobilière'}${city.referenceMonth ? ` &middot; ${city.referenceMonth}` : ''}</div>
+      <div style="font-size:11.5px;color:#a49c9e;margin-top:14px;">${fr ? 'Source' : 'Source'} : ${src ?? 'chambre immobilière'}${city.referenceMonth ? ` &middot; ${moisLisible(city.referenceMonth, fr)}` : ''}</div>
     </td></tr>`;
 }
 
@@ -1508,22 +1544,14 @@ function nationalBlock(macro, fr) {
   for (let i = 0; i < cells.length; i += 2) gridRows += `<tr>${S(cells[i][0], cells[i][1])}${cells[i + 1] ? S(cells[i + 1][0], cells[i + 1][1]) : '<td width="50%"></td>'}</tr>`;
 
   // L'obligation 5 ans, avec sa variation sur un mois : le signal avancé du taux fixe.
-  let bondLine = '';
-  if (g5?.percent != null) {
-    const d = g5.change1mBps;
-    const sens = d == null ? '' : d > 0
-      ? (fr ? `en hausse de ${d} pb sur un mois` : `up ${d} bps over the month`)
-      : d < 0 ? (fr ? `en baisse de ${Math.abs(d)} pb sur un mois` : `down ${Math.abs(d)} bps over the month`)
-        : (fr ? 'stable sur un mois' : 'flat over the month');
-    const couleur = d == null || d === 0 ? '#6f6769' : d > 0 ? '#b3261e' : '#1f7a44';
-    bondLine = `<div style="margin-top:16px;padding-top:14px;border-top:1px solid #f1ecec;">
-      <span style="font-size:13px;color:#8a8284;">${fr ? 'Obligation du Canada 5 ans' : 'Government of Canada 5-yr bond'}</span><br>
-      <span style="font-size:16px;color:#211c1e;font-weight:bold;">${pct(g5.percent)}</span>${g5.observed ? `<span style="font-size:11px;color:#a49c9e;"> &middot; ${g5.observed}</span>` : ''}${sens ? `<span style="font-size:12px;color:${couleur};"> &middot; ${sens}</span>` : ''}
-      <div style="font-size:12px;line-height:1.55;color:#6f6769;margin-top:7px;">${fr
-        ? 'C’est elle qui mène le taux fixe 5 ans : quand elle monte, les fixes suivent en quelques jours. Ce n’est pas un taux hypothécaire — c’est ce qui le précède.'
-        : 'This is what drives 5-year fixed rates: when it rises, fixed rates follow within days. It is not a mortgage rate — it is what leads one.'}</div>
-    </div>`;
-  }
+  // ── OBLIGATION 5 ANS RETIRÉE (2026-09-02, demande proprio : « inintéressant ») ──
+  // Le bloc expliquait que l'obligation du Canada mène le taux fixe. C'est exact, et c'est
+  // une information de salle des marchés : le courtier hypothécaire le sait déjà, les huit
+  // autres métiers n'en font rien. Cinq lignes de courriel pour un chiffre que personne
+  // n'utilise coûtaient plus qu'elles ne rapportaient.
+  // La donnée n'est pas perdue : /api/bonds.json (le flux lu par les IA) et l'alerte de
+  // taux la servent toujours. C'est son AFFICHAGE dans le pouls mensuel qui disparaît.
+  const bondLine = '';
 
   return `<tr><td style="padding:22px 32px 6px 32px;">
       <div style="font-family:Georgia,'Times New Roman',serif;font-size:19px;line-height:1.3;color:#211c1e;margin-bottom:16px;">${fr ? 'Les taux, partout au pays' : 'Rates, nationwide'}</div>
@@ -1606,7 +1634,7 @@ function ligneIA(metier, fr) {
 function renderPulse({ segment, stage, city, expert, lang, unsubUrl, macro = null, metier = '', postale = '' }) {
   const fr = lang !== 'en';
   const url = expert?.url || `${SITE}`;
-  const eyebrow = `${fr ? 'Le pouls du marché' : 'Market pulse'}<br><span style="color:#c8102e;letter-spacing:1px;">${city.name}${city.referenceMonth ? ' &middot; ' + city.referenceMonth : ''}</span>`;
+  const eyebrow = `${fr ? 'Le pouls du marché' : 'Market pulse'}<br><span style="color:#c8102e;letter-spacing:1px;">${city.name}${city.referenceMonth ? ' &middot; ' + moisLisible(city.referenceMonth, fr) : ''}</span>`;
   let subject, close, foot;
   if (segment === 'prospect') {
     subject = fr ? `${city.name} : le pouls du marché` : `${city.name}: your market pulse`;
