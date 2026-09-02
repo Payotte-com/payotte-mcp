@@ -1424,13 +1424,22 @@ const PROV_NOMS = {
 function provinceBlock(macro, city, fr) {
   const regions = macro?.chantiers;
   if (!Array.isArray(regions) || !city?.province) return '';
-  const prov = regions.find((r) => r.isProvince && r.province === city.province);
+  // ⚠️ DEUX VOCABULAIRES. `/api/market.json` donne un CODE à deux lettres (« QC ») et
+  // `/api/housing-starts.json` un SLUG (« quebec ») : comparer les deux directement ne
+  // rapproche jamais rien, et le bloc disparaissait en silence — vu au premier essai de
+  // rendu le 2026-09-02. On traduit par PROV_CODE_TO_SLUG, la table qui existe déjà.
+  const provSlug = PROV_CODE_TO_SLUG[city.province] ?? city.province;
+  const prov = regions.find((r) => r.isProvince && r.province === provSlug);
   if (!prov || prov.startsSaar == null) return '';
-  const nom = (PROV_NOMS[city.province] ?? [city.province, city.province])[fr ? 0 : 1];
+  const nom = (PROV_NOMS[provSlug] ?? [prov.name, prov.name])[fr ? 0 : 1];
   const nb = (v) => Number(v).toLocaleString(fr ? 'fr-CA' : 'en-CA');
   const fleche = (v) => (v == null ? '' : v > 0 ? '▲' : v < 0 ? '▼' : '=');
   const teinte = (v) => (v == null ? '#6f6769' : v > 0 ? '#1f7a44' : v < 0 ? '#b3261e' : '#6f6769');
-  const signe = (v) => `${v > 0 ? '+' : ''}${v} %`;
+  // ⚠️ Le séparateur décimal suit la langue. Sans `toLocaleString`, un courriel français
+  // affichait « +14.9 % » à des professionnels québécois — le point anglais au milieu
+  // d'un texte en français. Les grands nombres étaient déjà localisés (62 324), les
+  // pourcentages ne l'étaient pas (vu au test de rendu du 2026-09-02).
+  const signe = (v) => `${v > 0 ? '+' : ''}${Number(v).toLocaleString(fr ? 'fr-CA' : 'en-CA', { maximumFractionDigits: 1 })} %`;
 
   // Le positionnement : sa RMR contre sa province, sur la MÊME série et le MÊME mois.
   // Les deux variations viennent du même feed, donc la comparaison est légitime — ce
