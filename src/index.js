@@ -879,10 +879,26 @@ async function macroCourant() {
     const utile = (o) => o && Object.values(o).some((v) => v?.percent != null);
     if (!utile(rates) && !utile(bonds)) return null;
     // Le calendrier des annonces voyage avec les taux : c'est lui qui déclenche l'alerte.
+    // ── ÉCHELON PROVINCIAL (2026-09-02) ──────────────────────────────────────────
+    // Le courriel sautait de la VILLE au CANADA. On charge ici, UNE SEULE FOIS par
+    // exécution, le feed complet des mises en chantier : il contient les RMR ET les dix
+    // provinces (`isProvince`), depuis l'ajout du 2026-09-02 à fetch-housing-starts.mjs.
+    // Un feed absent ou en erreur → `chantiers: null`, et `provinceBlock()` rend une
+    // chaîne vide. Le courriel part quand même, sans son étage provincial (Règle #3 :
+    // rien d'inventé, une absence est une absence).
+    let chantiers = null, chantiersAttrib = '';
+    try {
+      const hs = await feed('/api/housing-starts.json');
+      if (Array.isArray(hs?.regions) && hs.regions.length) {
+        chantiers = hs.regions;
+        chantiersAttrib = hs.attribution || hs.source || '';
+      }
+    } catch { /* feed indisponible : l'étage provincial se tait */ }
     return {
       rates, bonds, fetched: new Date().toISOString(),
       decisions: t?.recentDecisions ?? [],
       aVenir: (t?.upcomingDecisions ?? []).map((x) => ({ date: x.date, mpr: !!x.mpr })),
+      chantiers, chantiersAttrib,
     };
   } catch {
     return null;
@@ -1381,6 +1397,72 @@ function marketCore(city, fr, eyebrow) {
 //
 // Le 5 ans a sa place ici et nulle part ailleurs : c'est ce qui fait bouger le fixe 5 ans
 // quelques jours plus tard. Un courtier hypothécaire le sait ; un courtier immobilier, rarement.
+// ═══════════════════════════════════════════════════════════════════════════════════
+// ÉTAGE PROVINCIAL (2026-09-02, demande proprio : « son secteur, sa province et le Canada »)
+// ═══════════════════════════════════════════════════════════════════════════════════
+// Le courriel passait de la RMR au pays entier : un professionnel de Trois-Rivières lisait
+// son marché, puis le Canada, sans jamais voir le Québec. Cet étage comble le trou.
+//
+// DEUX CHOSES, ET LA SECONDE EST CELLE QUI PARLE :
+//   1. les mises en chantier de sa province (SAAR, variation sur un an) ;
+//   2. son marché COMPARÉ à sa province — c'est le seul chiffre qui lui dise s'il est
+//      au-dessus ou en dessous de chez lui, et il ne coûte aucune source de plus.
+//
+// AUCUNE MOYENNE FABRIQUÉE. Les provinces sont des observations publiées par la SCHL
+// (cube StatCan 34-10-0156, même cube que les RMR) — pas une agrégation maison des villes
+// couvertes. La somme des dix provinces égale exactement le Canada : vérifié le 2026-09-02
+// (217 800 SAAR). Si la province manque au feed, le bloc ne s'affiche pas.
+const PROV_NOMS = {
+  'quebec': ['Québec', 'Quebec'], 'ontario': ['Ontario', 'Ontario'],
+  'british-columbia': ['Colombie-Britannique', 'British Columbia'], 'alberta': ['Alberta', 'Alberta'],
+  'manitoba': ['Manitoba', 'Manitoba'], 'saskatchewan': ['Saskatchewan', 'Saskatchewan'],
+  'nova-scotia': ['Nouvelle-Écosse', 'Nova Scotia'], 'new-brunswick': ['Nouveau-Brunswick', 'New Brunswick'],
+  'prince-edward-island': ['Île-du-Prince-Édouard', 'Prince Edward Island'],
+  'newfoundland-and-labrador': ['Terre-Neuve-et-Labrador', 'Newfoundland and Labrador'],
+};
+
+function provinceBlock(macro, city, fr) {
+  const regions = macro?.chantiers;
+  if (!Array.isArray(regions) || !city?.province) return '';
+  const prov = regions.find((r) => r.isProvince && r.province === city.province);
+  if (!prov || prov.startsSaar == null) return '';
+  const nom = (PROV_NOMS[city.province] ?? [city.province, city.province])[fr ? 0 : 1];
+  const nb = (v) => Number(v).toLocaleString(fr ? 'fr-CA' : 'en-CA');
+  const fleche = (v) => (v == null ? '' : v > 0 ? '▲' : v < 0 ? '▼' : '=');
+  const teinte = (v) => (v == null ? '#6f6769' : v > 0 ? '#1f7a44' : v < 0 ? '#b3261e' : '#6f6769');
+  const signe = (v) => `${v > 0 ? '+' : ''}${v} %`;
+
+  // Le positionnement : sa RMR contre sa province, sur la MÊME série et le MÊME mois.
+  // Les deux variations viennent du même feed, donc la comparaison est légitime — ce
+  // n'est pas un indice composite, c'est deux observations mises côte à côte.
+  const rmr = regions.find((r) => r.citySlug === city.slug);
+  let compare = '';
+  if (rmr && rmr.changeYoyPct != null && prov.changeYoyPct != null) {
+    const ecart = Math.round((rmr.changeYoyPct - prov.changeYoyPct) * 10) / 10;
+    const mieux = ecart > 0;
+    const phrase = Math.abs(ecart) < 1
+      ? (fr ? `Votre marché suit celui de la province, à moins d’un point d’écart.`
+            : `Your market tracks the province, within a point.`)
+      : (fr ? `Votre marché fait <b style="color:${mieux ? '#1f7a44' : '#b3261e'}">${signe(ecart)}</b> par rapport à l’ensemble du ${nom} — ${mieux ? 'au-dessus' : 'en dessous'} de la moyenne de chez vous.`
+            : `Your market runs <b style="color:${mieux ? '#1f7a44' : '#b3261e'}">${signe(ecart)}</b> against ${nom} as a whole — ${mieux ? 'above' : 'below'} your province.`);
+    compare = `<div style="margin-top:14px;padding-top:12px;border-top:1px solid #f1ecec;font-size:13px;line-height:1.6;color:#443e40;">${phrase}</div>`;
+  }
+
+  return `<tr><td style="padding:4px 32px 0 32px;">
+    <div style="border:1px solid #eae5e5;border-radius:6px;padding:16px 18px;background:#fbfaf9;">
+      <div style="font-size:11px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;color:#4b5f66;margin-bottom:10px;">${fr ? 'Votre province' : 'Your province'} &middot; ${nom}</div>
+      <span style="font-size:13px;color:#8a8284;">${fr ? 'Mises en chantier' : 'Housing starts'}</span><br>
+      <span style="font-size:17px;color:#211c1e;font-weight:bold;">${nb(prov.startsSaar)}</span>
+      <span style="font-size:11px;color:#a49c9e;"> &middot; ${prov.referenceMonth}</span>
+      ${prov.changeYoyPct != null ? `<span style="font-size:12px;color:${teinte(prov.changeYoyPct)};"> &middot; ${fleche(prov.changeYoyPct)} ${signe(prov.changeYoyPct)} ${fr ? 'sur un an' : 'year over year'}</span>` : ''}
+      <div style="font-size:12px;line-height:1.55;color:#6f6769;margin-top:7px;">${fr
+        ? 'Rythme annualisé désaisonnalisé (SCHL). C’est l’offre qui arrivera sur le marché dans 6 à 18 mois.'
+        : 'Seasonally adjusted annual rate (CMHC). This is the supply reaching the market in 6-18 months.'}</div>
+      ${compare}
+    </div>
+  </td></tr>`;
+}
+
 function nationalBlock(macro, fr) {
   if (!macro) return '';
   const r = macro.rates || {};
@@ -1509,31 +1591,33 @@ function renderPulse({ segment, stage, city, expert, lang, unsubUrl, macro = nul
     close = CLOSE('#eef3f0', '#cfe4d7', `${H3(fr ? `Les experts vérifiés de ${city.name}` : `${city.name}'s verified experts`)}${P(fr ? `Payotte a vérifié <b>un seul</b> expert de référence par secteur et par métier — sans commission, sans publicité.` : `Payotte verified <b>one</b> reference expert per sector and trade — no commission, no ads.`)}${BTN(cityUrl(city), fr ? `Voir les experts de ${city.name} →` : `See ${city.name}'s experts →`)}${ligneIA(metier, fr)}`);
     foot = FOOT(fr ? `Vous recevez le pouls de ${city.name}, une fois par mois.` : `You get the ${city.name} pulse once a month.`, unsubUrl, fr ? 'Se désabonner' : 'Unsubscribe', postale, fr);
   } else {
+    // ── UN SEUL CTA POUR TOUS LES EXPERTS (2026-09-02, demande proprio) ───────────
+    // Cinq variantes vivaient ici (intro · yellow · green · reco · partner), chacune avec
+    // son sujet, son encadré et son bouton. Elles disaient toutes la même chose sous cinq
+    // formes : « votre fiche existe, regardez-la ». Cinq gabarits, c'est cinq choses à
+    // relire à chaque changement de ton — et le stade de la fiche n'a jamais été ce qui
+    // décide qu'on clique.
+    //
+    // Reste UN CTA. Ce qui change d'un expert à l'autre n'est pas sa forme, c'est la
+    // PHRASE DE VALEUR : la donnée manquante la plus payante quand il y en a une
+    // (`missingAsk`), la confirmation quand la fiche est déjà complète. Une seule ligne
+    // conditionnelle, pas un second gabarit.
+    //
+    // `stage` reste en paramètre : il sert au SUIVI (expertStage, marques KV, statistiques
+    // par flux), plus au rendu. Ne pas le retirer de la signature.
     const ask = expert ? missingAsk(expert, fr) : '';
     const proWho = fr ? `l'expert vérifié en ${expert?.professionLabel ?? ''} pour ${city.name}` : `the verified ${expert?.professionLabel ?? ''} for ${city.name}`;
-    if (stage === 'intro') {
-      subject = fr ? `Pourquoi je vous ai retenu comme référence à ${city.name}` : `Why I chose you as the reference in ${city.name}`;
-      close = CLOSE('#faf8f7', '#eee9e8', `${P(fr ? `Je m'appelle Grégory Payotte. J'ai bâti <b>Payotte</b>, un annuaire indépendant qui recommande un seul expert vérifié par ville et par métier — gratuit, sans commission. Pour ${proWho}, c'est vous que j'ai retenu, sur la foi de données publiques. Le pouls ci-dessus, je le publie chaque mois.` : `I'm Grégory Payotte. I built <b>Payotte</b>, an independent directory recommending one verified expert per city and trade — free, no commission. For ${proWho}, I chose you, based on public data. I publish the pulse above every month.`)}${P(fr ? `Je vous l'enverrai <b>chaque mois</b>, gratuitement — rien à faire de votre côté. Si vous n'en voulez pas, un clic en bas de ce courriel et vous n'entendrez plus jamais parler de moi.` : `I'll send it to you <b>every month</b>, free — nothing to do on your end. If you'd rather not, one click at the bottom of this email and you'll never hear from me again.`)}${BTN(url, fr ? 'Voir votre fiche →' : 'See your profile →')}`);
-      foot = FOOT(fr ? `Vous recevez ce courriel parce que vous êtes ${proWho}. Le pouls du marché part une fois par mois.` : `You're receiving this because you are ${proWho}. The market pulse goes out once a month.`, unsubUrl, fr ? 'Ne plus rien recevoir' : 'Unsubscribe', postale, fr);
-    } else if (stage === 'yellow') {
-      subject = fr ? `Votre marché à ${city.name} — et la donnée qui vous ferait monter` : `Your ${city.name} market — and the data that would lift you`;
-      close = CLOSE('#fdf6e9', '#f2e4c4', `${H3(fr ? 'Pendant qu\'on y est : votre fiche.' : 'While we\'re at it: your profile.')}${P(fr ? `Votre fiche Payotte est à <b>${expert?.score?.total ?? ''}/100</b>. La donnée la plus payante qui vous manque : <b>${ask}</b>. Répondez à ce courriel avec — je mets à jour le jour même.` : `Your profile is at <b>${expert?.score?.total ?? ''}/100</b>. The most valuable missing piece: <b>${ask}</b>. Reply with it — I update the same day.`)}${BTN(url, fr ? 'Voir ma fiche →' : 'See my profile →')}`);
-      foot = FOOT(fr ? `Vous recevez ce courriel parce que vous êtes ${proWho}.` : `You get this because you are ${proWho}.`, unsubUrl, fr ? 'Ne plus recevoir' : 'Unsubscribe', postale, fr);
-    } else if (stage === 'green') {
-      subject = fr ? `Vous êtes la référence vérifiée de ${city.name} — une dernière étape` : `You're the verified reference in ${city.name} — one last step`;
-      close = CLOSE('#eef5f0', '#cfe4d7', `${H3(fr ? 'Vous êtes déjà au vert.' : 'You\'re already in the green.')}${P(fr ? `Une seule étape pour le plus haut niveau du site : <b>confirmer votre fiche</b> et devenir <b style="color:#1f7a44;">Recommandé N&ordm; 1</b>. Deux minutes, par réponse à ce courriel.` : `One step to the top tier: <b>confirm your profile</b> and become <b style="color:#1f7a44;">Recommended #1</b>. Two minutes, just reply.`)}${BTN(url, fr ? 'Confirmer ma fiche →' : 'Confirm my profile →')}`);
-      foot = FOOT(fr ? `Vous recevez ce courriel parce que vous êtes ${proWho}.` : `You get this because you are ${proWho}.`, unsubUrl, fr ? 'Ne plus recevoir' : 'Unsubscribe', postale, fr);
-    } else if (stage === 'reco') {
-      subject = fr ? `Vous êtes Recommandé N° 1 à ${city.name} — rendez-le visible` : `You're Recommended #1 in ${city.name} — make it visible`;
-      close = CLOSE('#fbedef', '#f0d3d9', `<div style="font-size:11px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;color:#c8102e;margin-bottom:8px;">&#10003; ${fr ? 'Recommandé par Payotte' : 'Recommended by Payotte'}</div>${H3(fr ? 'Rendez-le visible sur votre site.' : 'Show it on your site.')}${P(fr ? `Affichez le badge « Recommandé » : un <b>lien réciproque dofollow</b> — bon pour votre référencement, et un signal de confiance. Je fournis le code (ou je m'arrange avec votre webmestre).` : `Display the "Recommended" badge: a <b>reciprocal dofollow link</b> — good for your SEO and a trust signal. I provide the code (or work with your webmaster).`)}${BTN(`${SITE}/badge/${expert?.slug ?? ''}`, fr ? 'Obtenir mon badge →' : 'Get my badge →')}`);
-      foot = FOOT(fr ? `Vous recevez ce courriel parce que vous êtes Recommandé à ${city.name}.` : `You get this because you are Recommended in ${city.name}.`, unsubUrl, fr ? 'Ne plus recevoir' : 'Unsubscribe', postale, fr);
-    } else { // partner
-      subject = fr ? `Votre marché à ${city.name} ce mois-ci` : `Your ${city.name} market this month`;
-      close = `<tr><td style="padding:18px 32px 4px 32px;"><div style="border-top:1px solid #f1ecec;padding-top:18px;font-size:14px;line-height:1.62;color:#443e40;">${fr ? `Tout est en place : vous êtes Recommandé et votre badge est en ligne. Rien à demander — juste votre marché, chaque mois.` : `All set: you're Recommended and your badge is live. Nothing to ask — just your market, monthly.`}<div style="margin-top:14px;font-size:13px;color:#6f6769;">${fr ? `Un confrère d'un secteur voisin mériterait d'être vérifié ? <b>Transmettez-lui ce courriel.</b>` : `Know a peer worth verifying? <b>Forward this email.</b>`}</div></div></td></tr>`;
-      foot = FOOT(fr ? `Vous êtes Recommandé et partenaire vérifié à ${city.name}.` : `You are Recommended and a verified partner in ${city.name}.`, unsubUrl, fr ? 'Ne plus recevoir' : 'Unsubscribe', postale, fr);
-    }
+    const note = expert?.score?.total ?? null;
+    subject = fr ? `Votre marché à ${city.name}, et votre fiche Payotte` : `Your ${city.name} market, and your Payotte profile`;
+    const ligneValeur = ask
+      ? (fr ? `Votre fiche est à <b>${note ?? '—'}/100</b>. La donnée la plus payante qui vous manque : <b>${ask}</b>. Répondez à ce courriel avec — je mets à jour le jour même.`
+            : `Your profile sits at <b>${note ?? '—'}/100</b>. The most valuable missing piece: <b>${ask}</b>. Reply with it — I update the same day.`)
+      : (fr ? `Votre fiche est à <b>${note ?? '—'}/100</b> et ne manque de rien. Elle est publique, vérifiable, et c'est elle que les IA citent quand on cherche un ${expert?.professionLabel ?? 'professionnel'} à ${city.name}.`
+            : `Your profile sits at <b>${note ?? '—'}/100</b> with nothing missing. It is public, verifiable, and it is what AI assistants cite when someone looks for a ${expert?.professionLabel ?? 'professional'} in ${city.name}.`);
+    close = CLOSE('#faf8f7', '#eee9e8', `${H3(fr ? `Vous êtes ${proWho}.` : `You are ${proWho}.`)}${P(ligneValeur)}${BTN(url, fr ? 'Voir ma fiche →' : 'See my profile →')}`);
+    foot = FOOT(fr ? `Vous recevez ce courriel parce que vous êtes ${proWho}.` : `You're receiving this because you are ${proWho}.`, unsubUrl, fr ? 'Ne plus recevoir' : 'Unsubscribe', postale, fr);
   }
-  const html = `<div style="background:#f5f3f2;margin:0;padding:28px 12px;font-family:Arial,Helvetica,sans-serif;"><table role="presentation" width="580" cellpadding="0" cellspacing="0" border="0" align="center" style="max-width:580px;width:100%;background:#ffffff;border:1px solid #eae5e5;border-radius:8px;">${marketCore(city, fr, eyebrow)}${nationalBlock(macro, fr)}${close}${foot}</table></div>`;
+  const html = `<div style="background:#f5f3f2;margin:0;padding:28px 12px;font-family:Arial,Helvetica,sans-serif;"><table role="presentation" width="580" cellpadding="0" cellspacing="0" border="0" align="center" style="max-width:580px;width:100%;background:#ffffff;border:1px solid #eae5e5;border-radius:8px;">${marketCore(city, fr, eyebrow)}${provinceBlock(macro, city, fr)}${nationalBlock(macro, fr)}${close}${foot}</table></div>`;
   return { subject, html };
 }
 
