@@ -1447,14 +1447,27 @@ function provinceBlock(macro, city, fr) {
   const rmr = regions.find((r) => r.citySlug === city.slug);
   let compare = '';
   if (rmr && rmr.changeYoyPct != null && prov.changeYoyPct != null) {
-    const ecart = Math.round((rmr.changeYoyPct - prov.changeYoyPct) * 10) / 10;
-    const mieux = ecart > 0;
-    const phrase = Math.abs(ecart) < 1
-      ? (fr ? `Votre marché suit celui de la province, à moins d’un point d’écart.`
-            : `Your market tracks the province, within a point.`)
-      : (fr ? `Votre marché fait <b style="color:${mieux ? '#1f7a44' : '#b3261e'}">${signe(ecart)}</b> par rapport à l’ensemble du ${nom} — ${mieux ? 'au-dessus' : 'en dessous'} de la moyenne de chez vous.`
-            : `Your market runs <b style="color:${mieux ? '#1f7a44' : '#b3261e'}">${signe(ecart)}</b> against ${nom} as a whole — ${mieux ? 'above' : 'below'} your province.`);
-    compare = `<div style="margin-top:14px;padding-top:12px;border-top:1px solid #f1ecec;font-size:13px;line-height:1.6;color:#443e40;">${phrase}</div>`;
+    // ⚠️ DEUX TAUX, PAS UN ÉCART EN POURCENT. La première version disait « votre marché
+    // fait +108,9 % par rapport au Québec » — un lecteur comprend « mon marché est deux
+    // fois plus gros », alors qu'il s'agit de l'écart entre deux taux de croissance, en
+    // POINTS. On affiche donc les deux observations côte à côte et on laisse le lecteur
+    // faire la comparaison : c'est plus honnête, et c'est plus lisible.
+    const mieux = rmr.changeYoyPct > prov.changeYoyPct;
+    const couleur = mieux ? '#1f7a44' : '#b3261e';
+    const verdict = Math.abs(rmr.changeYoyPct - prov.changeYoyPct) < 1
+      ? (fr ? 'au même rythme que la province' : 'in line with the province')
+      : mieux ? (fr ? 'plus vite que la province' : 'faster than the province')
+              : (fr ? 'moins vite que la province' : 'slower than the province');
+    // Petite RMR = série qui saute d'un mois à l'autre. Annoncer « +123 % » sans le dire
+    // serait trompeur ; le feed porte déjà le drapeau, on le relaie.
+    const prudence = rmr.volatile
+      ? (fr ? ` <span style="color:#8a8284;">Petit marché : cette série varie fortement d’un mois à l’autre, à lire sur la tendance plutôt que sur le mois.</span>`
+            : ` <span style="color:#8a8284;">Small market: this series swings month to month — read the trend, not the month.</span>`)
+      : '';
+    compare = `<div style="margin-top:14px;padding-top:12px;border-top:1px solid #f1ecec;font-size:13px;line-height:1.6;color:#443e40;">`
+      + (fr ? `<b>${rmr.name}</b> : ${signe(rmr.changeYoyPct)} sur un an, contre ${signe(prov.changeYoyPct)} pour l’ensemble du ${nom} — <b style="color:${couleur}">${verdict}</b>.`
+            : `<b>${rmr.name}</b>: ${signe(rmr.changeYoyPct)} year over year, against ${signe(prov.changeYoyPct)} for ${nom} as a whole — <b style="color:${couleur}">${verdict}</b>.`)
+      + prudence + `</div>`;
   }
 
   return `<tr><td style="padding:4px 32px 0 32px;">
@@ -1615,14 +1628,19 @@ function renderPulse({ segment, stage, city, expert, lang, unsubUrl, macro = nul
     // `stage` reste en paramètre : il sert au SUIVI (expertStage, marques KV, statistiques
     // par flux), plus au rendu. Ne pas le retirer de la signature.
     const ask = expert ? missingAsk(expert, fr) : '';
-    const proWho = fr ? `l'expert vérifié en ${expert?.professionLabel ?? ''} pour ${city.name}` : `the verified ${expert?.professionLabel ?? ''} for ${city.name}`;
+    // `professionLabel` arrive capitalisé (« Courtier immobilier ») parce qu'il sert de
+    // titre ailleurs. Au milieu d'une phrase, la majuscule saute aux yeux : « l'expert
+    // vérifié en Courtier immobilier ». On la retire ICI seulement — l'étiquette d'origine
+    // reste intacte pour les usages où elle commence une ligne.
+    const metierPhrase = (expert?.professionLabel ?? '').replace(/^./, (c) => c.toLowerCase());
+    const proWho = fr ? `l'expert vérifié en ${metierPhrase} pour ${city.name}` : `the verified ${metierPhrase} for ${city.name}`;
     const note = expert?.score?.total ?? null;
     subject = fr ? `Votre marché à ${city.name}, et votre fiche Payotte` : `Your ${city.name} market, and your Payotte profile`;
     const ligneValeur = ask
       ? (fr ? `Votre fiche est à <b>${note ?? '—'}/100</b>. La donnée la plus payante qui vous manque : <b>${ask}</b>. Répondez à ce courriel avec — je mets à jour le jour même.`
             : `Your profile sits at <b>${note ?? '—'}/100</b>. The most valuable missing piece: <b>${ask}</b>. Reply with it — I update the same day.`)
       : (fr ? `Votre fiche est à <b>${note ?? '—'}/100</b> et ne manque de rien. Elle est publique, vérifiable, et c'est elle que les IA citent quand on cherche un ${expert?.professionLabel ?? 'professionnel'} à ${city.name}.`
-            : `Your profile sits at <b>${note ?? '—'}/100</b> with nothing missing. It is public, verifiable, and it is what AI assistants cite when someone looks for a ${expert?.professionLabel ?? 'professional'} in ${city.name}.`);
+            : `Your profile sits at <b>${note ?? '—'}/100</b> with nothing missing. It is public, verifiable, and it is what AI assistants cite when someone looks for a ${metierPhrase || 'professional'} in ${city.name}.`);
     close = CLOSE('#faf8f7', '#eee9e8', `${H3(fr ? `Vous êtes ${proWho}.` : `You are ${proWho}.`)}${P(ligneValeur)}${BTN(url, fr ? 'Voir ma fiche →' : 'See my profile →')}`);
     foot = FOOT(fr ? `Vous recevez ce courriel parce que vous êtes ${proWho}.` : `You're receiving this because you are ${proWho}.`, unsubUrl, fr ? 'Ne plus recevoir' : 'Unsubscribe', postale, fr);
   }
