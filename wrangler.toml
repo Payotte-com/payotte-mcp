@@ -17,6 +17,18 @@ id = "773969ab7f814cdf8985b2f0e7edaf8d"
 MAIL_FROM = "Payotte <relais@payotte.com>"
 MAIL_FROM_BULLETIN = "Payotte <bulletin@payotte.com>"
 
+# ── SOUS-PLAFOND DE LA PROSPECTION (experts), 2026-09-02 ─────────────────────────
+# `dailySendCap()` borne le TOTAL du jour ; celui-ci borne la seule prospection vers les
+# experts. Sans cette variable, `rampeOutreach()` retombe sur OUTREACH_PLANCHER = 50 —
+# et les 622 experts joignables auraient mis treize jours à être servis pendant que la
+# rampe globale montait à 6 000. Le plancher était calibré pour le forfait gratuit.
+#
+# Les valeurs suivent ~30 % de la rampe globale (EXPERTS_SHARE = 0.30), ce qui vide le
+# carnet d'experts en quatre jours : 75 + 150 + 225 + 225 = 675 > 622. Après le 11, le
+# chiffre n'a plus d'effet — il n'y a plus d'expert à servir — mais il reste haut pour
+# absorber les fiches que la récolte publiera d'ici là.
+OUTREACH_RAMPE = "2026-09-07:75,2026-09-08:150,2026-09-09:225,2026-09-11:300,2026-09-14:600"
+
 # ── ADRESSE POSTALE LCAP — EN SECRET, PAS ICI (2026-08-25) ───────────────────────
 # Le Règlement de la LCAP (art. 2(2)) impose l'adresse postale de l'expéditeur dans TOUT
 # message commercial électronique, en plus du nom et d'un moyen de contact. Le worker la

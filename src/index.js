@@ -891,7 +891,10 @@ async function macroCourant() {
 
 // ---------------------------------------------------------------- contacter_expert
 
-const DAY_CAP_GLOBAL = 40;      // marge sous le palier Resend gratuit (100/jour)
+const DAY_CAP_GLOBAL = 200;     // relais contacter_expert. Était 40 pour tenir sous le
+                                // palier gratuit (100/jour), levé par le Pro le 2026-09-02.
+                                // Reste plafonné : un relais est déclenché par un visiteur,
+                                // et un pic anormal signale un abus, pas un succès.
 const DAY_CAP_EXPERT = 3;       // protège chaque pro du spam
 const DAY_CAP_REQUESTER = 5;    // par courriel de demandeur (audit §8b)
 const PENDING_TTL = 48 * 3600;  // le lien de confirmation vit 48 h
@@ -917,10 +920,32 @@ async function domainExists(email) {
 // Filtre de contenu minimal (audit §8f) : un message de client n'est pas une page de liens.
 const looksLikeSpam = (msg) => (msg.match(/https?:\/\//g) ?? []).length >= 3;
 
+/**
+ * UN COMPTEUR NE DOIT JAMAIS TUER LA REQUÊTE QU'IL COMPTE (2026-08-28).
+ *
+ * Le 28 août, /indice-ia renvoyait 1101 (exception non rattrapée) pour TOUS les domaines,
+ * l'outil public de la page /outil-ia-site-immobilier était donc mort. La cause n'était
+ * ni le barème ni le domaine analysé : `KV put() limit exceeded for the day.` — le palier
+ * gratuit de KV plafonne à 1 000 écritures par jour, et le versement de la récolte les
+ * avait toutes consommées. Le garde-fou de débit faisait tomber le service qu'il protège.
+ *
+ * Six autres appels partagent ce compteur : l'inscription au bulletin (2633), l'alerte
+ * taux (2908) et le relais de contact vers les experts (965, 1058-1062). Tous étaient sur
+ * le même fusible, tous les jours où le quota se vide.
+ *
+ * La lecture (`get`) n'est PAS plafonnée de la même façon : le plafond continue donc de
+ * s'appliquer sur la valeur lue. Ce qui se perd, c'est l'incrément — le compteur cesse de
+ * monter, il ne cesse pas de garder. Dégradé, pas cassé.
+ */
 async function bumpCounter(env, key, ttlSeconds) {
   if (!env?.COUNTERS) return 0; // dev local sans KV
-  const n = parseInt((await env.COUNTERS.get(key)) ?? '0', 10) + 1;
-  await env.COUNTERS.put(key, String(n), { expirationTtl: ttlSeconds });
+  let n = 1;
+  try {
+    n = parseInt((await env.COUNTERS.get(key)) ?? '0', 10) + 1;
+    await env.COUNTERS.put(key, String(n), { expirationTtl: ttlSeconds });
+  } catch (e) {
+    console.log(`bumpCounter(${key}) : ${e?.message ?? e} — compteur non écrit, requête poursuivie`);
+  }
   return n;
 }
 
@@ -1822,7 +1847,7 @@ async function sendPulseBatch(env, envois, { from: fromDemande } = {}) {
         // lequel. On ne pourrait donc rien conclure sur un flux précis — or toute la
         // question est « est-ce que l'alerte taux marche mieux que le reste ? ».
         // Resend impose des étiquettes en [A-Za-z0-9_-] : on assainit.
-        tags: [{ name: 'flux', value: String(e.flux ?? e.segment ?? 'bulletin').replace(/[^A-Za-z0-9_-]/g, '-').slice(0, 40) }],
+        tags: [{ name: 'flux', value: String(e.sousFlux ?? e.flux ?? e.segment ?? 'bulletin').replace(/[^A-Za-z0-9_-]/g, '-').slice(0, 40) }],
         ...(e.unsubUrl ? { headers: { 'List-Unsubscribe': `<${e.unsubUrl}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' } } : {}),
       }))),
     });
@@ -1880,9 +1905,10 @@ const SUBREQUEST_MARGIN = 3;   // récapitulatif de fin + coussin
 // un passage de 1 000 courriels ne coûte que 10 sous-requêtes : le budget Cloudflare
 // n'est plus le facteur limitant, le forfait Resend et la réputation du domaine le sont.
 const TAILLE_LOT = 100;
-const RESEND_DAY_CAP = 90;     // plafond dur : marge sous le palier Resend gratuit (100/jour)
-                               // — passer à 50 000/mois (Resend Pro) permet de le relever
-                               //   sans toucher au code : seul ce chiffre change.
+const RESEND_DAY_CAP = 3000;   // plafond dur. Le compte est passé au forfait Resend Pro le
+                               // 2026-09-02 : 50 000/mois, AUCUNE limite journalière. Ce
+                               // chiffre ne borne donc plus la FACTURE mais la RÉPUTATION —
+                               // c'est le sommet de la rampe de septembre, pas un quota.
 // Rythme choisi (décision proprio, 3 août 2026) : un petit filet tous les jours plutôt qu'une
 // rafale, sans jamais approcher les limites de Resend, et le domaine (37 courriels dans sa
 // vie au 1er août) monte en charge doucement — c'est ce qui décide si les prochains
@@ -1896,6 +1922,8 @@ const RESEND_DAY_CAP = 90;     // plafond dur : marge sous le palier Resend grat
 // 20 → 90 sur un domaine jeune est le profil type qui finit en spam.
 // Ramp accélérée le 2026-08-13 (décision proprio, objectif de fin de mois). Les paliers
 // 70 et 90 avancent de deux et quatre jours ; le SOMMET NE BOUGE PAS.
+// ⚠️ [HISTORIQUE — VRAI JUSQU'AU 2026-09-02, plus depuis : voir la rampe de septembre plus
+// bas. Le compte est au forfait Pro, il n'y a plus de limite journalière.]
 // ⚠️ 90 est un plafond, pas une timidité : le forfait gratuit Resend coupe à 100/jour, et
 // les rapports d'exécution envoyés au proprio consomment le MÊME quota. Aller à 100 ferait
 // refuser les derniers courriels du jour sans qu'on sache lesquels.
@@ -1904,8 +1932,62 @@ const RESEND_DAY_CAP = 90;     // plafond dur : marge sous le palier Resend grat
 // + ~568 experts, un seul courriel par personne et par cycle). Cette ramp épuise donc
 // à peu près tout le carnet. Le chiffre de 3 000 n'est PAS atteignable en août : il
 // demanderait 137/jour (au-dessus du gratuit) ET un carnet d'adresses qui n'existe pas.
+// ── RAMPE DE SEPTEMBRE (décision proprio, 2026-09-02) ────────────────────────────
+// Le forfait Pro lève la limite journalière ; ce qui commande désormais est la RÉPUTATION
+// du domaine, et elle ne s'achète pas. Les paliers d'août plafonnaient à 90 sous l'ancien
+// palier gratuit de 100/jour — cette contrainte n'existe plus.
+//
+// Objectif : écouler les ~12 900 adresses en KV sans déclencher les filtres. Chaque palier
+// DOUBLE au plus, tous les 3-4 jours ; c'est le profil que les filtres anti-spam tolèrent,
+// et c'est la même doctrine qu'en août (« un saut direct est le profil type qui finit en
+// spam »), simplement à une autre échelle. Total prévu sur septembre : ~30 000 envois,
+// sous les 50 000 du forfait.
+//
+// ⚠️ CE N'EST PAS UN ENGAGEMENT DE DÉBIT. Les seuils de `runBulletin` posent `stop:outreach`
+// tout seuls si les plaintes passent 0,3 % (ou 3 en 24 h) ou les rebonds durs 4 %. Un
+// palier qui déclenche l'arrêt N'EST PAS à forcer : c'est le domaine qui dit non, et il a
+// raison. Reprendre au palier précédent, pas au suivant.
+// ── PAS D'ENVOI LA FIN DE SEMAINE (décision proprio, 2026-09-02) ─────────────────
+// Les destinataires sont des professionnels : un courriel reçu le samedi est lu le lundi
+// dans une pile, ou pas du tout. Le cron tourne pourtant TOUS les jours (crons =
+// "0 12-18 * * *") — sans cette règle, la rampe aurait envoyé samedi et dimanche sans que
+// personne l'ait décidé. Ce qui ne part pas la fin de semaine n'est pas perdu : la file
+// reste, le lundi la reprend.
+// ⚠️ Effet de bord assumé : la banque remonte de deux nuits de récolte (~2 000 adresses)
+// pendant la pause, ce qui charge le lundi. C'est prévu dans le plan.
+const FIN_DE_SEMAINE = (at) => { const j = at.getUTCDay(); return j === 0 || j === 6; };
+
+// ── RAMPE DE SEPTEMBRE (décision proprio, 2026-09-02, révisée le même jour) ───────
+// Le forfait Pro lève la limite journalière ; ce qui commande désormais est la RÉPUTATION
+// du domaine. Les paliers d'août plafonnaient à 90 sous l'ancien palier gratuit de
+// 100/jour — cette contrainte n'existe plus.
+//
+// Objectif : écouler les ~12 900 adresses en KV en deux semaines, du lundi 7 au vendredi 18.
+// Projeté avec la récolte qui continue de verser ~1 027 adresses par nuit : la banque
+// MONTE jusqu'au 14 (la rampe envoie moins que la récolte ne verse), bascule le 15, et
+// tombe à zéro le 18 avec une balance de ~3 963 — sous le palier du jour. Total ~25 200
+// envois sur le mois, la moitié du forfait.
+//
+// Chaque palier double au plus, SAUF 4 000 → 6 000 le 16 (×1,5 après seulement 24 h de
+// recul sur le 4 000). C'est le seul saut qui sorte de la doctrine d'août ; il a été
+// accepté en connaissance de cause.
+//
+// ⚠️ CE N'EST PAS UN ENGAGEMENT DE DÉBIT. Les seuils de `runBulletin` posent `stop:outreach`
+// tout seuls si les plaintes passent 0,3 % (ou 3 en 24 h) ou les rebonds durs 4 %. Un
+// palier qui déclenche l'arrêt N'EST PAS à forcer : c'est le domaine qui dit non, et il a
+// raison. Reprendre au palier précédent, pas au suivant. À regarder en particulier le
+// 15 au matin, AVANT de laisser partir les 6 000 du 16.
 const dailySendCap = (at = new Date()) => {
+  if (FIN_DE_SEMAINE(at)) return 0;
   const d = at.toISOString().slice(0, 10);
+  if (d >= '2026-09-18') return 100000;  // la balance : ce qui reste part
+  if (d >= '2026-09-16') return 6000;
+  if (d >= '2026-09-15') return 4000;
+  if (d >= '2026-09-14') return 2000;
+  if (d >= '2026-09-11') return 1000;
+  if (d >= '2026-09-09') return 750;
+  if (d >= '2026-09-08') return 500;
+  if (d >= '2026-09-07') return 250;     // première vague du forfait Pro
   if (d >= '2026-08-18') return 90;
   if (d >= '2026-08-13') return 70;
   return 50;
@@ -2373,8 +2455,14 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
       // récolte nocturne (`source` = l'URL où l'adresse a été relevée), donc non sollicité
       // → expéditeur outreach@. La règle lit la donnée existante, rien à migrer.
       if (fluxRec === 'outreach') report.outreachEnvoyes++;
-      file.push({ to: rec.email, subject, html, unsubUrl, cle: idReel, flux: 'bulletin-prospect',
-                  flux: fluxRec,
+      // `flux` sert DEUX choses qui ne veulent pas la même granularité : le routage de
+      // l'expéditeur (2233 : 'bulletin' ou tout le reste) et l'étiquette Resend qui nourrit
+      // /flux-stats. Les deux vivaient sur la même clé, écrite deux fois — et en JS la
+      // SECONDE gagne : l'étiquette fine était donc jetée en silence depuis le début, et
+      // « bulletin-prospect » n'a jamais existé dans les statistiques (2026-08-28).
+      file.push({ to: rec.email, subject, html, unsubUrl, cle: idReel,
+                  flux: fluxRec,                  // ROUTAGE — 'bulletin' | 'outreach'
+                  sousFlux: 'bulletin-prospect',  // MESURE  — l'étiquette envoyée à Resend
                   etiquette: `prospect ${rec.email}` });
       if (file.length >= TAILLE_LOT) await viderFile();
     }
@@ -2427,8 +2515,9 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
       done.add(e.slug); mailsDone.add(contact.email.toLowerCase());
       // L'escalier expert est de la prospection : personne n'a demandé à le recevoir.
       report.outreachEnvoyes++;
-      file.push({ to: contact.email, subject, html, unsubUrl, cle: e.slug, stage, prov, flux: `bulletin-expert-${stage}`,
-                  flux: 'outreach',
+      file.push({ to: contact.email, subject, html, unsubUrl, cle: e.slug, stage, prov,
+                  flux: 'outreach',                          // ROUTAGE
+                  sousFlux: `bulletin-expert-${stage}`,      // MESURE — l'étape, enfin comptée
                   etiquette: e.slug });
       if (file.length >= TAILLE_LOT) await viderFile();
     }
@@ -3267,7 +3356,10 @@ async function handleUnsubscribe(env, url) {
 // `bloque`, pas un score : on ne se déguise pas en robot d'IA pour entrer.
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const II_UA = 'PayotteAudit/1.0 (+https://payotte.com; audit de lisibilité IA)';
+// ⚠️ ASCII PUR, sans accent (2026-08-28). Le « é » de « lisibilité » forçait Cloudflare à
+// encoder l'en-tête en UTF-8 et à le signaler à CHAQUE audit ; un serveur strict peut
+// rejeter la requête, et le site sortirait alors « injoignable » alors qu'il va très bien.
+const II_UA = 'PayotteAudit/1.0 (+https://payotte.com; audit de lisibilite IA)';
 const II_TIMEOUT = 10_000;
 const II_MAX_HTML = 3_000_000;   // 3 Mo : au-delà, on tronque plutôt que d'exploser la mémoire
 
@@ -3487,8 +3579,13 @@ async function iiAuditer(saisie) {
  */
 async function addCounter(env, key, n, ttlSeconds) {
   if (!env?.COUNTERS) return;
-  const v = parseInt((await env.COUNTERS.get(key)) ?? '0', 10) + n;
-  await env.COUNTERS.put(key, String(v), { expirationTtl: ttlSeconds });
+  // Même règle que bumpCounter : un agrégat anonyme perdu ne vaut pas un audit perdu.
+  try {
+    const v = parseInt((await env.COUNTERS.get(key)) ?? '0', 10) + n;
+    await env.COUNTERS.put(key, String(v), { expirationTtl: ttlSeconds });
+  } catch (e) {
+    console.log(`addCounter(${key}) : ${e?.message ?? e} — agrégat non écrit, requête poursuivie`);
+  }
 }
 
 const II_TTL = 400 * 86400;   // 400 jours : une année complète survit au relevé
