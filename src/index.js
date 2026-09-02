@@ -2116,7 +2116,22 @@ const FIN_DE_SEMAINE = (at) => { const j = at.getUTCDay(); return j === 0 || j =
 // palier qui déclenche l'arrêt N'EST PAS à forcer : c'est le domaine qui dit non, et il a
 // raison. Reprendre au palier précédent, pas au suivant. À regarder en particulier le
 // 15 au matin, AVANT de laisser partir les 6 000 du 16.
+//
+// ⛔ PROJET EN PAUSE — décision proprio du 2026-09-02 : « l'angle ne fonctionne pas ».
+// La rampe de septembre est CONSERVÉE telle qu'elle avait été calibrée, mais elle est
+// court-circuitée par la ligne `return 0` ci-dessous. Rien ne part.
+//
+// POURQUOI UN COURT-CIRCUIT ET PAS UNE SUPPRESSION : les paliers représentent un vrai
+// travail de calibrage (12 889 adresses écoulées du 7 au 18 septembre, chaque palier
+// doublant au plus, ~25 200 envois pour la moitié du forfait). Les effacer obligerait à
+// tout refaire le jour où l'angle est retrouvé. Ils restent là, inertes et lisibles.
+//
+// POUR REPRENDRE : retirer la seule ligne `return 0;` marquée PAUSE. Rien d'autre.
+// Vérifier alors que la première date de la rampe est encore dans le futur — sinon
+// l'exécution suivante partirait directement au palier du jour, ce qui ferait sauter la
+// montée en charge et brûlerait la réputation du domaine.
 const dailySendCap = (at = new Date()) => {
+  return 0;                              // ⛔ PAUSE (2026-09-02) — retirer cette ligne pour reprendre
   if (FIN_DE_SEMAINE(at)) return 0;
   const d = at.toISOString().slice(0, 10);
   if (d >= '2026-09-18') return 100000;  // la balance : ce qui reste part
