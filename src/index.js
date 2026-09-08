@@ -1368,16 +1368,112 @@ function expertStage(expert, introduced) {
  * seule plutôt que d'expédier un chiffre de six mois. Pour la rafraîchir : Bing
  * Webmaster Tools → AI Performance → 30 D, et mettre à jour les deux constantes. */
 const CITATIONS_30J = 3000;
+const CITATIONS_ANNUAIRE_30J = 77;   // celles qui pointaient vers l'annuaire, pas vers les pages de coûts
 const CITATIONS_LU_LE = '2026-09-08';
 const CITATIONS_PEREMPTION_JOURS = 45;
 
-function phraseCitations(fr) {
+/* Les deux compteurs de PREUVE SOCIALE. Ils ne sont pas décoratifs : « 76 confrères ont
+ * confirmé » et « huit l'ont déjà posé » sont les seules phrases de ces courriels qui
+ * disent au lecteur que d'autres l'ont fait avant lui. Ils doivent donc être VRAIS.
+ * Mesurés le 8 sept. 2026 : `ownerVerified` sur experts.json = 76 ; `badgeExchange` = 8,
+ * et ces 8 ont été recoupés un par un en visitant leurs sites (le lien vers payotte.com
+ * y est bien présent). Ils vieillissent plus lentement que les citations, mais ils
+ * vieillissent : ils portent la même date et la même péremption. */
+const EXPERTS_CONFIRMES = 76;
+const BADGES_POSES = 8;
+
+function fraisDeLecture() {
   const age = (Date.now() - Date.parse(CITATIONS_LU_LE)) / 86400000;
-  if (!Number.isFinite(age) || age > CITATIONS_PEREMPTION_JOURS) return '';
+  return Number.isFinite(age) && age <= CITATIONS_PEREMPTION_JOURS;
+}
+
+function phraseCitations(fr) {
+  if (!fraisDeLecture()) return '';
   const n = CITATIONS_30J.toLocaleString(fr ? 'fr-CA' : 'en-CA');
   return fr
     ? ` Le mois dernier, Copilot a cité payotte.com environ <b>${n} fois</b>.`
     : ` Last month, Copilot cited payotte.com roughly <b>${n} times</b>.`;
+}
+
+/* ── LE CONTENU PAR ÉTAPE ────────────────────────────────────────────────────
+ * ⚠⚠ CE N'EST PAS UN RETOUR AUX CINQ GABARITS DE L'ÉTÉ (8 sept. 2026). Le 2
+ * septembre, cinq variantes ont été fondues en une seule, et le motif inscrit ici
+ * était juste : « elles disaient toutes la même chose sous cinq formes ». Il tenait.
+ * Ce qui a changé n'est pas l'avis, c'est le FOND : ces trois-là ne demandent plus la
+ * même chose. Confirmer sa fiche, coller un lien, ou ne rien demander du tout sont
+ * trois gestes différents, adressés à trois populations que la donnée distingue
+ * déjà (`ownerVerified`, `badgeExchange`). Cinq façons de dire « regardez votre
+ * fiche » méritaient d'être fondues ; trois demandes distinctes, non.
+ *
+ * ET L'OBJECTION D'ORIGINE EST RESPECTÉE : il n'y a toujours qu'UN gabarit. Le rendu,
+ * l'en-tête, les blocs marché et taux, le pied — tout reste commun et se relit une
+ * fois. Seul le CONTENU varie, dans cette table. Changer le ton se fait ici, à un
+ * endroit, pas dans cinq fonctions parallèles.
+ *
+ * Les étapes `intro` et `yellow` n'ont PAS de contenu propre : elles retombent sur le
+ * générique. C'est voulu — leur demande (« regardez votre fiche », « il vous manque
+ * telle donnée ») est bien la même, et c'est exactement le cas que la fusion visait. */
+function contenuExpert({ stage, expert, city, fr, url, note, ask, proWho }) {
+  const nEx = EXPERTS_CONFIRMES;
+  const nBa = BADGES_POSES;
+  const nAn = CITATIONS_ANNUAIRE_30J;
+  const frais = fraisDeLecture();
+  const cite = frais
+    ? (fr ? `Le mois dernier, <b>Copilot a cité payotte.com environ ${CITATIONS_30J.toLocaleString('fr-CA')} fois</b>`
+          : `Last month, <b>Copilot cited payotte.com roughly ${CITATIONS_30J.toLocaleString('en-CA')} times</b>`)
+    : '';
+
+  if (stage === 'reco') {
+    /* ③ Fiche confirmée, badge jamais posé. La demande est un copier-coller, et c'est
+       le geste le plus rentable du système : les liens externes sont la contrainte qui
+       plafonne tout le site. Le bouton mène à SA page de badge, pas à l'accueil. */
+    return {
+      subject: fr ? 'Plusieurs fiches ont été citées le mois dernier'
+                  : 'Several profiles were cited last month',
+      h3: fr ? 'Une ligne à coller' : 'One line to paste',
+      corps: (fr
+        ? `Vous avez confirmé votre place sur Payotte. ${cite ? cite + ', et <b>plusieurs professionnels ont été cités par leur fiche</b>, nommément.' : 'Votre fiche est publique et vérifiable.'}<br><br>Mais rien sur votre site ne dit que cette fiche, c'est vous : pour Google comme pour Copilot, les deux pages n'ont aucun rapport. Le badge est un <b>lien</b>, pas un logo — et c'est ce lien que les moteurs suivent.<br><br>${nBa} confrères l'ont déjà posé.`
+        : `You confirmed your place on Payotte. ${cite ? cite + ', and <b>several professionals were cited through their own profile</b>, by name.' : 'Your profile is public and verifiable.'}<br><br>But nothing on your website says that profile is you: to Google and to Copilot, the two pages have no relationship. The badge is a <b>link</b>, not a logo — and that link is what the engines follow.<br><br>${nBa} colleagues have already posted it.`),
+      gratuit: fr ? 'Gratuit, et sans contrepartie.' : 'Free, with nothing asked in return.',
+      bouton: fr ? 'Copier mon badge →' : 'Copy my badge →',
+      href: expert?.slug ? `${SITE}/badge/${expert.slug}` : url,
+    };
+  }
+
+  if (stage === 'green') {
+    /* ② Fiche publiée, jamais confirmée. Aucune persuasion à faire : l'actif existe et
+       porte son nom. On signale, on ne vend pas — d'où la gratuité dite en clair. */
+    return {
+      subject: fr ? `Votre fiche existe. ${nEx} confrères ont confirmé la leur.`
+                  : `Your profile exists. ${nEx} colleagues have confirmed theirs.`,
+      h3: fr ? "La vôtre n'a jamais été confirmée" : 'Yours has never been confirmed',
+      corps: (fr
+        ? `Payotte ne retient <b>qu'un professionnel par secteur et par métier</b>. Pour le vôtre, c'est vous — avec votre numéro de permis publié, pour que le lecteur puisse le vérifier au registre officiel.${cite ? '<br><br>' + cite + '.' : ''}<br><br>Confirmer, c'est un clic. Ça n'achète aucun classement — seulement un profil exact et daté. ${ask ? `Et si vous ajoutez <b>${ask}</b>, je mets à jour le jour même.` : 'Si une information est fausse, dites-le : on vérifie, on date, on publie.'}`
+        : `Payotte lists <b>one professional per sector and per profession</b>. For yours, that is you — with your licence number published, so a reader can check it against the official registry.${cite ? '<br><br>' + cite + '.' : ''}<br><br>Confirming takes one click. It buys no ranking — only an accurate, dated profile. ${ask ? `And if you add <b>${ask}</b>, I update the same day.` : 'If something is wrong, say so: we verify, we date it, we publish.'}`),
+      gratuit: fr ? "Gratuit. Il n'y a rien à vendre ici." : 'Free. There is nothing to sell here.',
+      bouton: fr ? 'Voir ma fiche →' : 'See my profile →',
+      href: url,
+    };
+  }
+
+  if (stage === 'partner') {
+    /* ④ Fiche confirmée ET badge posé. On ne demande RIEN — c'est le seul des trois
+       dans ce cas, et c'est pour ça qu'il ne porte aucune mention de gratuité : il n'y
+       a rien à acheter. Le pouls du marché, au-dessus, EST le courriel. */
+    return {
+      subject: fr ? `Pouls du marché — ${city.name}, et votre place`
+                  : `Market pulse — ${city.name}, and your place`,
+      h3: fr ? 'Votre place est confirmée' : 'Your place is confirmed',
+      corps: (fr
+        ? `${cite ? cite + `. Sur ces citations, <b>${nAn} pointaient vers l'annuaire</b> — et plusieurs professionnels ont été cités par leur fiche.<br><br>` : ''}Votre badge est en ligne : vous êtes ${nBa} à l'avoir posé. C'est ce lien qui dit aux moteurs que la fiche et vous, c'est la même personne.<br><br>Rien à faire de votre côté. Si une donnée doit changer, répondez à ce courriel — je mets à jour le jour même.`
+        : `${cite ? cite + `. Of those, <b>${nAn} pointed at the directory</b> — and several professionals were cited through their own profile.<br><br>` : ''}Your badge is live: ${nBa} of you have posted it. That link is what tells the engines the profile and you are the same person.<br><br>Nothing to do on your side. If a figure needs changing, just reply — I update the same day.`),
+      gratuit: null,
+      bouton: fr ? 'Voir ma fiche →' : 'See my profile →',
+      href: url,
+    };
+  }
+
+  return null;   // intro · yellow → le générique
 }
 
 // La donnée manquante la plus payante d'un expert (coup de coude ①/⓪), tirée du feed.
@@ -1704,6 +1800,23 @@ function renderPulse({ segment, stage, city, expert, lang, unsubUrl, macro = nul
     const proWho = fr ? `l'expert vérifié en ${metierPhrase} pour ${city.name}` : `the verified ${metierPhrase} for ${city.name}`;
     const note = expert?.score?.total ?? null;
     subject = fr ? `Votre marché à ${city.name}, et votre fiche Payotte` : `Your ${city.name} market, and your Payotte profile`;
+
+    /* LA TABLE DES CONTENUS. Trois étapes ont désormais leur propre demande ; les
+       autres retombent sur le générique juste en dessous. Le gabarit, lui, ne change
+       pas : même en-tête, même bloc marché, même pied. */
+    const seg = contenuExpert({ stage, expert, city, fr, url, note, ask, proWho });
+    if (seg) {
+      subject = seg.subject;
+      const mentionGratuit = seg.gratuit
+        ? `<div style="margin-top:13px;font-size:12.5px;color:#C8102E;font-weight:bold;">${seg.gratuit}</div>`
+        : '';
+      close = CLOSE('#fdf6f7', '#f3d9dd',
+        `${H3(seg.h3)}${P(seg.corps)}${mentionGratuit}${BTN(seg.href, seg.bouton)}`);
+      foot = FOOT(fr ? `Vous recevez ce courriel parce que vous êtes ${proWho}.` : `You're receiving this because you are ${proWho}.`,
+        unsubUrl, fr ? 'Ne plus recevoir' : 'Unsubscribe', postale, fr);
+      return { subject, html: `<div style="background:#f5f3f2;margin:0;padding:28px 12px;font-family:Arial,Helvetica,sans-serif;"><table role="presentation" width="580" cellpadding="0" cellspacing="0" border="0" align="center" style="max-width:580px;width:100%;background:#ffffff;border:1px solid #eae5e5;border-radius:8px;">${marketCore(city, fr, eyebrow)}${provinceBlock(macro, city, fr)}${nationalBlock(macro, fr)}${close}${foot}</table></div>` };
+    }
+
     const ligneValeur = ask
       ? (fr ? `Votre fiche est à <b>${note ?? '—'}/100</b>. La donnée la plus payante qui vous manque : <b>${ask}</b>. Répondez à ce courriel avec — je mets à jour le jour même.`
             : `Your profile sits at <b>${note ?? '—'}/100</b>. The most valuable missing piece: <b>${ask}</b>. Just reply — I update the same day.`)
