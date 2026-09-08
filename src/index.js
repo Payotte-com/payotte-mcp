@@ -1735,6 +1735,14 @@ const FOOT = (why, unsubUrl, unsubTxt, postale = '', fr = true) => `<tr><td styl
 // on servait à quelqu'un le marché de Charlottetown pour le renvoyer choisir sa province
 // à la main (signalé par le proprio le 2026-08-10). Les pages de ville sont publiées dans
 // la langue de leur marché — une seule URL par ville, quelle que soit la langue du courriel.
+/* ⚠ LA MÊME RÈGLE QUE `/api/villes-couvertes.json`, ET ELLE Y EST PUBLIÉE POUR ÇA.
+   Les villes de la récolte sont écrites à la main (« montréal », « québec ») ; le
+   catalogue est en slugs (« montreal », « quebec-city »). Comparer les formes brutes
+   faisait passer Montréal et Québec pour non couvertes — 9 357 contacts mal classés
+   au comptage du 8 septembre. Si l'une des deux règles change, l'autre doit suivre. */
+const normVille = (s) => (s ?? '').toLowerCase().normalize('NFD')
+  .replace(/\p{Diacritic}/gu, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
 const cityUrl = (city) => `${SITE}/canada/${PROV_SLUG[city?.province] ?? ''}/${city?.slug ?? ''}`;
 
 // Zone experts : une page par métier (« visible à l'ère de l'IA »), publiée dans les deux
@@ -1767,14 +1775,45 @@ function ligneIA(metier, fr) {
 }
 
 // Rendu complet d'un courriel : {subject, html}. segment='prospect'|'expert' ; stage pour les experts.
-function renderPulse({ segment, stage, city, expert, lang, unsubUrl, macro = null, metier = '', postale = '' }) {
+function renderPulse({ segment, stage, city, expert, lang, unsubUrl, macro = null, metier = '', postale = '', villeCouverte = null }) {
   const fr = lang !== 'en';
   const url = expert?.url || `${SITE}`;
   const eyebrow = `${fr ? 'Le pouls du marché' : 'Market pulse'}<br><span style="color:#c8102e;letter-spacing:1px;">${city.name}${city.referenceMonth ? ' &middot; ' + moisLisible(city.referenceMonth, fr) : ''}</span>`;
   let subject, close, foot;
   if (segment === 'prospect') {
-    subject = fr ? `${city.name} : le pouls du marché` : `${city.name}: your market pulse`;
-    close = CLOSE('#eef3f0', '#cfe4d7', `${H3(fr ? `Les experts vérifiés de ${city.name}` : `${city.name}'s verified experts`)}${P(fr ? `Payotte a vérifié <b>un seul</b> expert de référence par secteur et par métier — sans commission, sans publicité.` : `Payotte verified <b>one</b> reference expert per sector and trade — no commission, no ads.`)}${BTN(cityUrl(city), fr ? `Voir les experts de ${city.name} →` : `See ${city.name}'s experts →`)}${ligneIA(metier, fr)}`);
+    /* ── DEUX CONTENUS, SELON QUE LA VILLE EST SERVIE OU NON (8 sept. 2026) ────
+       La rareté n'est pas la même des deux côtés, et la dire à l'envers ruine le
+       courriel : promettre une place libre là où quelqu'un est publié se vérifie en
+       un clic. `villeCouverte` vaut null quand le flux de couverture n'a pas pu être
+       lu — on retombe alors sur le texte neutre, qui reste vrai partout. */
+    const gratuitProspect = fr
+      ? `<div style="margin-top:13px;font-size:12.5px;color:#C8102E;font-weight:bold;">Gratuit. Aucune place ne s'achète, ici.</div>`
+      : `<div style="margin-top:13px;font-size:12.5px;color:#C8102E;font-weight:bold;">Free. No seat is for sale here.</div>`;
+    const citeP = fraisDeLecture()
+      ? (fr ? `Le mois dernier, <b>Copilot a cité payotte.com environ ${CITATIONS_30J.toLocaleString('fr-CA')} fois</b>, dont ${CITATIONS_ANNUAIRE_30J} vers l'annuaire.`
+            : `Last month, <b>Copilot cited payotte.com roughly ${CITATIONS_30J.toLocaleString('en-CA')} times</b>, ${CITATIONS_ANNUAIRE_30J} of them into the directory.`)
+      : '';
+
+    if (villeCouverte === true) {
+      subject = fr ? `À ${city.name}, la place de votre métier est déjà prise`
+                   : `In ${city.name}, your profession's seat is already taken`;
+      close = CLOSE('#fdf6f7', '#f3d9dd',
+        `${H3(fr ? `Ces pages ne nomment qu'une personne` : `These pages name one person`)}` +
+        `${P(fr ? `Payotte ne retient <b>qu'un professionnel par secteur et par métier</b>, et ${city.name} est déjà servie. ${citeP}<br><br>Ces pages d'annuaire ne nomment qu'un nom par secteur. Si vous pensez que ce devrait être le vôtre, la grille est publique : permis vérifié au registre, années d'exercice, transactions déclarées, données manquantes affichées comme telles.`
+               : `Payotte lists <b>one professional per sector and per profession</b>, and ${city.name} is already served. ${citeP}<br><br>Those directory pages name one name per sector. If you believe it should be yours, the grid is public: licence verified against the registry, years in practice, declared transactions, and missing data shown as missing.`)}` +
+        `${gratuitProspect}${BTN(cityUrl(city), fr ? `Voir qui occupe mon secteur →` : `See who holds my sector →`)}${ligneIA(metier, fr)}`);
+    } else if (villeCouverte === false) {
+      subject = fr ? `${city.name} n'a encore personne sur Payotte`
+                   : `${city.name} has no one on Payotte yet`;
+      close = CLOSE('#eef3f0', '#cfe4d7',
+        `${H3(fr ? `Ouvrir une ville ne se fait qu'une fois` : `A city opens once`)}` +
+        `${P(fr ? `Payotte ne retient <b>qu'un professionnel par secteur et par métier</b>. Pour ${city.name}, personne n'est encore publié. ${citeP}<br><br>Le premier d'une ville neuve est celui que la page nommera. Permis, années d'exercice, secteur réellement desservi : on vérifie, on date, on publie.`
+               : `Payotte lists <b>one professional per sector and per profession</b>. For ${city.name}, nobody is published yet. ${citeP}<br><br>The first in a new city is the one the page will name. Licence, years in practice, the sector you actually serve: we verify, we date it, we publish.`)}` +
+        `${gratuitProspect}${BTN(`${SITE}${fr ? '/contact' : '/en/contact'}`, fr ? `Proposer mon nom →` : `Put my name forward →`)}${ligneIA(metier, fr)}`);
+    } else {
+      subject = fr ? `${city.name} : le pouls du marché` : `${city.name}: your market pulse`;
+      close = CLOSE('#eef3f0', '#cfe4d7', `${H3(fr ? `Les experts vérifiés de ${city.name}` : `${city.name}'s verified experts`)}${P(fr ? `Payotte a vérifié <b>un seul</b> expert de référence par secteur et par métier — sans commission, sans publicité.` : `Payotte verified <b>one</b> reference expert per sector and trade — no commission, no ads.`)}${BTN(cityUrl(city), fr ? `Voir les experts de ${city.name} →` : `See ${city.name}'s experts →`)}${ligneIA(metier, fr)}`);
+    }
     foot = FOOT(fr ? `Vous recevez le pouls de ${city.name}, une fois par mois.` : `You get the ${city.name} pulse once a month.`, unsubUrl, fr ? 'Se désabonner' : 'Unsubscribe', postale, fr);
   } else {
     // ── UN SEUL CTA POUR TOUS LES EXPERTS (2026-09-02, demande proprio) ───────────
@@ -2734,6 +2773,23 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
     // l'identifiant de cycle est exactement `prospect:{ville}:{courriel}`. On filtre donc
     // sur la clé — zéro lecture — et on ne lit la valeur que pour ceux qu'on va servir.
     // Les lectures passent de 1 512 par passage à quelques dizaines.
+    /* ── LA COUVERTURE DES VILLES, EN UNE SOUS-REQUÊTE (8 sept. 2026) ──────────
+       Un prospect ne reçoit pas le même courriel selon que sa ville porte déjà des
+       fiches ou non : « le siège de votre secteur est pris » n'a aucun sens là où
+       personne n'est publié. Le worker n'avait aucun moyen de le savoir — les flux
+       par province coûtent une sous-requête chacun et sont chargés APRÈS cette
+       boucle. D'où `/api/villes-couvertes.json` : ~20 ko, une seule sous-requête,
+       lue ici, avant.
+       ⚠ SI LE FLUX MANQUE, ON NE DEVINE PAS. `couvertes` reste null et les deux
+       contenus segmentés s'effacent au profit du générique — un courriel plus fade
+       vaut mieux qu'un courriel qui affirme le contraire de la réalité. */
+    let couvertes = null;
+    try {
+      const vc = await F('/api/villes-couvertes.json');
+      if (Array.isArray(vc?.villes)) couvertes = new Set(vc.villes.map((v) => v.slug));
+    } catch { couvertes = null; }
+    if (!couvertes) console.warn('  ▸ villes-couvertes.json illisible — prospects sur le contenu générique.');
+
     for (const key of clesProspects) {
       const sep = key.indexOf(':');
       if (sep < 1) continue;                         // clé malformée : on ne devine pas
@@ -2773,7 +2829,8 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
       // l'adresse repassera telle quelle au prochain passage.
       if (!await prendreCreneauDomaine(rec.email)) { report.pending++; continue; }
       const unsubUrl = `${origin}/unsubscribe?e=${encodeURIComponent(rec.email)}&c=${encodeURIComponent(rec.city)}&t=${await hmacHex(env, `u:${rec.email}:${rec.city}`)}`;
-      const { subject, html } = renderPulse({ segment: 'prospect', city, lang: rec.lang, unsubUrl, macro, metier: rec.metier , postale });
+      const { subject, html } = renderPulse({ segment: 'prospect', city, lang: rec.lang, unsubUrl, macro, metier: rec.metier , postale,
+        villeCouverte: couvertes ? couvertes.has(normVille(city.slug ?? key.slice(0, sep))) : null });
       report.prospects++; report.recipients.push({ to: rec.email, kind: 'prospect', city: rec.city });
       if (dryRun) continue;
       report.attempts++;
@@ -4266,8 +4323,13 @@ export default {
       // L'aperçu doit montrer le courriel RÉEL, bloc des taux compris — sinon il valide un
       // gabarit qui n'existe pas.
       const macro = await macroCourant();
+      /* `couverte=1|0` force la variante prospect ; absent, on laisse null (générique).
+         Sans ce paramètre, les deux contenus segmentés seraient invérifiables avant
+         l'envoi — et c'est justement l'aperçu qui sert de garde-fou. */
+      const cvBrut = url.searchParams.get('couverte');
       const { subject, html } = renderPulse({ segment, stage, city, expert, lang, unsubUrl: '#preview', macro,
-        metier: url.searchParams.get('metier') || '' });
+        metier: url.searchParams.get('metier') || '',
+        villeCouverte: cvBrut === null ? null : cvBrut === '1' });
       return new Response(`<!--${subject}-->\n${html}`, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'X-Robots-Tag': 'noindex' } });
     }
 
