@@ -41,9 +41,13 @@ MAIL_FROM_BULLETIN = "Payotte <bulletin@payotte.com>"
 # celles de `dailySendCap` : tout report de l'envoi oblige à redater LES DEUX. Le jour
 # où ça arrive une troisième fois, remplacer les deux par un décalage en jours ouvrables
 # depuis une seule constante de départ.
-# Dérogation d'un jour à la règle des 10 h locales — voir le commentaire dans
-# `runBulletin`. Vide ou date passée = la règle normale s'applique.
-ZONES_TOUTES_JUSQU_AU = "2026-09-08"
+# ⚠ DÉROGATION AUX 10 H LOCALES : POSÉE PUIS RETIRÉE LE MÊME JOUR (8 sept. 2026).
+# Elle valait pour le 8 seulement — or le cron s'arrête à 18 h UTC (14 h EDT) et elle a
+# été déployée à 18 h 15. Elle n'aurait JAMAIS pu s'exécuter : du réglage mort. Le code
+# qui la lit reste en place dans `runBulletin` (une ligne, inerte tant que la variable
+# est absente) ; c'est la variable qui part.
+# POUR S'EN RESERVIR UN JOUR : reposer ZONES_TOUTES_JUSQU_AU avec une date FUTURE, et
+# la poser AVANT 12 h UTC, sinon la journée est déjà passée.
 
 OUTREACH_RAMPE = "2026-09-09:75,2026-09-10:150,2026-09-11:225,2026-09-14:300,2026-09-16:600"
 

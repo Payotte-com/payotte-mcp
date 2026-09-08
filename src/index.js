@@ -2894,7 +2894,33 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
   for (const prov of provinces) {
     if (provDone.has(prov)) continue;
     if (left() <= 1) { report.skipped.push(`${prov} (budget épuisé)`); continue; }
-    const experts = await F(`/api/experts/${prov}.json`).then((d) => d.experts ?? []).catch(() => []);
+    const expertsBruts = await F(`/api/experts/${prov}.json`).then((d) => d.experts ?? []).catch(() => []);
+
+    /* ── SERVIR PAR TEMPÉRATURE, PAS DANS L'ORDRE DU FICHIER (8 sept. 2026) ──────
+     * Le budget quotidien ne sert qu'une fraction du carnet : au palier du 9 septembre,
+     * 75 courriels pour 575 experts servables, soit un mois pour faire le tour. Or
+     * l'ordre du flux est arbitraire — les 21 `reco` (fiche confirmée, badge jamais
+     * posé) et les 3 `partner` s'y trouvaient noyés parmi 401 `intro`, et n'auraient
+     * pas été servis avant des semaines.
+     *
+     * C'est l'inverse de ce qu'il faut. `reco` est la demande la plus rentable du
+     * système entier — un copier-coller de la part de quelqu'un qui a DÉJÀ dit oui, et
+     * c'est ce lien qui lève la contrainte d'autorité de tout le site (10 liens
+     * externes pour 1 962 pages). `partner` ne demande rien et entretient les huit qui
+     * ont déjà donné. Les faire attendre derrière 401 présentations froides, c'est
+     * dépenser le budget du plus chaud au plus tiède.
+     *
+     * On calcule donc l'étape AVANT la boucle et on trie : partner, reco, green, puis
+     * yellow et intro. À budget égal, les chauds passent d'abord.
+     * ⚠ Le tri ne CHANGE PAS qui est éligible — seulement l'ordre. Tous les filtres
+     * (rebond, doublon d'adresse, créneau de domaine, quarantaine) restent en aval et
+     * décident comme avant. */
+    const RANG = { partner: 0, reco: 1, green: 2, yellow: 3, intro: 4 };
+    const experts = expertsBruts
+      .map((e) => ({ e, st: expertStage(e, intro.has(e.slug) && !reIntro.has(e.slug)) }))
+      .sort((a, b) => (RANG[a.st] ?? 9) - (RANG[b.st] ?? 9))
+      .map((x) => x.e);
+
     let restants = 0;
     for (const e of experts) {
       const city = cityBySlug[e.city];
@@ -4747,6 +4773,27 @@ export default {
     } catch (err) {
       console.log(`[séquence] ERREUR : ${err?.message ?? err}`);
     }
-    await runBulletin(env, { dryRun: false });
+    /* ── LE RAPPORT « ZÉRO » (8 sept. 2026) ────────────────────────────────────
+     * Cette ligne etait `await runBulletin(env, { dryRun: false });` — sans try/catch
+     * et sans lire le retour. Deux consequences, toutes deux payees le 8 septembre :
+     *   · une exception dans runBulletin tuait l'execution EN SILENCE. Le passage de
+     *     17 h UTC n'a rien envoye ce jour-la et rien, nulle part, n'a dit pourquoi ;
+     *   · quand la fonction s'arretait normalement sans rien faire (aucune province a
+     *     10 h, budget epuise, flux coupe), le journal restait vide lui aussi. On ne
+     *     pouvait pas distinguer « il n'a rien eu a faire » de « il est mort ».
+     * Le council du 18 aout l'avait nomme : « pas de rapport zero quotidien,
+     * scheduled() sans try/catch ». Voici les deux.
+     * ⚠ NE PAS retirer le catch : une exception ici doit etre VUE, pas propagee — le
+     * reste du handler (alerte taux, sequence) a deja tourne. */
+    try {
+      const r = await runBulletin(env, { dryRun: false });
+      const ex = r?.experts ? Object.entries(r.experts).filter(([, n]) => n).map(([k, n]) => `${k}:${n}`).join(' ') : '';
+      console.log(`[bulletin] fin — ${r?.arrete ? `ARRETE (${r.arrete}: ${r.motif})` : ''}`
+        + ` villes:${r?.activeCities ?? 0} tentatives:${r?.attempts ?? 0}`
+        + ` prospects:${r?.prospects ?? 0} experts:${ex || 0}`
+        + ` en-attente:${r?.pending ?? 0} sautes:${(r?.skipped || []).length}`);
+    } catch (err) {
+      console.error('[bulletin] EXCEPTION —', err?.stack || err?.message || String(err));
+    }
   },
 };
