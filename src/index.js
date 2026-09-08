@@ -2317,21 +2317,32 @@ const FIN_DE_SEMAINE = (at) => { const j = at.getUTCDay(); return j === 0 || j =
 // raison. Reprendre au palier précédent, pas au suivant. À regarder en particulier le
 // 15 au matin, AVANT de laisser partir les 6 000 du 16.
 //
-// ⛔ PROJET EN PAUSE — décision proprio du 2026-09-02 : « l'angle ne fonctionne pas ».
-// La rampe de septembre est CONSERVÉE telle qu'elle avait été calibrée, mais elle est
-// court-circuitée par la ligne `return 0` ci-dessous. Rien ne part.
+// ✅ REPRISE LE 8 SEPTEMBRE 2026. La pause du 2 septembre est levée ; voir le bloc de
+// commentaire dans `dailySendCap` pour ce qui a changé et justifiait de rouvrir.
 //
-// POURQUOI UN COURT-CIRCUIT ET PAS UNE SUPPRESSION : les paliers représentent un vrai
-// travail de calibrage (12 889 adresses écoulées du 7 au 18 septembre, chaque palier
-// doublant au plus, ~25 200 envois pour la moitié du forfait). Les effacer obligerait à
-// tout refaire le jour où l'angle est retrouvé. Ils restent là, inertes et lisibles.
+// LES PALIERS ONT ÉTÉ REDATÉS de deux jours le 8 septembre : la rampe partait du 7, et
+// rien n'était parti ce jour-là. C'est exactement l'avertissement que portait l'ancienne
+// note (« vérifier que la première date est encore dans le futur, sinon la montée en
+// charge saute »). Il s'est réalisé, il a été corrigé, et il se réalisera encore au
+// prochain report — ces dates sont ABSOLUES, tout comme celles d'OUTREACH_RAMPE dans
+// wrangler.toml, et LES DEUX doivent être redatées ensemble.
 //
-// POUR REPRENDRE : retirer la seule ligne `return 0;` marquée PAUSE. Rien d'autre.
-// Vérifier alors que la première date de la rampe est encore dans le futur — sinon
-// l'exécution suivante partirait directement au palier du jour, ce qui ferait sauter la
-// montée en charge et brûlerait la réputation du domaine.
+// POUR REFERMER : remettre `return 0;` en première ligne de `dailySendCap`. Les paliers
+// restent alors intacts, inertes et lisibles — c'est le point du court-circuit, et il a
+// prouvé sa valeur : six jours de pause n'ont rien coûté du calibrage.
 const dailySendCap = (at = new Date()) => {
-  return 0;                              // ⛔ PAUSE (2026-09-02) — retirer cette ligne pour reprendre
+  /* ⛔ LA PAUSE DU 2 SEPTEMBRE A ÉTÉ LEVÉE LE 8 SEPTEMBRE 2026, sur décision explicite
+     du propriétaire. Elle avait été posée parce que « l'angle ne fonctionne pas ».
+     Ce qui a changé entre les deux dates, et qui justifiait de rouvrir :
+       · les courriels portaient DEUX affirmations fausses — « c'est elle que les IA
+         citent » (mesure : 12 citations sur 6 fiches, pas 573) et « répondez à ce
+         courriel » alors que le domaine n'avait AUCUN MX. Les deux sont corrigées ;
+       · la réception fonctionne enfin (MX ImprovMX, chaîne vérifiée en 4 secondes) —
+         il se peut que le « aucune réponse de ces 550 » de juillet ait été ce trou-là ;
+       · trois demandes distinctes remplacent le CTA unique côté experts, et deux
+         contenus prospects distinguent ville servie et ville vierge.
+     POUR REFERMER : remettre `return 0;` en première ligne. Rien d'autre. Les paliers
+     ci-dessous restent calibrés et n'ont pas besoin d'être touchés. */
   if (FIN_DE_SEMAINE(at)) return 0;
   const d = at.toISOString().slice(0, 10);
   /* ⚠ RAMPE REDATÉE LE 8 SEPT. 2026 — elle repart de 250 le mercredi 9.
