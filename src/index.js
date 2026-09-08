@@ -1347,6 +1347,39 @@ function expertStage(expert, introduced) {
   return 'partner';                            // ④ rien à demander
 }
 
+/* ── LA PHRASE DES CITATIONS ─────────────────────────────────────────────────
+ * ⚠⚠ CE QU'ELLE A REMPLACÉ, ET POURQUOI IL NE FAUT PAS Y REVENIR (8 sept. 2026).
+ * Le courriel disait : « c'est elle que les IA citent quand on cherche un notaire à
+ * Laval ». C'était FAUX, et mesurable comme tel. Sur les 30 jours au 8 septembre,
+ * Bing Webmaster Tools (AI Performance) compte ~3 000 citations de payotte.com par
+ * Copilot : les pages de prix et de coûts en tête, 77 citations vers l'annuaire, et
+ * 12 citations réparties sur SIX fiches individuelles. Pour les 573 autres experts,
+ * la phrase promettait quelque chose qui n'est jamais arrivé.
+ * Le council du 18 août l'avait déjà écrit — risque R6, « chiffre faux envoyé à un
+ * pro, réputation » — après avoir corrigé la même erreur sous une autre forme
+ * (« 244 citations/sem des fiches »). Elle est revenue. D'où ce commentaire.
+ *
+ * LA RÈGLE : on énonce ce que le SITE reçoit, jamais ce que LA FICHE recevra. Le
+ * lecteur fait le rapprochement lui-même ; nous ne le faisons pas à sa place.
+ *
+ * ⚠ ET LE CHIFFRE PÉRIME. `rates.json` avait un mois de retard en août pendant que
+ * l'outil MCP lisait la Banque du Canada en direct (council C19) : une mesure figée
+ * dans du code vieillit en silence. Passé la péremption, la phrase se retire toute
+ * seule plutôt que d'expédier un chiffre de six mois. Pour la rafraîchir : Bing
+ * Webmaster Tools → AI Performance → 30 D, et mettre à jour les deux constantes. */
+const CITATIONS_30J = 3000;
+const CITATIONS_LU_LE = '2026-09-08';
+const CITATIONS_PEREMPTION_JOURS = 45;
+
+function phraseCitations(fr) {
+  const age = (Date.now() - Date.parse(CITATIONS_LU_LE)) / 86400000;
+  if (!Number.isFinite(age) || age > CITATIONS_PEREMPTION_JOURS) return '';
+  const n = CITATIONS_30J.toLocaleString(fr ? 'fr-CA' : 'en-CA');
+  return fr
+    ? ` Le mois dernier, Copilot a cité payotte.com environ <b>${n} fois</b>.`
+    : ` Last month, Copilot cited payotte.com roughly <b>${n} times</b>.`;
+}
+
 // La donnée manquante la plus payante d'un expert (coup de coude ①/⓪), tirée du feed.
 function missingAsk(expert, fr) {
   if (!expert.licence?.number && expert.licence?.body)
@@ -1593,7 +1626,14 @@ const adressePostale = (env) => (env?.ADRESSE_POSTALE || '').trim();
 //      appuie sur « Répondre », ne reçoit rien, et conclut que Payotte l'ignore.
 // ⚠️ `postale` reste vide tant qu'ADRESSE_POSTALE n'est pas posée : c'est l'AUTRE moitié
 // de l'obligation, et le no-reply ne la remplace pas.
-const FOOT = (why, unsubUrl, unsubTxt, postale = '', fr = true) => `<tr><td style="padding:22px 32px 26px 32px;"><div style="border-top:1px solid #f1ecec;padding-top:16px;font-size:11.5px;line-height:1.6;color:#a49c9e;">${why} <a href="${unsubUrl}" style="color:#8a8284;">${unsubTxt}</a> &middot; <a href="${SITE}/contact" style="color:#8a8284;">${fr ? 'Nous joindre' : 'Contact us'}</a> &middot; payotte.com${postale ? `<br>${postale}` : ''}<br>${fr ? 'Cette adresse ne reçoit pas les réponses — écrivez-nous par le formulaire.' : 'This address does not accept replies — please write to us through the form.'}</div></td></tr>`;
+const FOOT = (why, unsubUrl, unsubTxt, postale = '', fr = true) => `<tr><td style="padding:22px 32px 26px 32px;"><div style="border-top:1px solid #f1ecec;padding-top:16px;font-size:11.5px;line-height:1.6;color:#a49c9e;">${why} <a href="${unsubUrl}" style="color:#8a8284;">${unsubTxt}</a> &middot; <a href="${SITE}/contact" style="color:#8a8284;">${fr ? 'Nous joindre' : 'Contact us'}</a> &middot; payotte.com${postale ? `<br>${postale}` : ''}</div></td></tr>`;
+/* ⚠ LA LIGNE « Cette adresse ne reçoit pas les réponses » A ÉTÉ RETIRÉE LE 8 SEPT. 2026,
+   parce qu'elle est devenue FAUSSE ce jour-là. `payotte.com` n'avait aucun MX : toute
+   réponse partait dans le vide, et le pied disait vrai. Depuis, deux MX ImprovMX sont
+   posés chez GoDaddy et `contact@`, `outreach@`, `bulletin@`, `relais@` (plus un
+   attrape-tout) redirigent vers la boîte du propriétaire. Chaîne vérifiée le jour même :
+   reçu de Google à 11 h 34 min 06, remis à Gmail 4 secondes plus tard, `2.0.0 OK … gsmtp`.
+   NE PAS LA REMETTRE sans avoir d'abord vérifié `dig MX payotte.com`. */
 
 // Page de la VILLE, pas l'accueil du pays. Le bouton du bulletin pointait sur /canada :
 // on servait à quelqu'un le marché de Charlottetown pour le renvoyer choisir sa province
@@ -1666,9 +1706,9 @@ function renderPulse({ segment, stage, city, expert, lang, unsubUrl, macro = nul
     subject = fr ? `Votre marché à ${city.name}, et votre fiche Payotte` : `Your ${city.name} market, and your Payotte profile`;
     const ligneValeur = ask
       ? (fr ? `Votre fiche est à <b>${note ?? '—'}/100</b>. La donnée la plus payante qui vous manque : <b>${ask}</b>. Répondez à ce courriel avec — je mets à jour le jour même.`
-            : `Your profile sits at <b>${note ?? '—'}/100</b>. The most valuable missing piece: <b>${ask}</b>. Reply with it — I update the same day.`)
-      : (fr ? `Votre fiche est à <b>${note ?? '—'}/100</b> et ne manque de rien. Elle est publique, vérifiable, et c'est elle que les IA citent quand on cherche un ${expert?.professionLabel ?? 'professionnel'} à ${city.name}.`
-            : `Your profile sits at <b>${note ?? '—'}/100</b> with nothing missing. It is public, verifiable, and it is what AI assistants cite when someone looks for a ${metierPhrase || 'professional'} in ${city.name}.`);
+            : `Your profile sits at <b>${note ?? '—'}/100</b>. The most valuable missing piece: <b>${ask}</b>. Just reply — I update the same day.`)
+      : (fr ? `Votre fiche est à <b>${note ?? '—'}/100</b> et ne manque de rien. Elle est publique, vérifiable, et c'est elle que l'annuaire nomme pour ${city.name}.${phraseCitations(fr)}`
+            : `Your profile sits at <b>${note ?? '—'}/100</b> with nothing missing. It is public, verifiable, and it is what the directory names for ${city.name}.${phraseCitations(fr)}`);
     close = CLOSE('#faf8f7', '#eee9e8', `${H3(fr ? `Vous êtes ${proWho}.` : `You are ${proWho}.`)}${P(ligneValeur)}${BTN(url, fr ? 'Voir ma fiche →' : 'See my profile →')}`);
     foot = FOOT(fr ? `Vous recevez ce courriel parce que vous êtes ${proWho}.` : `You're receiving this because you are ${proWho}.`, unsubUrl, fr ? 'Ne plus recevoir' : 'Unsubscribe', postale, fr);
   }
@@ -1862,8 +1902,16 @@ function renderSequence({ etape, expert, city, seq, lang, unsubUrl, macro = null
         `${P(salut)}${H3(fr ? 'Vous êtes déjà la référence vérifiée du secteur' : 'You are already the sector’s verified reference')}`
         + P(fr ? `Votre fiche est à <b>${expert?.score?.total ?? ''}/100</b>. Elle n’est pas encore confirmée par vous : c’est la seule chose qui vous sépare du niveau <b style="color:#1f7a44;">Recommandé N° 1</b> — et du jeu de données le plus complet qu’une machine puisse lire à votre sujet.`
                : `Your profile sits at <b>${expert?.score?.total ?? ''}/100</b>. It is not yet confirmed by you: that is the only thing between you and <b style="color:#1f7a44;">Recommended #1</b> — and the most complete data set a machine can read about you.`)
+        /* « Répondez à ce courriel » EST REDEVENU VRAI le 8 sept. 2026, et pas avant.
+           Ce matin-là, `payotte.com` n'avait AUCUN MX : la demande était impossible et
+           le pied de page se contredisait deux lignes plus bas. MX ImprovMX posés
+           depuis, chaîne vérifiée de bout en bout (Gmail → mx1 → Gmail, 4 secondes).
+           ⚠ Si quelqu'un retire les MX un jour, CETTE PHRASE REDEVIENT UN MENSONGE :
+           la repasser par /contact. Le council notait « aucune réponse de ces 550 »
+           après juillet — il se peut que ce silence ait été un trou de plomberie, pas
+           un problème d'angle. Le prochain envoi le dira. */
         + P(fr ? `La donnée qu’on ne peut pas confirmer nous-mêmes : <b>${manque}</b>. Répondez à ce courriel avec, je mets à jour le jour même, daté et sourcé.`
-               : `The one piece we cannot confirm ourselves: <b>${manque}</b>. Reply with it and I update the same day, dated and sourced.`)
+               : `The one piece we cannot confirm ourselves: <b>${manque}</b>. Just reply and I update the same day, dated and sourced.`)
         + BTN(url, fr ? 'Voir ma fiche →' : 'See my profile →') + sig);
     }
     return { subject, html: enveloppe(city, fr, eyebrow, corps, pied(pourquoi), macro, false) };
@@ -2134,14 +2182,27 @@ const dailySendCap = (at = new Date()) => {
   return 0;                              // ⛔ PAUSE (2026-09-02) — retirer cette ligne pour reprendre
   if (FIN_DE_SEMAINE(at)) return 0;
   const d = at.toISOString().slice(0, 10);
-  if (d >= '2026-09-18') return 100000;  // la balance : ce qui reste part
-  if (d >= '2026-09-16') return 6000;
-  if (d >= '2026-09-15') return 4000;
-  if (d >= '2026-09-14') return 2000;
-  if (d >= '2026-09-11') return 1000;
-  if (d >= '2026-09-09') return 750;
-  if (d >= '2026-09-08') return 500;
-  if (d >= '2026-09-07') return 250;     // première vague du forfait Pro
+  /* ⚠ RAMPE REDATÉE LE 8 SEPT. 2026 — elle repart de 250 le mercredi 9.
+     L'ancienne était calibrée pour un départ le 7 septembre. La pause du 2 septembre
+     l'a laissée courir dans le vide : au 8 septembre elle était déjà rendue à 500, et
+     au 18 elle serait passée à 100 000 D'UN COUP. Reprendre à ce moment-là aurait
+     sauté toute la montée en charge et brûlé la réputation du domaine — le pire
+     moment pour une liste bâtie au consentement tacite.
+     La FORME est conservée telle qu'elle avait été calibrée (au plus un doublement
+     par palier, les fins de semaine à zéro par FIN_DE_SEMAINE) ; seules les dates
+     bougent, de deux jours, ce qui reporte la balance au mardi 22.
+     ⚠ ET LE PROBLÈME VA REVENIR : ces dates sont ABSOLUES. Si l'envoi ne reprend pas
+     le 9, il faudra les redater encore. Le jour où ça se reproduit une troisième
+     fois, remplacer ces bornes par un décalage en jours ouvrables depuis une seule
+     constante de départ — c'est le vrai correctif, il n'a pas été fait aujourd'hui. */
+  if (d >= '2026-09-22') return 100000;  // la balance : ce qui reste part
+  if (d >= '2026-09-18') return 6000;
+  if (d >= '2026-09-17') return 4000;
+  if (d >= '2026-09-16') return 2000;
+  if (d >= '2026-09-14') return 1000;
+  if (d >= '2026-09-11') return 750;
+  if (d >= '2026-09-10') return 500;
+  if (d >= '2026-09-09') return 250;     // première vague du forfait Pro
   if (d >= '2026-08-18') return 90;
   if (d >= '2026-08-13') return 70;
   return 50;
