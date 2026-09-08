@@ -27,7 +27,21 @@ MAIL_FROM_BULLETIN = "Payotte <bulletin@payotte.com>"
 # carnet d'experts en quatre jours : 75 + 150 + 225 + 225 = 675 > 622. Après le 11, le
 # chiffre n'a plus d'effet — il n'y a plus d'expert à servir — mais il reste haut pour
 # absorber les fiches que la récolte publiera d'ici là.
-OUTREACH_RAMPE = "2026-09-07:75,2026-09-08:150,2026-09-09:225,2026-09-11:300,2026-09-14:600"
+#
+# ⚠ REDATÉE LE 8 SEPT. 2026, DE DEUX JOURS — et la raison n'est pas cosmétique.
+# Les paliers partaient du 7 septembre. Or RIEN n'est parti : la pause du 2 septembre
+# (`dailySendCap` rend 0) tenait toujours, et la rampe globale a elle aussi été redatée
+# pour repartir de 250 le mercredi 9. Laissées au 7, ces bornes auraient compté deux
+# jours de réputation qui n'ont jamais existé : au 9 septembre elles autorisaient 225
+# courriels depuis un sous-domaine qui n'en a JAMAIS expédié un seul — précisément le
+# « 0 à 400 d'un coup se fait classer en pourriel » que le commentaire ci-dessus met en
+# garde. Le premier jour d'envoi réel doit être le premier jour de chauffe.
+#
+# ⚠ ET ÇA SE REPRODUIRA à chaque report de la reprise. Ces dates sont ABSOLUES, comme
+# celles de `dailySendCap` : tout report de l'envoi oblige à redater LES DEUX. Le jour
+# où ça arrive une troisième fois, remplacer les deux par un décalage en jours ouvrables
+# depuis une seule constante de départ.
+OUTREACH_RAMPE = "2026-09-09:75,2026-09-10:150,2026-09-11:225,2026-09-14:300,2026-09-16:600"
 
 # ── ADRESSE POSTALE LCAP — EN SECRET, PAS ICI (2026-08-25) ───────────────────────
 # Le Règlement de la LCAP (art. 2(2)) impose l'adresse postale de l'expéditeur dans TOUT
