@@ -41,6 +41,10 @@ MAIL_FROM_BULLETIN = "Payotte <bulletin@payotte.com>"
 # celles de `dailySendCap` : tout report de l'envoi oblige à redater LES DEUX. Le jour
 # où ça arrive une troisième fois, remplacer les deux par un décalage en jours ouvrables
 # depuis une seule constante de départ.
+# Dérogation d'un jour à la règle des 10 h locales — voir le commentaire dans
+# `runBulletin`. Vide ou date passée = la règle normale s'applique.
+ZONES_TOUTES_JUSQU_AU = "2026-09-08"
+
 OUTREACH_RAMPE = "2026-09-09:75,2026-09-10:150,2026-09-11:225,2026-09-14:300,2026-09-16:600"
 
 # ── ADRESSE POSTALE LCAP — EN SECRET, PAS ICI (2026-08-25) ───────────────────────

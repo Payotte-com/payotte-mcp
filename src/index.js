@@ -2731,7 +2731,21 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
   const allActive = (market.cities || []).filter(hasMarketStats);
   // Le filtre par fuseau s'applique ICI, sur les villes : tout le reste (prospects comme
   // experts) passe par `cityBySlug`, donc personne hors tranche ne peut être servi.
-  const active = dryRun ? allActive : allActive.filter((c) => zones.has(c.province));
+  /* ⚠ DÉROGATION DATÉE À LA RÈGLE DES 10 H LOCALES (8 sept. 2026, demande proprio).
+     Le bulletin ne sert normalement que les provinces où il est 10 h : c'est une bonne
+     règle, elle fait arriver le courriel à une heure ouvrable partout, et elle REPREND
+     d'elle-même dès le lendemain. Mais elle a un effet de bord que la journée du
+     8 septembre a révélé : la plage de cron (12-18 UTC) ne couvre les provinces qu'UNE
+     FOIS chacune, entre 13 et 17 UTC — et le passage de 18 UTC ne sert personne. Les
+     verrous ayant été levés à 15 h 59 et 16 h 47 UTC, il ne restait qu'une seule
+     province servable dans la journée. D'où cette dérogation, pour la journée du
+     lancement seulement.
+     ⚠ ELLE S'ANNULE SEULE : passé `ZONES_TOUTES_JUSQU_AU`, le filtre par fuseau
+     revient sans qu'on ait à toucher au code. Ne pas la reconduire sans raison — un
+     courriel qui arrive à 6 h du matin se fait supprimer, pas lire. */
+  const toutesZones = (env.ZONES_TOUTES_JUSQU_AU || '') >= dayKey && (env.ZONES_TOUTES_JUSQU_AU || '') !== '';
+  if (toutesZones && !dryRun) console.log(`[bulletin] dérogation 10 h locales active (jusqu'au ${env.ZONES_TOUTES_JUSQU_AU}) — toutes provinces servies.`);
+  const active = (dryRun || toutesZones) ? allActive : allActive.filter((c) => zones.has(c.province));
   const cityBySlug = Object.fromEntries(active.map((c) => [c.slug, c]));
   report.activeCities = active.length;
 
