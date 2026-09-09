@@ -2529,6 +2529,25 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
   // Auto-correcteur : un fuseau qui n'utilise pas sa part ne la gaspille pas — `daySoFar`
   // ne compte que les tentatives réelles, donc le passage suivant divise un reste plus
   // gros par un diviseur plus petit et récupère la mise.
+  // ── RAMPE DE L'EXPÉDITEUR DE PROSPECTION (2026-08-19) ────────────────────────────
+  // `outreach@payotte.com` n'a aucun historique d'envoi propre. Une adresse neuve qui
+  // passe de 0 à 400 courriels/jour se fait classer en pourriel — la montée doit être
+  // progressive et CONDITIONNELLE. Les paliers sont datés dans wrangler.toml
+  // (OUTREACH_RAMPE) ; à défaut, on reste au plancher. Le passage au palier suivant n'est
+  // PAS automatique dans le temps : il exige que le webhook n'ait vu ni plainte ni rebond
+  // au-delà des seuils (voir `fluxCoupe()` plus bas) — sinon le plafond reste où il est.
+  // ⚠ REMONTÉ ICI LE 9 SEPT. 2026 : `partPassage` en a besoin (voir juste en dessous), et
+  // une `const` ne se lit pas avant sa déclaration.
+  const rampeOutreach = () => {
+    const brut = env.OUTREACH_RAMPE || '';        // ex. « 2026-08-20:100,2026-08-27:200 »
+    let plafond = Number(env.OUTREACH_PLANCHER ?? 50);
+    for (const p of brut.split(',').map((x) => x.trim()).filter(Boolean)) {
+      const [d, n] = p.split(':');
+      if (d && n && dayKey >= d.trim()) plafond = Number(n);
+    }
+    return Math.max(0, plafond);
+  };
+
   const passagesRestants = (() => {
     let n = 0;
     for (let u = at.getUTCHours(); u <= CRON_DERNIERE_HEURE_UTC; u++) {
@@ -2537,7 +2556,20 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
     }
     return Math.max(1, n);
   })();
-  const partPassage = Math.max(1, Math.floor((dayCap - daySoFar) / passagesRestants));
+  // ── LE PLAFOND EFFECTIF, PAS LE PLAFOND AFFICHÉ (9 sept. 2026) ────────────────────
+  // `dayCap` borne TOUT ; `rampeOutreach()` borne la seule prospection. Or la prospection
+  // est ~100 % du trafic : le 9 septembre, `day:2026-09-09:outreach` valait 50 sur 50
+  // envois. Partager 250 entre cinq passages quand seuls 75 pouvaient partir a donné 50
+  // au premier fuseau (NS/NB/PE/NL, six villes) et 25 à partager entre les six autres
+  // provinces — dont l'Ontario et ses 3 466 adresses. La part se calcule donc sur le plus
+  // petit des deux, et chaque fuseau reçoit une part qu'il peut réellement dépenser.
+  //
+  // ⚠️ EFFET SUR LE BULLETIN OPT-IN : lui n'est pas soumis à la rampe, et cette part le
+  // freine aussi. C'est assumé tant que les abonnés du formulaire sont une poignée face
+  // aux adresses récoltées ; le jour où le bulletin redevient le gros du volume, il lui
+  // faudra sa propre part, pas ce raccourci.
+  const capJourEffectif = Math.min(dayCap, rampeOutreach());
+  const partPassage = Math.max(1, Math.floor((capJourEffectif - daySoFar) / passagesRestants));
 
   // En dry-run rien n'est consommé : l'audience complète du mois doit apparaître au rapport.
   // File d'envoi (2026-08-10) : on n'appelle plus Resend courriel par courriel, on EMPILE
@@ -2643,23 +2675,6 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
   // acceptation par Resend, courriel par courriel : un refus repart demain, intact — la
   // règle n'a pas bougé, seul le moment où on la vérifie a changé.
   const echecsParProv = {};
-  // ── RAMPE DU SOUS-DOMAINE NEUF (2026-08-19) ──────────────────────────────────────
-  // `outreach.payotte.com` n'a aucun historique d'envoi. Un domaine neuf qui passe de 0 à
-  // 400 courriels/jour se fait classer en pourriel — la montée doit être progressive et
-  // CONDITIONNELLE. Les paliers sont datés dans wrangler.toml (OUTREACH_RAMPE) ; à défaut,
-  // on reste au plancher. Le passage au palier suivant n'est PAS automatique dans le temps :
-  // il exige que le webhook n'ait vu ni plainte ni rebond au-delà des seuils (voir
-  // `fluxCoupe()` plus bas) — sinon le plafond reste où il est.
-  const rampeOutreach = () => {
-    const brut = env.OUTREACH_RAMPE || '';        // ex. « 2026-08-20:100,2026-08-27:200 »
-    let plafond = Number(env.OUTREACH_PLANCHER ?? 50);
-    for (const p of brut.split(',').map((x) => x.trim()).filter(Boolean)) {
-      const [d, n] = p.split(':');
-      if (d && n && dayKey >= d.trim()) plafond = Number(n);
-    }
-    return Math.max(0, plafond);
-  };
-
   const viderFile = async () => {
     while (file.length) {
       const lot = file.splice(0, TAILLE_LOT);
@@ -2719,7 +2734,7 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
     outreachEnvoyes: 0,
     prospects: 0, experts: { intro: 0, yellow: 0, green: 0, reco: 0, partner: 0 },
     activeCities: 0, errors: [], skipped: [], recipients: [], budgetUsed: 0,
-    zones: [], dayUsedBefore: daySoFar, dayCap, partPassage, passagesRestants,
+    zones: [], dayUsedBefore: daySoFar, dayCap, capJourEffectif, partPassage, passagesRestants,
   };
 
   // Fuseaux servis à ce passage. En dry-run on ne filtre pas : le rapport doit montrer
@@ -2752,6 +2767,26 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
   // Aucune province à 10 h : on s'arrête là (1 feed, 1 lecture KV). Le cas normal 6 fois sur 7.
   if (!active.length) { report.budgetUsed = ctr.subs; return report; }
 
+  /* ── TÉMOIN D'EXÉCUTION (9 sept. 2026) ──────────────────────────────────────────
+     Le 9 septembre, quatre passages sur cinq ont été tués net à 30 s par la limite des
+     Cron Triggers. Un isolat tué ne lève pas d'exception : le `catch` de `scheduled()`
+     ne voit rien, `sendRunReport` n'est jamais atteint, et la journée n'a laissé QU'UN
+     récapitulatif pour cinq passages. Sans les mesures d'analytique Cloudflare, rien
+     nulle part ne disait que quatre passages étaient morts.
+     Ces deux écritures encadrent le passage : « debut » posé avant le moindre travail,
+     « fin » à la sortie normale. Un « debut » resté seul EST la signature d'un passage
+     mort — le passage suivant le voit et le met en tête de son récapitulatif. C'est la
+     seule trace qui survive à un isolat tué net, et elle coûte deux écritures KV. */
+  const temoin = `run:${dayKey}:${String(at.getUTCHours()).padStart(2, '0')}`;
+  if (!dryRun && env.SUBSCRIBERS) {
+    const morts = [];
+    for (const h of await kvKeys(env.SUBSCRIBERS, `run:${dayKey}:`)) {
+      if ((await env.SUBSCRIBERS.get(`run:${dayKey}:${h}`)) === 'debut') morts.push(`${h} h UTC`);
+    }
+    report.passagesMorts = morts;
+    await env.SUBSCRIBERS.put(temoin, 'debut', { expirationTtl: 3 * 24 * 3600 });
+  }
+
   // Taux et obligations : NATIONAUX, donc identiques pour tout le monde. Deux sous-requêtes
   // pour l'exécution entière, jamais deux par courriel. Feeds indisponibles → `macro` reste
   // null et le bloc disparaît simplement du gabarit : aucun envoi n'est bloqué pour ça.
@@ -2772,11 +2807,23 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
   // dans le cycle comme les autres. Une seule fois : l'envoi réécrit leur clé `intro:`.
   // Lecture KV seulement (hors budget de sous-requêtes), et seulement pour les déjà-présentés.
   const OPT_OUT_SWITCH = '2026-08-02';
+  /* ⚠ EN PARALLÈLE, PAS EN SÉRIE (9 sept. 2026). Cette boucle lisait les 402 clés
+     `intro:` l'une après l'autre : ~12 secondes de temps mural sur les 30 que Cloudflare
+     accorde à un Cron Trigger, dépensées AVANT le moindre envoi et à chacun des sept
+     passages. Les quatre passages du 9 septembre qui ont été tués à 29 s la payaient tous.
+     Rien d'autre ne change : mêmes clés, même critère, même résultat — seulement 40 de
+     front au lieu d'une. Les opérations KV ne comptent pas dans le budget de
+     sous-requêtes, il n'y a donc rien à réserver pour ça. */
   const reIntro = new Set();
   if (env.SUBSCRIBERS) {
-    for (const slug of intro) {
-      const at = await env.SUBSCRIBERS.get(`intro:${slug}`);
-      if (at && at.slice(0, 10) < OPT_OUT_SWITCH) reIntro.add(slug);
+    const LOT_LECTURE = 40;
+    const slugsIntro = [...intro];
+    for (let i = 0; i < slugsIntro.length; i += LOT_LECTURE) {
+      const tranche = slugsIntro.slice(i, i + LOT_LECTURE);
+      const dates = await Promise.all(tranche.map((slug) => env.SUBSCRIBERS.get(`intro:${slug}`)));
+      dates.forEach((quand, k) => {
+        if (quand && quand.slice(0, 10) < OPT_OUT_SWITCH) reIntro.add(tranche[k]);
+      });
     }
   }
 
@@ -2929,12 +2976,22 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
       const contact = dir[e.slug];
       if (!contact?.email) { report.skipped.push(`${e.slug} (pas de courriel)`); continue; }
       if (mailsDone.has(contact.email.toLowerCase())) continue;   // doublon d'adresse : au prochain cycle
-      if (await env.SUBSCRIBERS?.get(`bounce:${contact.email.toLowerCase()}`)) { report.skipped.push(`${e.slug} (rebond)`); continue; }
+      /* ⚠ LES FILTRES GRATUITS D'ABORD, LES LECTURES KV ENSUITE (9 sept. 2026).
+         Le test de rebond était ICI, en tête : une lecture KV par expert du carnet, payée
+         même quand la rampe était déjà épuisée et que PERSONNE ne pouvait plus partir. Sur
+         l'Ontario et le Québec — les deux plus gros carnets, servis au même passage de
+         14 h UTC — c'est ce qui a fait dépasser les 30 secondes du Cron Trigger, quatre
+         passages de suite. Les trois tests ci-dessous ne coûtent rien : ils passent devant.
+         Conséquence assumée : un expert en rebond compte désormais dans `restants` quand la
+         rampe coupe avant lui, donc sa province n'est plus marquée `prov-done:` ce jour-là.
+         C'est le sens prudent — une province rouverte pour rien coûte une sous-requête,
+         une province fermée à tort coûte un mois. */
       if (stopOutreach) { restants++; report.pending++; continue; }   // l'escalier est de la prospection
       if (dejaOutreach + report.outreachEnvoyes >= rampeOutreach()) { restants++; report.pending++; continue; }
       const stage = expertStage(e, intro.has(e.slug) && !reIntro.has(e.slug));
       if (!stage) continue;
       if (!canSend()) { restants++; report.pending++; continue; }
+      if (await env.SUBSCRIBERS?.get(`bounce:${contact.email.toLowerCase()}`)) { report.skipped.push(`${e.slug} (rebond)`); continue; }
       // Domaine saturé : `restants++` est essentiel — sans lui la province serait
       // marquée `prov-done:` et son feed ne serait plus rapatrié avant le mois prochain.
       if (!await prendreCreneauDomaine(contact.email)) { restants++; report.pending++; continue; }
@@ -3017,7 +3074,22 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
   if (!dryRun && report.attempts) {
     await env.SUBSCRIBERS?.put(`day:${dayKey}`, String(daySoFar + report.attempts), { expirationTtl: 3 * 24 * 3600 });
   }
-  if (!dryRun && (report.attempts || report.failed)) await sendRunReport(env, report);
+  // Sortie normale : le témoin passe de « debut » à « fin ». Voir le bloc du témoin plus haut.
+  if (!dryRun && env.SUBSCRIBERS) {
+    await env.SUBSCRIBERS.put(temoin, `fin ${report.attempts}`, { expirationTtl: 3 * 24 * 3600 });
+  }
+  /* ── LE RAPPORT « ZÉRO », POUR DE VRAI (9 sept. 2026) ────────────────────────────
+     La condition était `attempts || failed` : un passage qui avait du monde à servir et
+     n'a rien envoyé — rampe épuisée, budget épuisé, flux coupé — sortait en silence. Le
+     8 septembre a ajouté un `console.log`, mais sans `[observability]` dans wrangler.toml
+     ce journal n'existait nulle part : le « rapport zéro » du council n'a jamais été livré.
+     Désormais un passage écrit aussi quand il a VU des candidats sans pouvoir les servir
+     (`pending`), et quand un passage précédent de la journée est mort (`passagesMorts`).
+     Ce qui reste silencieux, et doit le rester : les passages sans province à 10 h (déjà
+     sortis plus haut) et la fin de cycle, quand tout le monde a reçu — pending vaut 0. */
+  const aDireQuelqueChose = report.attempts || report.failed || report.pending
+    || (report.passagesMorts?.length ?? 0);
+  if (!dryRun && aDireQuelqueChose) await sendRunReport(env, report);
   return report;
 }
 
@@ -3100,10 +3172,19 @@ async function sendRunReport(env, report) {
       : `  Côté EXPERTS, aucune province encore bouclée ce cycle.`,
   ].filter(Boolean) : [];
 
+  // Un passage précédent de la journée a posé son témoin « debut » et n'a jamais posé
+  // « fin » : il a été tué (limite de 30 s du Cron Trigger, le plus souvent). C'est la
+  // ligne la plus importante du rapport quand elle apparaît — elle passe donc en tête.
+  const morts = report.passagesMorts?.length
+    ? [`⚠️ PASSAGE(S) MORT(S) AUJOURD'HUI : ${report.passagesMorts.join(', ')} — commencés, jamais terminés.`,
+       `   Rien n'est parti à ces heures-là. Cause habituelle : les 30 s du Cron Trigger.`, ``]
+    : [];
   const L = [
+    ...morts,
     `Cycle ${report.cycle} — CET ENVOI : ${report.sent} parti(s) · ${report.failed} raté(s) · reste ${reste} dans ce passage`,
     `Passage de 10 h : ${report.zones?.join(', ') || '—'} · ${report.activeCities} ville(s) dans la tranche`,
-    `Rythme du jour (toutes tranches) : ${jour}/${report.dayCap ?? dailySendCap()}`
+    `Rythme du jour (toutes tranches) : ${jour}/${report.capJourEffectif ?? report.dayCap ?? dailySendCap()}`
+      + `${report.capJourEffectif != null && report.capJourEffectif !== report.dayCap ? ` (plafond global ${report.dayCap}, bridé par la rampe outreach)` : ''}`
       + ` · part de ce passage ${report.attempts}/${report.partPassage ?? '—'}`
       + ` (${report.passagesRestants ?? '?'} passage(s) à fuseau restant(s) aujourd'hui)`,
     `Sous-requêtes : ${report.budgetUsed}/${SUBREQUEST_BUDGET}${provAttendues ? ` · provinces non ouvertes : ${provAttendues}` : ''}`,

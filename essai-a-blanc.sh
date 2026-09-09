@@ -25,8 +25,12 @@ node --input-type=module -e '
 let s=""; process.stdin.on("data",d=>s+=d).on("end",()=>{
   let j; try { j = JSON.parse(s); } catch { console.log("réponse illisible :", s.slice(0,300)); process.exit(1); }
   if (j.error) { console.log("✗", j.error); process.exit(1); }
-  console.log("plafond du jour      :", j.dayCap ?? "?");
-  console.log("déjà envoyé ce jour  :", j.daySoFar ?? 0);
+  // ATTENTION : ce bloc est entre apostrophes simples dans le shell, aucune apostrophe ici.
+  // Le champ ne s appelle pas daySoFar mais dayUsedBefore : le script affichait donc 0
+  // tous les jours, y compris le 9 septembre ou le compteur KV valait 50.
+  console.log("plafond effectif     :", j.capJourEffectif ?? "?", "(global", (j.dayCap ?? "?") + ")");
+  console.log("déjà envoyé ce jour  :", j.dayUsedBefore ?? 0);
+  console.log("part par passage     :", j.partPassage ?? "?", "×", j.passagesRestants ?? "?", "passage(s)");
   console.log("prospects            :", j.prospects ?? 0);
   console.log("experts              :", JSON.stringify(j.experts ?? {}));
   const r = j.recipients ?? [];
