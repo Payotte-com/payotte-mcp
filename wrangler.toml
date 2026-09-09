@@ -17,16 +17,47 @@ id = "773969ab7f814cdf8985b2f0e7edaf8d"
 MAIL_FROM = "Payotte <relais@payotte.com>"
 MAIL_FROM_BULLETIN = "Payotte <bulletin@payotte.com>"
 
-# ── SOUS-PLAFOND DE LA PROSPECTION (experts), 2026-09-02 ─────────────────────────
-# `dailySendCap()` borne le TOTAL du jour ; celui-ci borne la seule prospection vers les
-# experts. Sans cette variable, `rampeOutreach()` retombe sur OUTREACH_PLANCHER = 50 —
-# et les 622 experts joignables auraient mis treize jours à être servis pendant que la
-# rampe globale montait à 6 000. Le plancher était calibré pour le forfait gratuit.
+# ── EXPÉDITEUR DE LA PROSPECTION (posé le 9 sept. 2026) ──────────────────────────
+# Le code route par flux depuis le 19 août (`sendPulseBatch`, « trois expéditeurs, trois
+# réputations ») — mais la variable n'avait JAMAIS été posée. `MAIL_FROM_OUTREACH` étant
+# absente, la ligne retombait sur `MAIL_FROM_BULLETIN` : les 50 courriels du 9 septembre,
+# tous de la prospection, sont partis de `bulletin@`. La séparation existait dans le code
+# et nulle part ailleurs, et la rampe de chauffe chauffait l'adresse du bulletin opt-in —
+# exactement ce qu'elle était censée protéger.
 #
-# Les valeurs suivent ~30 % de la rampe globale (EXPERTS_SHARE = 0.30), ce qui vide le
-# carnet d'experts en quatre jours : 75 + 150 + 225 + 225 = 675 > 622. Après le 11, le
-# chiffre n'a plus d'effet — il n'y a plus d'expert à servir — mais il reste haut pour
-# absorber les fiches que la récolte publiera d'ici là.
+# ⚠️ `outreach@payotte.com`, PAS `outreach.payotte.com`. Un commentaire du code parlait
+# d'un sous-domaine ; il n'existe pas — `dig TXT resend._domainkey.outreach.payotte.com`
+# et `dig MX outreach.payotte.com` ne rendent rien (vérifié le 9 sept. 2026). Le domaine
+# vérifié chez Resend est `payotte.com`, celui d'où partent déjà `bulletin@` et `relais@`,
+# et `outreach@` y est redirigé par ImprovMX comme les trois autres. Poser un sous-domaine
+# non vérifié ici ferait refuser TOUS les envois de prospection par Resend.
+MAIL_FROM_OUTREACH = "Payotte <outreach@payotte.com>"
+
+# ── RAMPE DE LA PROSPECTION — TOUT LE FLUX `outreach`, 2026-09-02 ────────────────
+# ⚠️ CE BLOC A DÉCRIT LE CONTRAIRE DU CODE PENDANT UNE SEMAINE. Il annonçait un
+# « sous-plafond des experts seulement », calibré à ~30 % de la rampe globale pour vider
+# les 622 experts en quatre jours, et concluait : « après le 11, le chiffre n'a plus
+# d'effet — il n'y a plus d'expert à servir ». D'où l'absence de tout palier après le 16.
+#
+# Or `rampeOutreach()` (src/index.js) borne `fluxRec === 'outreach'`, et ça comprend les
+# 11 839 PROSPECTS RÉCOLTÉS. Un plafond dimensionné pour 622 personnes étranglait donc
+# tout le programme à 30 % du plan, et le plafond de 600 devenait éternel : 7 575 servis
+# au 30 septembre sur 12 366, 4 791 jamais joints, et le cycle qui repart à zéro le
+# 1er octobre. Le carnet n'était JAMAIS vidé. Mesuré et corrigé le 9 septembre 2026.
+#
+# Les experts n'y perdent rien : c'est `EXPERTS_SHARE = 0.30` qui leur réserve 30 % de
+# chaque passage — la protection existait en double, et c'est l'autre qui compte.
+#
+# PALIERS PROLONGÉS LE 9 SEPT. 2026, en DOUBLANT à chaque marche (75 → 150 → 300 → 600
+# → 1 200 → 2 400 → 4 800). C'est la doctrine du 3 août tenue à la lettre, et c'est plus
+# prudent que la rampe globale, qui ferait passer de 50 le 9 à 500 le 10 — un ×10 sur un
+# domaine dont le meilleur jour de sa vie est 90. Le minimum des deux rampes s'applique,
+# donc le vrai débit sera 150 · 300 · 600 · 1 000 · 2 000 · 4 000 : carnet vide le
+# vendredi 18 septembre, la date du plan de septembre.
+#
+# ⚠️ CE N'EST PAS UN ENGAGEMENT DE DÉBIT : les seuils de `runBulletin` posent
+# `stop:outreach` tout seuls si les plaintes passent 0,3 % ou les rebonds durs 4 %. Un
+# palier qui déclenche l'arrêt n'est pas à forcer — reprendre au palier PRÉCÉDENT.
 #
 # ⚠ REDATÉE LE 8 SEPT. 2026, DE DEUX JOURS — et la raison n'est pas cosmétique.
 # Les paliers partaient du 7 septembre. Or RIEN n'est parti : la pause du 2 septembre
@@ -49,7 +80,7 @@ MAIL_FROM_BULLETIN = "Payotte <bulletin@payotte.com>"
 # POUR S'EN RESERVIR UN JOUR : reposer ZONES_TOUTES_JUSQU_AU avec une date FUTURE, et
 # la poser AVANT 12 h UTC, sinon la journée est déjà passée.
 
-OUTREACH_RAMPE = "2026-09-09:75,2026-09-10:150,2026-09-11:225,2026-09-14:300,2026-09-16:600"
+OUTREACH_RAMPE = "2026-09-09:75,2026-09-10:150,2026-09-11:300,2026-09-14:600,2026-09-15:1200,2026-09-16:2400,2026-09-17:4800"
 
 # ── ADRESSE POSTALE LCAP — EN SECRET, PAS ICI (2026-08-25) ───────────────────────
 # Le Règlement de la LCAP (art. 2(2)) impose l'adresse postale de l'expéditeur dans TOUT
@@ -99,3 +130,17 @@ id = "6b341a2d876b49d78bb5651936ccac8e"
 # tout le monde servi, plus rien jusqu'au 1er.
 [triggers]
 crons = ["0 12-18 * * *"]
+
+# ── JOURNAUX (posé le 9 sept. 2026) ──────────────────────────────────────────────
+# Sans ce bloc, `console.log` et `console.error` ne vont NULLE PART : ils ne sont visibles
+# que dans un `wrangler tail` ouvert au moment même. Le 9 septembre, quatre passages du
+# cron ont été tués à 30 s ; le `catch` ajouté la veille dans `scheduled()` et son
+# « rapport zéro » écrivaient consciencieusement dans le vide, et il a fallu interroger
+# l'API GraphQL d'analytique de Cloudflare pour découvrir que les passages de 14, 15, 16
+# et 17 h UTC avaient duré 29,2 · 29,7 · 28,6 · 28,8 secondes.
+# `head_sampling_rate = 1` : tout est retenu. Le worker fait quelques centaines de
+# requêtes par jour — il n'y a rien à échantillonner, et un incident qui n'arrive qu'une
+# fois est exactement celui qu'un échantillon rate.
+[observability]
+enabled = true
+head_sampling_rate = 1
