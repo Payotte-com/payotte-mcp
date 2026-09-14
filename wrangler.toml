@@ -82,6 +82,19 @@ MAIL_FROM_OUTREACH = "Payotte <outreach@payotte.com>"
 
 OUTREACH_RAMPE = "2026-09-09:75,2026-09-10:150,2026-09-11:300,2026-09-14:600,2026-09-15:1200,2026-09-16:2400,2026-09-17:4800"
 
+# ── FORÇAGE DE PROVINCES POUR UNE JOURNÉE (14 sept. 2026, demande proprio) ───────
+# QC et ON sont normalement servis au passage de 14 h UTC (10 h locale). Celui du
+# 14 septembre est mort sur la limite des 1 000 opérations KV, et la journée n'avait
+# plus que 17 h et 18 h UTC — deux créneaux qui ne servent que la C.-B. et personne.
+# Cette variable rouvre QC et ON pour CE jour-là, à 13 h et 14 h heure de l'Est :
+# des heures ouvrables, donc l'esprit de la règle des 10 h est respecté.
+#
+# ⚠️ ELLE S'ANNULE SEULE. La date en tête doit valoir le jour UTC courant ; demain la
+# variable est inerte et le filtre par fuseau reprend sans intervention. NE PAS la
+# remplacer par une liste sans date : un forçage permanent finirait par expédier à
+# 6 h du matin sur la côte Ouest.
+PROVINCES_DU_JOUR = "2026-09-14:QC,ON"
+
 # ── ADRESSE POSTALE LCAP — EN SECRET, PAS ICI (2026-08-25) ───────────────────────
 # Le Règlement de la LCAP (art. 2(2)) impose l'adresse postale de l'expéditeur dans TOUT
 # message commercial électronique, en plus du nom et d'un moyen de contact. Le worker la

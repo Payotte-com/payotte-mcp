@@ -2240,6 +2240,28 @@ const PROV_SLUG = {
 // Les opérations KV n'entrent pas dans ce budget (vérifié sur la run du 1er août).
 const SUBREQUEST_BUDGET = 50;
 const SUBREQUEST_MARGIN = 3;   // récapitulatif de fin + coussin
+// Budget d'opérations KV par invocation. Plafond Cloudflare : 1 000 opérations sur un
+// service externe, Workers KV compris — un plafond DISTINCT des 50 sous-requêtes
+// ci-dessus, et que rien ne surveillait avant le 14 septembre 2026. Au niveau module
+// parce que `sendRunReport` l'affiche : déclaré dans `runBulletin`, il y était hors
+// de portée et le récapitulatif aurait planté à l'envoi.
+// ⚠ MARGE ÉLARGIE À 180 APRÈS LE PASSAGE DE 17 H LE 14 SEPT. 2026. Un budget de 900 n'a
+// pas protégé : le compteur ignorait l'écriture `dom:` faite à chaque destinataire, donc il
+// affichait ~800 quand le worker en avait réellement fait 1 000, et le garde-fou n'a jamais
+// eu l'occasion de se déclencher. Les écritures sont désormais comptées ET groupées, mais
+// une quinzaine d'opérations de service (témoins `run:`, lectures `stop:`/`plainte:`,
+// `prov-done:`) restent hors compteur. La marge les couvre. NE PAS la réduire en la croyant
+// inutile : un compteur qui sous-estime rend le garde-fou décoratif.
+// Remonté de 820 à 880 le 14 sept. 2026 au soir : les écritures étant groupées, presque
+// toutes les opérations restantes sont des LECTURES, et elles sont toutes comptées. La
+// marge de 120 couvre les opérations de service encore hors compteur (témoins `run:`,
+// lectures `stop:`/`plainte:`, `prov-done:`).
+const KV_BUDGET = 880;
+// Cohorte pré-opt-out, mémorisée en UNE clé. Voir le bloc qui la lit dans `runBulletin`.
+const CLE_COHORTE = 'cohorte:pre-optout';
+// Bascule vers l'opt-out : une clé `intro:` antérieure à cette date appartient à la cohorte
+// de l'ANCIENNE présentation, celle qui promettait « aucune suite sans votre accord ».
+const OPT_OUT_SWITCH = '2026-08-02';
 // Taille d'un lot Resend (maximum de l'API). Depuis le passage aux lots (2026-08-10),
 // un passage de 1 000 courriels ne coûte que 10 sous-requêtes : le budget Cloudflare
 // n'est plus le facteur limitant, le forfait Resend et la réputation du domaine le sont.
@@ -2446,9 +2468,27 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
   const dayKey = at.toISOString().slice(0, 10);    // AAAA-MM-JJ (jour comptable = UTC)
   // Compteur de sous-requêtes de CETTE exécution (feeds + appels Resend). Les opérations KV
   // n'y entrent pas. `left()` est ce qui reste de disponible.
-  const ctr = { subs: 0 };
+  const ctr = { subs: 0, kv: 0 };
   const F = async (path) => { ctr.subs++; return feed(path); };
   const left = () => SUBREQUEST_BUDGET - SUBREQUEST_MARGIN - ctr.subs;
+  /* ── BUDGET D'OPÉRATIONS KV (2026-09-14) ───────────────────────────────────────────
+     DEUXIÈME plafond Cloudflare, distinct des sous-requêtes et jamais compté nulle part :
+     un Worker ne peut faire que 1 000 opérations sur un service externe — Workers KV
+     compris — par invocation. Le commentaire de `SUBREQUEST_BUDGET` dit vrai (« les
+     opérations KV n'entrent pas dans ce budget ») et c'est exactement ce qui a trompé :
+     elles n'entrent pas dans CELUI-LÀ, elles ont le LEUR, et rien ne le surveillait.
+     C'est lui qui a tué les passages du 14 septembre à 22,8 s — sous la limite des 30 s,
+     donc invisible à l'analyse qui avait servi le 9. Voir la boucle des prospects. */
+  const kvLeft = () => KV_BUDGET - ctr.kv;
+  const kvLot = async (cles) => {   // lectures EN PARALLÈLE, et comptées
+    ctr.kv += cles.length;
+    return Promise.all(cles.map((c) => env.SUBSCRIBERS.get(c)));
+  };
+  const kvListe = async (prefixe) => {   // un `list()` rend 1 000 clés par opération
+    const r = await kvKeys(env.SUBSCRIBERS, prefixe);
+    ctr.kv += Math.max(1, Math.ceil(r.length / 1000));
+    return r;
+  };
   // Ce que les exécutions PRÉCÉDENTES du jour ont déjà consommé (les 7 passages horaires se
   // partagent un seul plafond quotidien).
   const daySoFar = Number((env.SUBSCRIBERS ? await env.SUBSCRIBERS.get(`day:${dayKey}`) : 0) || 0);
@@ -2487,12 +2527,39 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
                   + Number((await env.SUBSCRIBERS?.get(`day:${hier}:outreach`)) || 0);
   const plaintes = env.SUBSCRIBERS ? await somme('plainte') : 0;
   const rebonds = env.SUBSCRIBERS ? await somme('rebond') : 0;
-  // Sous 200 envois, un pourcentage ne veut rien dire (une plainte ferait 0,5 %) : on
-  // s'en remet alors au compte brut de 3 plaintes, qui reste un signal fort à petit volume.
-  const tauxP = envoyes24 >= 200 ? plaintes / envoyes24 : 0;
-  const tauxR = envoyes24 >= 200 ? rebonds / envoyes24 : 0;
+  /* ── DEUX PLANCHERS, PAS UN (2026-09-14) ─────────────────────────────────────────
+     Le plancher unique de 200 a arrêté tout le programme le 11 septembre sur UNE seule
+     plainte : 1 sur 321 = 0,311 %, juste au-dessus des 0,300 %. Le commentaire d'origine
+     avait le bon raisonnement et le mauvais chiffre — il protégeait contre « une plainte
+     à 0,5 % » sans voir que la zone 200-333 laisse exactement le même accident arriver.
+
+     LE PLANCHER SE DÉDUIT DU SEUIL, il ne se choisit pas. Pour que le pourcentage ne soit
+     jamais plus nerveux que le garde-fou absolu de 3 plaintes, il faut que les deux
+     coïncident à la frontière :  3 ÷ 0,003 = 1 000.
+       · sous 1 000 envois sur 24 h → seul `plaintes >= 3` décide ;
+       · à partir de 1 000        → 0,3 % exige DÉJÀ 3 plaintes ou plus.
+     Aucune discontinuité, et la détection n'est jamais plus faible qu'avant : 3 plaintes
+     arrêtent tout, à n'importe quel volume. 400 aurait encore déclenché sur 2 plaintes
+     entre 400 et 666 envois — plus strict que le garde-fou absolu, donc le même piège.
+
+     LES REBONDS GARDENT 200, et c'est délibéré. Leur seuil est 4 %, pas 0,3 % : un rebond
+     isolé pèse 0,5 % à 200 envois, très loin de déclencher. Monter ce plancher-là à 1 000
+     aurait aveuglé le seul garde-fou qui voit une liste pourrie — il n'existe AUCUN
+     compte brut de secours pour les rebonds, contrairement aux plaintes. */
+  const PLANCHER_PLAINTES = 1000;   // = 3 / 0,003, le point où les deux garde-fous se rejoignent
+  const PLANCHER_REBONDS = 200;     // seuil à 4 % : un plancher bas ne produit pas de faux positif
+  const tauxP = envoyes24 >= PLANCHER_PLAINTES ? plaintes / envoyes24 : 0;
+  const tauxR = envoyes24 >= PLANCHER_REBONDS ? rebonds / envoyes24 : 0;
   let stopOutreach = env.SUBSCRIBERS ? await env.SUBSCRIBERS.get('stop:outreach') : null;
-  if (!stopOutreach && !dryRun && (tauxP >= 0.003 || plaintes >= 3 || tauxR >= 0.04)) {
+  /* ⚠ LE COMPTE BRUT DE 3 PLAINTES EST UN FILET DE PETIT VOLUME, PAS UNE RÈGLE GÉNÉRALE.
+     Sans la borne `envoyes24 < PLANCHER_PLAINTES`, il domine tout le reste pour toujours :
+     à 6 000 envois sur 24 h — le régime de la fin septembre — 3 plaintes valent 0,05 %,
+     un taux EXCELLENT, et le programme s'arrêterait quand même. On aurait remplacé
+     l'accident du 11 septembre par le même accident un cran plus haut dans la rampe.
+     Il ne sert donc que là où le pourcentage ne peut rien dire : sous le plancher. */
+  if (!stopOutreach && !dryRun && (tauxP >= 0.003
+                                   || (envoyes24 < PLANCHER_PLAINTES && plaintes >= 3)
+                                   || tauxR >= 0.04)) {
     const motif = plaintes >= 3 && tauxP < 0.003
       ? `${plaintes} plaintes en 24 h`
       : tauxR >= 0.04 ? `rebonds durs ${(tauxR * 100).toFixed(1)} %`
@@ -2576,6 +2643,18 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
   // et on vide par lots de 100 — un seul appel, donc UNE sous-requête, par lot.
   const file = [];
   const lotsAPrevoir = () => Math.ceil((file.length + 1) / TAILLE_LOT);
+  /* Déclarés ICI, et pas près de leur calcul, parce que `viderFile` (défini plus bas mais
+     APPELÉ dès la boucle des prospects) doit pouvoir retirer un slug de la cohorte au
+     moment où il réécrit sa clé `intro:`. Déclarés après, ils seraient dans la zone morte
+     temporelle du `let` et la première vidange lèverait une ReferenceError. */
+  // Identité du lot dans la clé `servi:` — l'heure du passage et un rang qui monte. Deux
+  // passages de la même heure ne peuvent pas exister (le cron est horaire), donc pas de
+  // collision possible entre exécutions.
+  const heureUTC = String(at.getUTCHours()).padStart(2, '0');
+  let lotNo = 0;
+  const reIntro = new Set();      // rempli plus bas, une fois les experts atteints
+  let cohorteConnue = false;      // a-t-on une cohorte FIABLE en main ?
+  let cohorteDirty = false;       // faut-il la réécrire en fin d'exécution ?
   // ── PART RÉSERVÉE AUX EXPERTS (2026-08-19) ─────────────────────────────────────────
   // MESURÉ le 18 août en KV : `sent:2026-08:` = 623 prospects contre 217 experts, et le
   // compte des experts est FIGÉ depuis le 13 août. 351 experts publiés n'ont rien reçu du
@@ -2629,19 +2708,38 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
   // premier lot ne parte.
   const MAX_PAR_DOMAINE = Number(env.MAX_PAR_DOMAINE || 5);
   const domaineDe = (email) => String(email || '').split('@')[1]?.toLowerCase() || '?';
+  /* ── UNE CLÉ PAR JOUR, PAS UNE PAR DOMAINE (2026-09-14, palier gratuit) ───────────
+     `dom:{jour}:{domaine}` coûtait une LECTURE par domaine et une ÉCRITURE par domaine et
+     par lot. Sur le palier gratuit Workers KV — 1 000 écritures par JOUR pour tout le
+     compte — c'était le deuxième poste de dépense après les marques `sent:`, et le
+     programme plafonnait à ~250 courriels par jour.
+
+     Tout tient maintenant dans `dom:{jour}` : un objet {domaine: compte}, lu UNE fois au
+     début du passage, réécrit UNE fois par lot. Coût : ~0,01 écriture par courriel au
+     lieu de ~0,8.
+
+     ⚠ CE COMPTEUR EST UN FREIN, PAS UN REGISTRE. Si un passage meurt avant sa réécriture,
+     le pire est que le passage suivant reparte d'un compte un peu bas et laisse passer
+     quelques adresses de plus sur un gros domaine. On perd de la précision, jamais une
+     adresse : le registre de qui a été servi, lui, est `sent:`/`servi:`. */
   const domCache = new Map();                    // domaine -> déjà servi/en file aujourd'hui
-  const domDejaVu = async (dom) => {
-    if (!domCache.has(dom)) {
-      const v = env.SUBSCRIBERS ? await env.SUBSCRIBERS.get(`dom:${dayKey}:${dom}`) : null;
-      domCache.set(dom, Number(v || 0));
-    }
-    return domCache.get(dom);
+  let domCharge = false;
+  const chargerDom = async () => {
+    if (domCharge || !env.SUBSCRIBERS) { domCharge = true; return; }
+    domCharge = true;
+    ctr.kv++;
+    try {
+      const brut = await env.SUBSCRIBERS.get(`dom:${dayKey}`);
+      const j = brut ? JSON.parse(brut) : null;
+      if (j && typeof j === 'object') for (const [d, n] of Object.entries(j)) domCache.set(d, Number(n) || 0);
+    } catch { /* clé abîmée : on repart d'un compte vide, le frein est simplement plus lâche */ }
   };
   // true = on peut servir cette adresse aujourd'hui ; réserve le créneau au passage.
   const prendreCreneauDomaine = async (email) => {
     if (dryRun) return true;
+    await chargerDom();
     const dom = domaineDe(email);
-    const n = await domDejaVu(dom);
+    const n = domCache.get(dom) ?? 0;
     if (n >= MAX_PAR_DOMAINE) { report.reportesDomaine = (report.reportesDomaine || 0) + 1; return false; }
     domCache.set(dom, n + 1);
     return true;
@@ -2667,6 +2765,7 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
         html,
       }),
     }).catch(() => { /* l'échantillon n'est jamais bloquant */ });
+    ctr.kv++;
     await env.SUBSCRIBERS.put(`sample:${dayKey}`, new Date().toISOString(),
       { expirationTtl: 3 * 24 * 3600 });
   };
@@ -2678,6 +2777,8 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
   const viderFile = async () => {
     while (file.length) {
       const lot = file.splice(0, TAILLE_LOT);
+      const marquesDuLot = [];         // identifiants servis, écrits d'un bloc en fin de lot
+      lotNo++;
       ctr.subs++;
       // Un lot peut mêler prospects et experts : on n'envoie donc pas le lot entier sous un
       // seul expéditeur, on le fend par flux. Deux appels au pire, toujours ≤ 2 sous-requêtes.
@@ -2695,8 +2796,19 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
         sousLot.forEach((e, k) => { reponses[lot.indexOf(e)] = r[k]; });
         // Compteur par flux — c'est lui que la rampe et les seuils de plainte lisent.
         const cle = `day:${dayKey}:${flux}`;
+        if (env.SUBSCRIBERS) ctr.kv += 2;          // la lecture ci-dessous + l'écriture qui suit
         const dejaFlux = Number((await env.SUBSCRIBERS?.get(cle)) || 0);
         await env.SUBSCRIBERS?.put(cle, String(dejaFlux + sousLot.length), { expirationTtl: 3 * 24 * 3600 });
+        /* Dénominateur MENSUEL de /flux-stats, désormais tenu par l'expéditeur : une
+           écriture par LOT de 100 au lieu d'une par destinataire côté webhook. C'est ce
+           qui permet au webhook de ne plus compter `email.sent` ni `email.delivered` —
+           voir le bloc « NE COMPTER QUE LE RARE ». On compte les TENTATIVES : un refus
+           Resend est rare, et majorer le dénominateur va dans le sens prudent (il baisse
+           les taux de plainte plutôt que de les gonfler). */
+        const cleMois = `stat:${flux}:${dayKey.slice(0, 7)}:envoyes`;
+        if (env.SUBSCRIBERS) ctr.kv += 2;
+        const dejaMois = Number((await env.SUBSCRIBERS?.get(cleMois)) || 0);
+        await env.SUBSCRIBERS?.put(cleMois, String(dejaMois + sousLot.length), { expirationTtl: 400 * 24 * 3600 });
       }
       for (let i = 0; i < lot.length; i++) {
         const e = lot[i];
@@ -2707,16 +2819,39 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
           report.errors.push(`${e.etiquette} — Resend HTTP ${r?.status ?? '?'}${r?.error ? ` (${r.error})` : ''}`);
           continue;
         }
-        await env.SUBSCRIBERS?.put(`sent:${cycle}:${e.cle}`, new Date().toISOString(), { expirationTtl: CYCLE_TTL });
-        if (e.stage === 'intro') await env.SUBSCRIBERS?.put(`intro:${e.cle}`, new Date().toISOString());
-        // Compteur du jour par domaine, persisté pour les passages horaires suivants.
-        // On écrit la valeur RÉSERVÉE (mise en file), pas le nombre d'acceptations : elle
-        // majore, et majorer va dans le sens de la prudence pour la réputation.
-        const domE = domaineDe(e.to);
-        await env.SUBSCRIBERS?.put(`dom:${dayKey}:${domE}`, String(domCache.get(domE) ?? 1),
-          { expirationTtl: 3 * 24 * 3600 });
+        marquesDuLot.push(e.cle);      // groupées : une seule écriture pour tout le lot
+        if (e.stage === 'intro') {
+          if (env.SUBSCRIBERS) ctr.kv++;
+          await env.SUBSCRIBERS?.put(`intro:${e.cle}`, new Date().toISOString());
+          // La clé vient de passer à AUJOURD'HUI : ce slug quitte la cohorte pré-opt-out.
+          // C'est la SEULE porte de sortie, et elle est ici — d'où les déclarations
+          // anticipées de `reIntro` / `cohorteDirty` en tête de `runBulletin`.
+          if (reIntro.delete(e.cle)) cohorteDirty = true;
+        }
         report.sent++;
         await envoyerEchantillon(e.to, e.subject, e.html);
+      }
+      /* ── DEUX ÉCRITURES PAR LOT, POINT (2026-09-14, palier gratuit) ─────────────────
+         C'est tout ce que coûte un lot de 100 courriels, contre ~180 auparavant.
+
+         `servi:` porte les identifiants du lot dans UNE clé. Le registre reste écrit
+         APRÈS acceptation par Resend, lot par lot : ce qui n'est pas confirmé repart au
+         passage suivant. Une perte reste possible si le passage meurt entre l'envoi et
+         cette ligne — mais elle est bornée à un lot, exactement comme avant.
+
+         ⚠ LES ANCIENNES MARQUES `sent:{cycle}:{id}` RESTENT LUES (voir la construction de
+         `done`). Elles ne sont plus écrites, mais les 623 déjà posées ce cycle-ci valent
+         toujours : les ignorer réexpédierait à tout le monde. Ne pas « nettoyer » ce
+         double chemin avant le 1er octobre, quand le cycle repart de zéro. */
+      if (env.SUBSCRIBERS && marquesDuLot.length) {
+        ctr.kv++;
+        await env.SUBSCRIBERS.put(`servi:${cycle}:${dayKey}-${heureUTC}-${lotNo}`,
+          JSON.stringify(marquesDuLot), { expirationTtl: CYCLE_TTL });
+      }
+      if (env.SUBSCRIBERS) {
+        ctr.kv++;
+        await env.SUBSCRIBERS.put(`dom:${dayKey}`, JSON.stringify(Object.fromEntries(domCache)),
+          { expirationTtl: 3 * 24 * 3600 });
       }
     }
   };
@@ -2760,7 +2895,27 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
      courriel qui arrive à 6 h du matin se fait supprimer, pas lire. */
   const toutesZones = (env.ZONES_TOUTES_JUSQU_AU || '') >= dayKey && (env.ZONES_TOUTES_JUSQU_AU || '') !== '';
   if (toutesZones && !dryRun) console.log(`[bulletin] dérogation 10 h locales active (jusqu'au ${env.ZONES_TOUTES_JUSQU_AU}) — toutes provinces servies.`);
-  const active = (dryRun || toutesZones) ? allActive : allActive.filter((c) => zones.has(c.province));
+  /* ── FORÇAGE DE PROVINCES, DATÉ (14 sept. 2026, demande proprio) ──────────────────
+     `ZONES_TOUTES_JUSQU_AU` ouvre TOUTES les provinces, et ce n'est pas la même demande
+     que « sors le Québec et l'Ontario aujourd'hui ». Les clés prospects sont parcourues
+     dans l'ordre `s:{ville}:{courriel}`, donc alphabétique par VILLE à l'échelle du pays :
+     tout ouvrir ne sert pas QC/ON en premier, ça les dilue dans les huit autres provinces.
+     D'où une liste explicite.
+
+     ⚠ ET DATÉE, comme la dérogation voisine. Un forçage qui survit à sa journée enverrait
+     tôt ou tard à 6 h du matin quelque part — c'est exactement l'accident que la règle des
+     10 h locales existe pour empêcher. La date est celle du jour visé, au format
+     `AAAA-MM-JJ:QC,ON` ; le lendemain la variable est inerte et le filtre par fuseau
+     reprend tout seul. Rien à retirer à la main, rien à oublier. */
+  const forcage = String(env.PROVINCES_DU_JOUR || '');
+  const forcees = forcage.slice(0, 10) === dayKey && forcage.includes(':')
+    ? new Set(forcage.slice(11).split(',').map((x) => x.trim().toUpperCase()).filter(Boolean))
+    : null;
+  if (forcees && !dryRun) console.log(`[bulletin] forçage de provinces (${[...forcees].join(' ')}) pour ${dayKey} — règle des 10 h locales écartée pour aujourd'hui.`);
+  const active = dryRun ? allActive
+    : forcees ? allActive.filter((c) => forcees.has(c.province))
+    : toutesZones ? allActive
+    : allActive.filter((c) => zones.has(c.province));
   const cityBySlug = Object.fromEntries(active.map((c) => [c.slug, c]));
   report.activeCities = active.length;
 
@@ -2794,44 +2949,81 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
   report.macro = macro ? 'taux+obligations' : 'indisponible';
 
   // État du cycle : 3 lectures KV, pas une seule sous-requête.
-  const done = new Set(env.SUBSCRIBERS ? await kvKeys(env.SUBSCRIBERS, `sent:${cycle}:`) : []);
-  const unsub = new Set(env.SUBSCRIBERS ? await kvKeys(env.SUBSCRIBERS, 'unsub:') : []);
-  const intro = new Set(env.SUBSCRIBERS ? await kvKeys(env.SUBSCRIBERS, 'intro:') : []);
-
-  // Cohorte de l'ANCIENNE présentation (avant le passage à l'opt-out). Ce courriel-là
-  // promettait par écrit : « Répondez oui et je vous l'envoie. Sinon, aucune suite » et
-  // « Aucune suite sans votre accord ». La décision du 2 août change la règle pour la suite,
-  // elle n'efface pas cette phrase déjà envoyée : enrôler ces gens en silence dans l'escalier
-  // ①②③④ serait reprendre la parole donnée. Ils reçoivent donc d'abord la NOUVELLE
-  // présentation — qui dit ce qui va se passer et comment l'arrêter en un clic — puis entrent
-  // dans le cycle comme les autres. Une seule fois : l'envoi réécrit leur clé `intro:`.
-  // Lecture KV seulement (hors budget de sous-requêtes), et seulement pour les déjà-présentés.
-  const OPT_OUT_SWITCH = '2026-08-02';
-  /* ⚠ EN PARALLÈLE, PAS EN SÉRIE (9 sept. 2026). Cette boucle lisait les 402 clés
-     `intro:` l'une après l'autre : ~12 secondes de temps mural sur les 30 que Cloudflare
-     accorde à un Cron Trigger, dépensées AVANT le moindre envoi et à chacun des sept
-     passages. Les quatre passages du 9 septembre qui ont été tués à 29 s la payaient tous.
-     Rien d'autre ne change : mêmes clés, même critère, même résultat — seulement 40 de
-     front au lieu d'une. Les opérations KV ne comptent pas dans le budget de
-     sous-requêtes, il n'y a donc rien à réserver pour ça. */
-  const reIntro = new Set();
+  /* ── LE REGISTRE SE LIT SOUS DEUX FORMES (2026-09-14) ─────────────────────────────
+     `sent:{cycle}:{id}` — une clé par destinataire, la forme historique. Plus ÉCRITE
+     depuis le passage au groupage, mais toujours LUE : 623 marques posées ce cycle-ci en
+     dépendent, et les ignorer réexpédierait à tout le monde.
+     `servi:{cycle}:{jour}-{heure}-{n}` — un tableau d'identifiants par lot de 100, la
+     forme actuelle. Quelques dizaines de clés là où il y en avait des milliers.
+     Les deux alimentent le MÊME ensemble. À supprimer seulement après le 1er octobre,
+     quand le cycle repart de zéro et qu'il ne reste plus d'ancienne marque vivante. */
+  const done = new Set(env.SUBSCRIBERS ? await kvListe(`sent:${cycle}:`) : []);
   if (env.SUBSCRIBERS) {
-    const LOT_LECTURE = 40;
-    const slugsIntro = [...intro];
-    for (let i = 0; i < slugsIntro.length; i += LOT_LECTURE) {
-      const tranche = slugsIntro.slice(i, i + LOT_LECTURE);
-      const dates = await Promise.all(tranche.map((slug) => env.SUBSCRIBERS.get(`intro:${slug}`)));
-      dates.forEach((quand, k) => {
-        if (quand && quand.slice(0, 10) < OPT_OUT_SWITCH) reIntro.add(tranche[k]);
-      });
+    const lots = await kvListe(`servi:${cycle}:`);
+    const blobs = lots.length ? await kvLot(lots.map((k) => `servi:${cycle}:${k}`)) : [];
+    for (const b of blobs) {
+      try { for (const id of JSON.parse(b || '[]')) done.add(id); } catch { /* lot illisible : ses adresses repartiront, jamais de doublon silencieux dans l'autre sens */ }
     }
   }
+  const unsub = new Set(env.SUBSCRIBERS ? await kvListe('unsub:') : []);
+  const intro = new Set(env.SUBSCRIBERS ? await kvListe('intro:') : []);
+  /* ── LES REBONDS DURS EN UNE LISTE (14 sept. 2026) ───────────────────────────────
+     `bounce:{courriel}` était lu UNE FOIS PAR CANDIDAT, en série, dans la boucle des
+     prospects — donc payé même pour les gens que le filtre suivant allait écarter.
+     Un `kv.list()` rend 1 000 clés par opération : tout le carnet des rebonds coûte
+     désormais une ou deux opérations pour l'exécution entière, et le test devient
+     gratuit. C'est la même économie que `unsub:` et `intro:` faisaient déjà — la
+     boucle des prospects était simplement passée à côté. */
+  const rebondsDurs = new Set(env.SUBSCRIBERS ? await kvListe('bounce:') : []);
+  /* La cohorte se lit ICI, avant la boucle des prospects, pour UNE raison : la réserve de
+     budget KV des experts en dépend. Cache présent → leur coût est d'une poignée
+     d'opérations et les prospects peuvent prendre presque tout. Cache absent (premier
+     passage, clé abîmée) → il faudra recalculer, une lecture par expert présenté, et il
+     FAUT le réserver. Lire la clé coûte 1 opération ; se tromper de réserve en coûte 237. */
+  let cacheCohorte = null;
+  if (env.SUBSCRIBERS) {
+    try {
+      ctr.kv++;
+      const brut = await env.SUBSCRIBERS.get(CLE_COHORTE);
+      const j = brut ? JSON.parse(brut) : null;
+      if (Array.isArray(j)) cacheCohorte = j;
+    } catch { cacheCohorte = null; }   // clé abîmée : repli sur le calcul complet
+    /* ── LE CALCUL DE REPLI SE FAIT ICI, PAS APRÈS LES PROSPECTS (14 sept. 2026, soir) ──
+       Il était placé juste avant la section des experts, pour ne rien payer si les
+       prospects avaient déjà épuisé le budget. Bonne intention, BLOCAGE CIRCULAIRE : au
+       passage de 18 h, les prospects ont consommé jusqu'à la réserve, il ne restait plus
+       de quoi calculer la cohorte, donc `expertsPossibles` est resté faux, donc les deux
+       provinces ont été sautées — ET la clé n'a pas été écrite. Le passage suivant
+       repartait dans le même état : experts jamais servis, réserve payée pour rien.
+       Résultat mesuré : 105 prospects, 0 expert, cohorte toujours absente.
+
+       Le calcul est une dépense UNIQUE dans la vie du worker. La payer d'entrée coûte un
+       passage un peu plus court ; la reporter coûte les experts à chaque fois. */
+    if (!cacheCohorte && kvLeft() > intro.size + 60) {
+      const LOT_LECTURE = 40;
+      const slugsIntro = [...intro];
+      const trouves = [];
+      for (let i = 0; i < slugsIntro.length; i += LOT_LECTURE) {
+        const tranche = slugsIntro.slice(i, i + LOT_LECTURE);
+        const dates = await kvLot(tranche.map((slug) => `intro:${slug}`));
+        dates.forEach((quand, k) => {
+          if (quand && quand.slice(0, 10) < OPT_OUT_SWITCH) trouves.push(tranche[k]);
+        });
+      }
+      cacheCohorte = trouves;
+      cohorteDirty = true;           // à écrire en fin d'exécution, et plus jamais ensuite
+      console.log(`[bulletin] cohorte pré-opt-out calculée pour la première fois : ${trouves.length} slug(s).`);
+    }
+  }
+  /* La réserve n'a plus à couvrir le calcul : il est fait. Elle ne couvre que les envois
+     aux experts — créneau de domaine, marque `sent:`, réécriture `intro:`. */
+  const RESERVE_EXPERTS = 120;
 
   // ---- Prospects (abonnés du formulaire) ----
   // Liste hissée hors de la boucle : elle sert DEUX fois — pour servir, puis pour le
   // recensement par province du récapitulatif. Un `kv.list()` de plus serait gratuit en
   // budget de sous-requêtes, mais pas en temps d'exécution (2 100 clés paginées).
-  const clesProspects = env.SUBSCRIBERS ? await kvKeys(env.SUBSCRIBERS, 's:') : [];
+  const clesProspects = env.SUBSCRIBERS ? await kvListe('s:') : [];
   if (env.SUBSCRIBERS) {
     // ── FILTRER AVANT DE LIRE (2026-08-13) ────────────────────────────────────────
     // Le 13 août, AUCUN bulletin n'est parti et aucun rapport n'a été émis : le passage
@@ -2862,6 +3054,24 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
     } catch { couvertes = null; }
     if (!couvertes) console.warn('  ▸ villes-couvertes.json illisible — prospects sur le contenu générique.');
 
+    /* ── DEUX PHASES, ET DES LECTURES QUI NE SE PAIENT QU'UNE FOIS (14 sept. 2026) ──
+       CETTE BOUCLE A TUÉ LES PASSAGES DU 14 SEPTEMBRE. Pour CHAQUE clé du carnet elle
+       lisait la valeur `s:`, puis `bounce:`, puis `unsub:` — trois opérations KV en
+       SÉRIE — et ne testait `stopOutreach` qu'APRÈS. Or `stop:outreach` était posé
+       depuis le 11 : aucun envoi n'avançait `report.attempts`, donc `canSend()` restait
+       vrai indéfiniment et les 11 571 prospects étaient lus un par un pour être jetés.
+       L'isolat mourait vers la 1 000e opération KV, à 22,8 s — SOUS la limite des 30 s,
+       donc invisible à l'analyse de durée qui avait servi le 9 septembre — sans
+       exception attrapable, sans témoin `fin`, sans rapport.
+
+       Trois changements, dans l'ordre où ils comptent :
+       1. `bounce:` et `unsub:` ne se lisent plus par candidat : les deux carnets sont
+          déjà en mémoire, listés une fois pour l'exécution. Coût par candidat : zéro.
+       2. Les filtres GRATUITS passent en premier (phase 1), et `stopOutreach` est testé
+          dès que `rec` est lu — avant tout le reste, plus après.
+       3. Ce qui reste à lire l'est PAR TRANCHES PARALLÈLES de 40, sous budget KV compté.
+          Un passage ne peut plus mourir de soif : il s'arrête et il le DIT. */
+    const candidats = [];
     for (const key of clesProspects) {
       const sep = key.indexOf(':');
       if (sep < 1) continue;                         // clé malformée : on ne devine pas
@@ -2869,61 +3079,143 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
       if (!city) continue;                           // hors du fuseau servi à cette heure
       const id = `prospect:${key}`;
       if (done.has(id)) continue;                    // déjà servi ce cycle
-      if (!canSend('prospect')) { report.pending++; continue; }
       // DRY-RUN : ni lecture de valeur, ni rendu. Le dry-run ne filtre pas par fuseau
       // (il doit montrer l'audience du mois entier), donc il tombait sur les 2 100 clés :
       // 2 100 lectures KV + 2 100 courriels fabriqués pour être jetés à la ligne suivante.
-      // Le worker dépassait son temps d'exécution et /bulletin-dryrun répondait 500 (1101).
       // Or la clé `s:{ville}:{courriel}` porte DÉJÀ tout ce que le recensement demande.
       if (dryRun) {
         report.prospects++;
         report.recipients.push({ to: key.slice(sep + 1), kind: 'prospect', city: key.slice(0, sep) });
         continue;
       }
-      const rec = JSON.parse((await env.SUBSCRIBERS.get(`s:${key}`)) || '{}');
-      if (!rec.email) continue;
-      // Rebond dur connu (webhook) : l'adresse est morte, elle ne repart jamais.
-      const courrielBas = String(rec.email).toLowerCase();
-      if (await env.SUBSCRIBERS.get(`bounce:${courrielBas}`)) { report.skipped.push(`${rec.email} (rebond)`); continue; }
-      // Désabonné (lien, ou plainte convertie en désabonnement par le webhook).
-      if (await env.SUBSCRIBERS.get(`unsub:prospect:${courrielBas}`)) continue;
-      // Prospection arrêtée : un abonné du formulaire continue d'être servi, pas un
-      // contact récolté. La distinction est celle du flux, pas celle de la personne.
-      const fluxRec = rec.source === 'form-ville' ? 'bulletin' : 'outreach';
-      if (stopOutreach && fluxRec === 'outreach') { report.pending++; continue; }
-      if (fluxRec === 'outreach' && dejaOutreach + report.outreachEnvoyes >= rampeOutreach()) { report.pending++; continue; }
-      // Garde-fou : si la valeur stockée ne concordait pas avec sa clé, l'identifiant
-      // calculé plus haut serait faux et on risquerait un doublon. On revérifie sur
-      // l'identifiant RÉEL avant d'engager quoi que ce soit.
-      const idReel = `prospect:${rec.city}:${rec.email}`;
-      if (idReel !== id && done.has(idReel)) continue;
-      // Domaine saturé pour aujourd'hui : on ne marque RIEN (ni `done`, ni `sent:`),
-      // l'adresse repassera telle quelle au prochain passage.
-      if (!await prendreCreneauDomaine(rec.email)) { report.pending++; continue; }
-      const unsubUrl = `${origin}/unsubscribe?e=${encodeURIComponent(rec.email)}&c=${encodeURIComponent(rec.city)}&t=${await hmacHex(env, `u:${rec.email}:${rec.city}`)}`;
-      const { subject, html } = renderPulse({ segment: 'prospect', city, lang: rec.lang, unsubUrl, macro, metier: rec.metier , postale,
-        villeCouverte: couvertes ? couvertes.has(normVille(city.slug ?? key.slice(0, sep))) : null });
-      report.prospects++; report.recipients.push({ to: rec.email, kind: 'prospect', city: rec.city });
-      if (dryRun) continue;
-      report.attempts++;
-      done.add(idReel);                // servi pour ce cycle dès la mise en file
-      // FLUX (2026-08-19) : `source: 'form-ville'` = l'abonné a rempli le formulaire du
-      // site, il a DEMANDÉ le bulletin → expéditeur bulletin@. Tout le reste vient de la
-      // récolte nocturne (`source` = l'URL où l'adresse a été relevée), donc non sollicité
-      // → expéditeur outreach@. La règle lit la donnée existante, rien à migrer.
-      if (fluxRec === 'outreach') report.outreachEnvoyes++;
-      // `flux` sert DEUX choses qui ne veulent pas la même granularité : le routage de
-      // l'expéditeur (2233 : 'bulletin' ou tout le reste) et l'étiquette Resend qui nourrit
-      // /flux-stats. Les deux vivaient sur la même clé, écrite deux fois — et en JS la
-      // SECONDE gagne : l'étiquette fine était donc jetée en silence depuis le début, et
-      // « bulletin-prospect » n'a jamais existé dans les statistiques (2026-08-28).
-      file.push({ to: rec.email, subject, html, unsubUrl, cle: idReel,
-                  flux: fluxRec,                  // ROUTAGE — 'bulletin' | 'outreach'
-                  sousFlux: 'bulletin-prospect',  // MESURE  — l'étiquette envoyée à Resend
-                  etiquette: `prospect ${rec.email}` });
-      if (file.length >= TAILLE_LOT) await viderFile();
+      candidats.push({ key, sep, city, id });
+    }
+
+    const LOT_KV = 40;
+    for (let i = 0; !dryRun && i < candidats.length; i += LOT_KV) {
+      if (!canSend('prospect')) { report.pending += candidats.length - i; break; }
+      // RÉSERVE : `EXPERTS_SHARE` protège la part d'ENVOI des experts, pas le budget KV.
+      // Les prospects tournent en premier — sans réserve ils le videraient et les experts
+      // ne seraient jamais servis, quel que soit EXPERTS_SHARE. La réserve couvre les
+      // lectures `intro:` de `reIntro` (une par expert déjà présenté) plus leurs envois.
+      if (kvLeft() - RESERVE_EXPERTS < LOT_KV) {
+        // Budget KV épuisé : ce qui n'a pas été regardé repart au passage suivant,
+        // intact. On le COMPTE pour que le récapitulatif le dise au lieu de mentir.
+        report.pending += candidats.length - i;
+        report.kvEpuise = (report.kvEpuise || 0) + (candidats.length - i);
+        break;
+      }
+      const tranche = candidats.slice(i, i + LOT_KV);
+      const valeurs = await kvLot(tranche.map((c) => `s:${c.key}`));
+
+      // Tri À SEC : plus une seule opération KV ici, donc un candidat écarté ne coûte rien.
+      const retenus = [];
+      tranche.forEach((c, k) => {
+        let rec; try { rec = JSON.parse(valeurs[k] || '{}'); } catch { return; }
+        if (!rec.email) return;
+        const courrielBas = String(rec.email).toLowerCase();
+        // Rebond dur connu (webhook) : l'adresse est morte, elle ne repart jamais.
+        if (rebondsDurs.has(courrielBas)) { report.skipped.push(`${rec.email} (rebond)`); return; }
+        // Désabonné (lien, ou plainte convertie en désabonnement par le webhook).
+        if (unsub.has(`prospect:${courrielBas}`)) return;
+        // Prospection arrêtée : un abonné du formulaire continue d'être servi, pas un
+        // contact récolté. La distinction est celle du flux, pas celle de la personne.
+        const fluxRec = rec.source === 'form-ville' ? 'bulletin' : 'outreach';
+        if (stopOutreach && fluxRec === 'outreach') { report.pending++; return; }
+        retenus.push({ ...c, rec, fluxRec });
+      });
+
+      for (const { key, sep, city, id, rec, fluxRec } of retenus) {
+        if (!canSend('prospect')) { report.pending++; continue; }
+        if (fluxRec === 'outreach' && dejaOutreach + report.outreachEnvoyes >= rampeOutreach()) { report.pending++; continue; }
+        // Garde-fou : si la valeur stockée ne concordait pas avec sa clé, l'identifiant
+        // calculé plus haut serait faux et on risquerait un doublon. On revérifie sur
+        // l'identifiant RÉEL avant d'engager quoi que ce soit.
+        const idReel = `prospect:${rec.city}:${rec.email}`;
+        if (idReel !== id && done.has(idReel)) continue;
+        // Domaine saturé pour aujourd'hui : on ne marque RIEN (ni `done`, ni `sent:`),
+        // l'adresse repassera telle quelle au prochain passage.
+        if (!await prendreCreneauDomaine(rec.email)) { report.pending++; continue; }
+        const unsubUrl = `${origin}/unsubscribe?e=${encodeURIComponent(rec.email)}&c=${encodeURIComponent(rec.city)}&t=${await hmacHex(env, `u:${rec.email}:${rec.city}`)}`;
+        const { subject, html } = renderPulse({ segment: 'prospect', city, lang: rec.lang, unsubUrl, macro, metier: rec.metier , postale,
+          villeCouverte: couvertes ? couvertes.has(normVille(city.slug ?? key.slice(0, sep))) : null });
+        report.prospects++; report.recipients.push({ to: rec.email, kind: 'prospect', city: rec.city });
+        report.attempts++;
+        done.add(idReel);                // servi pour ce cycle dès la mise en file
+        // FLUX (2026-08-19) : `source: 'form-ville'` = l'abonné a rempli le formulaire du
+        // site, il a DEMANDÉ le bulletin → expéditeur bulletin@. Tout le reste vient de la
+        // récolte nocturne (`source` = l'URL où l'adresse a été relevée), donc non sollicité
+        // → expéditeur outreach@. La règle lit la donnée existante, rien à migrer.
+        if (fluxRec === 'outreach') report.outreachEnvoyes++;
+        // `flux` sert DEUX choses qui ne veulent pas la même granularité : le routage de
+        // l'expéditeur (2233 : 'bulletin' ou tout le reste) et l'étiquette Resend qui nourrit
+        // /flux-stats. Les deux vivaient sur la même clé, écrite deux fois — et en JS la
+        // SECONDE gagne : l'étiquette fine était donc jetée en silence depuis le début, et
+        // « bulletin-prospect » n'a jamais existé dans les statistiques (2026-08-28).
+        file.push({ to: rec.email, subject, html, unsubUrl, cle: idReel,
+                    flux: fluxRec,                  // ROUTAGE — 'bulletin' | 'outreach'
+                    sousFlux: 'bulletin-prospect',  // MESURE  — l'étiquette envoyée à Resend
+                    etiquette: `prospect ${rec.email}` });
+        if (file.length >= TAILLE_LOT) await viderFile();
+      }
     }
   }
+
+  /* ⚠ DÉPLACÉ ICI LE 14 SEPTEMBRE 2026 — il s'exécutait AVANT la boucle des prospects.
+     Ces ~400 lectures `intro:` ne servent QU'AUX EXPERTS (deux usages, tous deux plus bas).
+     Payées en tête d'exécution, elles mangeaient 45 % du budget de 1 000 opérations KV
+     avant qu'un seul prospect ne soit regardé. Placées ici, elles ne sont payées que si
+     le passage arrive effectivement jusqu'aux experts — et si les prospects ont épuisé le
+     budget, elles ne coûtent rien du tout. Aucun changement de résultat : `reIntro` n'est
+     lu nulle part avant cette ligne (vérifié). */
+  // Cohorte de l'ANCIENNE présentation (avant le passage à l'opt-out). Ce courriel-là
+  // promettait par écrit : « Répondez oui et je vous l'envoie. Sinon, aucune suite » et
+  // « Aucune suite sans votre accord ». La décision du 2 août change la règle pour la suite,
+  // elle n'efface pas cette phrase déjà envoyée : enrôler ces gens en silence dans l'escalier
+  // ①②③④ serait reprendre la parole donnée. Ils reçoivent donc d'abord la NOUVELLE
+  // présentation — qui dit ce qui va se passer et comment l'arrêter en un clic — puis entrent
+  // dans le cycle comme les autres. Une seule fois : l'envoi réécrit leur clé `intro:`.
+  // Lecture KV seulement (hors budget de sous-requêtes), et seulement pour les déjà-présentés.
+
+  /* ⚠ EN PARALLÈLE, PAS EN SÉRIE (9 sept. 2026). Cette boucle lisait les 402 clés
+     `intro:` l'une après l'autre : ~12 secondes de temps mural sur les 30 que Cloudflare
+     accorde à un Cron Trigger, dépensées AVANT le moindre envoi et à chacun des sept
+     passages. Les quatre passages du 9 septembre qui ont été tués à 29 s la payaient tous.
+     Rien d'autre ne change : mêmes clés, même critère, même résultat — seulement 40 de
+     front au lieu d'une. Les opérations KV ne comptent pas dans le budget de
+     sous-requêtes, il n'y a donc rien à réserver pour ça. */
+  /* ── HORS DU CHEMIN CRITIQUE (14 sept. 2026) ─────────────────────────────────────
+     Cette cohorte était RECALCULÉE à chaque passage : une lecture `intro:` par expert
+     déjà présenté, 237 opérations sur les 900 du budget KV — un quart du débit d'un
+     passage dépensé pour redécouvrir un fait qui ne bouge pas.
+
+     Or il ne bouge pas, et mieux : il ne peut que RÉTRÉCIR. Une clé `intro:` écrite
+     aujourd'hui porte forcément une date postérieure au 2 août, donc personne n'entre
+     jamais dans la cohorte. On n'en sort que d'une façon — recevoir la nouvelle
+     présentation, ce qui réécrit la clé `intro:` (voir `viderFile`). L'appartenance est
+     donc entièrement déterminée par ce que NOUS faisons, jamais par l'extérieur : elle
+     se mémorise sans risque de dériver.
+
+     D'où UNE clé qui porte la liste. Coût par passage : 1 lecture, et 1 écriture les
+     jours où quelqu'un en sort. Le calcul complet ne subsiste qu'en repli, pour le
+     premier passage et pour le cas où la clé serait absente ou abîmée.
+
+     ⚠ INTERSECTION AVEC LES CLÉS VIVANTES. Une clé `intro:` supprimée à la main ne doit
+     pas ressusciter par le cache : on ne garde que les slugs encore présents dans
+     `intro`. Le cache est une mémoire, pas une autorité. */
+  if (env.SUBSCRIBERS && cacheCohorte) {
+    // Lue ou calculée bien plus haut : ici on ne fait que la retenir, sans une seule
+    // opération KV. L'intersection écarte les slugs dont la clé `intro:` a disparu.
+    for (const slug of cacheCohorte) if (intro.has(slug)) reIntro.add(slug);
+    if (reIntro.size !== cacheCohorte.length) cohorteDirty = true;
+    cohorteConnue = true;
+  }
+  /* ⚠ TOUT OU RIEN. Une cohorte incomplète est PIRE que pas d'experts du tout : un pro
+     présenté avant le 2 août serait traité comme déjà introduit et entrerait dans
+     l'escalier sans avoir reçu la nouvelle présentation — la parole reprise que le bloc
+     plus haut interdit explicitement. Sans cohorte fiable, on ne sert AUCUN expert ce
+     passage-ci ; ils repartent intacts au suivant. */
+  const expertsPossibles = cohorteConnue;
 
   // ---- Experts, province par province ----
   // On ne rapatrie une province QUE si on a encore de quoi envoyer : chaque feed coûte une
@@ -2939,6 +3231,8 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
   const provCompletes = [];        // provinces sans reste — confirmées après le vidage
 
   for (const prov of provinces) {
+    if (!expertsPossibles) { report.skipped.push(`${prov} (budget KV — experts reportés)`); continue; }
+    if (kvLeft() <= 5) { report.skipped.push(`${prov} (budget KV épuisé)`); continue; }
     if (provDone.has(prov)) continue;
     if (left() <= 1) { report.skipped.push(`${prov} (budget épuisé)`); continue; }
     const expertsBruts = await F(`/api/experts/${prov}.json`).then((d) => d.experts ?? []).catch(() => []);
@@ -2991,7 +3285,7 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
       const stage = expertStage(e, intro.has(e.slug) && !reIntro.has(e.slug));
       if (!stage) continue;
       if (!canSend()) { restants++; report.pending++; continue; }
-      if (await env.SUBSCRIBERS?.get(`bounce:${contact.email.toLowerCase()}`)) { report.skipped.push(`${e.slug} (rebond)`); continue; }
+      if (rebondsDurs.has(contact.email.toLowerCase())) { report.skipped.push(`${e.slug} (rebond)`); continue; }
       // Domaine saturé : `restants++` est essentiel — sans lui la province serait
       // marquée `prov-done:` et son feed ne serait plus rapatrié avant le mois prochain.
       if (!await prendreCreneauDomaine(contact.email)) { restants++; report.pending++; continue; }
@@ -3067,7 +3361,18 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
     report.provincesTerminees = [...provDone].sort();
   }
 
+  /* La cohorte n'est réécrite QUE si elle a bougé — un slug servi, ou des clés `intro:`
+     disparues. Les jours ordinaires, le coût total de toute cette mécanique est d'UNE
+     lecture. Jamais écrite en dry-run, et jamais quand la cohorte n'a pas été établie :
+     y poser une liste vide effacerait la mémoire au lieu de la mettre à jour. */
+  if (!dryRun && cohorteConnue && cohorteDirty && env.SUBSCRIBERS) {
+    ctr.kv++;
+    await env.SUBSCRIBERS.put(CLE_COHORTE, JSON.stringify([...reIntro]));
+    console.log(`[bulletin] cohorte pré-opt-out réécrite : ${reIntro.size} slug(s).`);
+  }
+  report.cohortePreOptOut = cohorteConnue ? reIntro.size : null;
   report.budgetUsed = ctr.subs;
+  report.kvUsed = ctr.kv;
   // Report du compte du jour pour les passages horaires suivants. On additionne les TENTATIVES,
   // pas les succès : un appel refusé par Resend a quand même été facturé au quota du jour.
   // TTL 3 jours — la clé ne sert que dans sa journée.
@@ -3188,6 +3493,7 @@ async function sendRunReport(env, report) {
       + ` · part de ce passage ${report.attempts}/${report.partPassage ?? '—'}`
       + ` (${report.passagesRestants ?? '?'} passage(s) à fuseau restant(s) aujourd'hui)`,
     `Sous-requêtes : ${report.budgetUsed}/${SUBREQUEST_BUDGET}${provAttendues ? ` · provinces non ouvertes : ${provAttendues}` : ''}`,
+    `Opérations KV : ${report.kvUsed}/${KV_BUDGET}${report.kvEpuise ? ` · ⚠ ${report.kvEpuise} prospects non regardés faute de budget` : ''}`,
     `Étapes : ${Object.entries(report.experts).filter(([, n]) => n).map(([k, n]) => `${k} ${n}`).join(' · ') || '—'}${report.prospects ? ` · prospects ${report.prospects}` : ''}`,
     ...blocProvinces,
     partiel
@@ -4581,7 +4887,9 @@ export default {
           const base = d.livres || d.envoyes || 0;
           if (base) {
             d._taux = {
-              ouverture_unique: d.ouvreurs ? `${(d.ouvreurs / base * 100).toFixed(1)} %` : '0 %',
+              // Pas de taux d'ouverture : depuis le 14 sept. 2026 les ouvertures ne sont
+              // plus comptées du tout (voir « NE COMPTER QUE LE RARE »). Afficher « 0 % »
+              // laisserait croire que personne n'ouvre ; l'absence de la ligne est franche.
               clic_unique: d.cliqueurs ? `${(d.cliqueurs / base * 100).toFixed(1)} %` : '0 %',
               plainte: d.plaintes ? `${(d.plaintes / base * 100).toFixed(2)} %` : '0 %',
             };
@@ -4589,9 +4897,15 @@ export default {
         }
       }
       return json({
-        _lecture: 'Compteurs alimentés par le webhook Resend. Les OUVERTURES sont un signal faible '
-          + '(Apple Mail Privacy Protection les gonfle, les bloqueurs d\'images les effacent) ; '
-          + 'les CLICS sont le signal fiable. Taux calculés sur les livrés.',
+        _lecture: 'Les CLICS, REBONDS et PLAINTES viennent du webhook Resend ; `envoyes` est tenu '
+          + 'par l\'expéditeur, un comptage par lot de 100. Taux calculés sur `envoyes` (tentatives).',
+        _ouvertures: 'PLUS COMPTÉES depuis le 2026-09-14. Elles coûtaient jusqu\'à trois écritures KV '
+          + 'par courriel — de quoi crever le quota quotidien du compte et faire échouer /unsubscribe — '
+          + 'pour un signal que ce même fichier qualifiait de faible (Apple Mail Privacy Protection les '
+          + 'gonfle, les bloqueurs d\'images les effacent). Un clic prouve un geste, pas une ouverture. '
+          + 'Les chiffres bruts restent disponibles dans le tableau de bord Resend.',
+        _livres: 'PLUS COMPTÉS : `envoyes` sert de dénominateur. L\'écart entre les deux est le taux '
+          + 'de rebond, déjà mesuré par ailleurs.',
         _webhook: env.RESEND_WEBHOOK_SECRET ? 'configuré' : '⚠️ ABSENT — aucun événement ne peut arriver',
         parMois: par,
       });
@@ -4648,22 +4962,39 @@ export default {
         const n = Number((await env.SUBSCRIBERS.get(cle)) || 0);
         await env.SUBSCRIBERS.put(cle, String(n + 1), { expirationTtl: 400 * 24 * 3600 });
       };
+      /* ── NE COMPTER QUE LE RARE (14 sept. 2026) ────────────────────────────────────
+         CE BLOC A CREVÉ LE QUOTA KV DU COMPTE. Le palier gratuit Workers KV autorise
+         1 000 ÉCRITURES par jour, tout le compte confondu. Or un seul courriel produisait
+         jusqu'à CINQ écritures ici : `email.sent`, `email.delivered`, `email.opened`, la
+         marque `vu:` et le compteur `ouvreurs`. Les 305 courriels du 14 septembre ont
+         donc suffi : 1 120 exceptions `KV put() limit exceeded for the day` ont suivi —
+         et quand le quota est crevé, ce n'est pas que la statistique qui tombe, c'est
+         AUSSI `/unsubscribe`. Trois personnes n'ont pas pu se désabonner ce jour-là.
+
+         Ce qui disparaît, et pourquoi ce n'est pas une perte :
+         · `envoyes` / `livres` — l'expéditeur les connaît déjà. `viderFile` incrémente
+           désormais `stat:{flux}:{mois}:envoyes` UNE fois par lot de 100, pas une fois
+           par destinataire. Même dénominateur, 1 % du coût.
+         · `ouvertures` / `ouvreurs` — le commentaire ci-dessus dit lui-même qu'une
+           ouverture ne prouve rien (Apple MPP les gonfle, les bloqueurs les effacent).
+           On payait cher, et en écritures rares, pour un chiffre qu'on savait faux.
+
+         Ce qui reste est RARE par nature — un clic, un rebond, une plainte, un retard —
+         donc quelques écritures par jour au lieu de plusieurs milliers. */
       const COMPTABLES = {
-        'email.sent': 'envoyes', 'email.delivered': 'livres',
-        'email.opened': 'ouvertures', 'email.clicked': 'clics',
+        'email.clicked': 'clics',
         'email.bounced': 'rebonds', 'email.complained': 'plaintes',
         'email.delivery_delayed': 'retards',
       };
       if (COMPTABLES[type]) await compte(COMPTABLES[type]);
 
-      // Ouvertures et clics UNIQUES : un même destinataire qui rouvre cinq fois ne fait
-      // pas cinq lecteurs. Sans ça, un seul curieux gonflerait le taux de tout un flux.
-      if (type === 'email.opened' || type === 'email.clicked') {
-        const quoi = type === 'email.opened' ? 'ouvreurs' : 'cliqueurs';
-        const marque = `vu:${flux}:${mois}:${quoi}:${dest}`;
+      // Clics UNIQUES : un même destinataire qui reclique cinq fois ne fait pas cinq
+      // lecteurs. Sans ça, un seul curieux gonflerait le taux de tout un flux.
+      if (type === 'email.clicked') {
+        const marque = `vu:${flux}:${mois}:cliqueurs:${dest}`;
         if (!(await env.SUBSCRIBERS.get(marque))) {
           await env.SUBSCRIBERS.put(marque, '1', { expirationTtl: 70 * 24 * 3600 });
-          await compte(quoi);
+          await compte('cliqueurs');
         }
       }
 
