@@ -2521,12 +2521,19 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
     return { arrete: 'stop:all', motif: String(stopTout) };
   }
   const hier = new Date(at.getTime() - 86400000).toISOString().slice(0, 10);
-  const somme = async (prefixe) => Number((await env.SUBSCRIBERS?.get(`${prefixe}:${dayKey}`)) || 0)
-                                 + Number((await env.SUBSCRIBERS?.get(`${prefixe}:${hier}`)) || 0);
+  /* ⚠ ON COMPTE DES CLÉS, ON NE LIT PLUS DE COMPTEUR (2026-09-16). Voir la note du
+     webhook : les compteurs agrégés perdaient des incréments sous rafale — un sur trois
+     le 14 septembre — et ce sont ces chiffres-là qui décident d'arrêter le programme.
+     `list()` sur `rebondj:{jour}:` rend une clé par adresse touchée ce jour-là : pas de
+     course possible, et le nombre est exact par construction.
+     Le coût est compté dans le budget KV comme le reste (`kvListe` incrémente `ctr.kv`),
+     et il est d'une opération par jour regardé tant qu'on reste sous 1 000 rebonds. */
+  const somme = async (prefixe) => (await kvListe(`${prefixe}:${dayKey}:`)).length
+                                 + (await kvListe(`${prefixe}:${hier}:`)).length;
   const envoyes24 = Number((await env.SUBSCRIBERS?.get(`day:${dayKey}:outreach`)) || 0)
                   + Number((await env.SUBSCRIBERS?.get(`day:${hier}:outreach`)) || 0);
-  const plaintes = env.SUBSCRIBERS ? await somme('plainte') : 0;
-  const rebonds = env.SUBSCRIBERS ? await somme('rebond') : 0;
+  const plaintes = env.SUBSCRIBERS ? await somme('plaintej') : 0;
+  const rebonds = env.SUBSCRIBERS ? await somme('rebondj') : 0;
   /* ── DEUX PLANCHERS, PAS UN (2026-09-14) ─────────────────────────────────────────
      Le plancher unique de 200 a arrêté tout le programme le 11 septembre sur UNE seule
      plainte : 1 sur 321 = 0,311 %, juste au-dessus des 0,300 %. Le commentaire d'origine
@@ -4792,6 +4799,22 @@ export default {
     // volume qui monte, on ne peut pas les découvrir en lisant ses courriels.
     //
     // CE QU'IL FAIT.
+    // ── UN MARQUEUR DATÉ, PAS UN COMPTEUR (2026-09-16) ──────────────────────────────
+    // `rebond:{jour}` et `plainte:{jour}` étaient des compteurs en LECTURE-MODIFICATION-
+    // ÉCRITURE sur UNE clé. Workers KV n'accepte qu'une écriture par seconde et par clé :
+    // sous rafale la clé rendait 429, et même sans 429 deux webhooks simultanés lisaient
+    // tous les deux `n` et écrivaient tous les deux `n+1`. Mesure du 14 septembre :
+    // `rebond:2026-09-14` valait 2 pendant que les clés `bounce:` passaient de 4 à 7 —
+    // un incrément perdu sur trois, et ce sont EXACTEMENT ces compteurs que lisent les
+    // seuils d'arrêt automatique. Le garde-fou devenait optimiste au moment précis où le
+    // volume montait.
+    //
+    // On écrit donc UNE CLÉ PAR (jour, adresse) : `rebondj:{jour}:{courriel}`. Deux
+    // webhooks n'écrivent plus jamais la même clé, donc ni course ni 429 ; le comptage
+    // devient un `list()` par préfixe. Et c'est IDEMPOTENT, ce qu'un compteur n'était
+    // pas : la même adresse qui rebondit deux fois le même jour compte pour une — un
+    // rebond est une adresse morte, pas un événement à additionner.
+    //
     //   bounced (dur)  → `bounce:{courriel}` ÉTERNEL. L'adresse ne repart jamais, quel que
     //                    soit le flux. Un rebond doux (mailbox_full…) n'est PAS retenu :
     //                    une boîte pleine se vide.
@@ -5003,13 +5026,11 @@ export default {
         const dur = !genre || /hard|permanent|undetermined/.test(genre);
         if (dur) {
           await env.SUBSCRIBERS.put(`bounce:${dest}`, JSON.stringify({ jour, genre: genre || 'inconnu' }));
-          const n = Number((await env.SUBSCRIBERS.get(`rebond:${jour}`)) || 0);
-          await env.SUBSCRIBERS.put(`rebond:${jour}`, String(n + 1), { expirationTtl: 30 * 24 * 3600 });
+          await env.SUBSCRIBERS.put(`rebondj:${jour}:${dest}`, '1', { expirationTtl: 30 * 24 * 3600 });
         }
       } else if (type === 'email.complained') {
         await env.SUBSCRIBERS.put(`unsub:prospect:${dest}`, JSON.stringify({ jour, motif: 'plainte' }));
-        const n = Number((await env.SUBSCRIBERS.get(`plainte:${jour}`)) || 0);
-        await env.SUBSCRIBERS.put(`plainte:${jour}`, String(n + 1), { expirationTtl: 90 * 24 * 3600 });
+        await env.SUBSCRIBERS.put(`plaintej:${jour}:${dest}`, '1', { expirationTtl: 90 * 24 * 3600 });
       }
       return json({ ok: true, type });
     }
