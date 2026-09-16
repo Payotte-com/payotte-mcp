@@ -2877,6 +2877,19 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
     prospects: 0, experts: { intro: 0, yellow: 0, green: 0, reco: 0, partner: 0 },
     activeCities: 0, errors: [], skipped: [], recipients: [], budgetUsed: 0,
     zones: [], dayUsedBefore: daySoFar, dayCap, capJourEffectif, partPassage, passagesRestants,
+    /* ── LES CHIFFRES QUI PEUVENT ARRÊTER LE PROGRAMME (2026-09-16) ────────────────
+       Ils décidaient de tout et ne paraissaient nulle part : ni dans le rapport, ni
+       dans l'essai à blanc. On ne pouvait donc pas VÉRIFIER un correctif du comptage
+       autrement que par déduction — c'est ce qui vient d'arriver. Ils sortent
+       maintenant avec le reste, et l'essai à blanc les montre avant tout envoi.
+       `sur24h` couvre aujourd'hui ET hier, comme les seuils eux-mêmes. */
+    sante: {
+      envoyes24, plaintes, rebonds,
+      tauxPlaintes: envoyes24 ? `${(100 * plaintes / envoyes24).toFixed(3)} %` : '—',
+      tauxRebonds: envoyes24 ? `${(100 * rebonds / envoyes24).toFixed(2)} %` : '—',
+      seuils: { plaintes: '0,300 % (plancher 1 000) ou 3 en brut sous le plancher', rebonds: '4 % (plancher 200)' },
+      stopOutreach: stopOutreach ? String(stopOutreach) : null,
+    },
   };
 
   // Fuseaux servis à ce passage. En dry-run on ne filtre pas : le rapport doit montrer

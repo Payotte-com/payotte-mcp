@@ -38,6 +38,15 @@ let s=""; process.stdin.on("data",d=>s+=d).on("end",()=>{
   const parType = {};
   for (const x of r) parType[x.kind] = (parType[x.kind] || 0) + 1;
   console.log("par type             :", JSON.stringify(parType));
+  // Les chiffres qui peuvent ARRETER la prospection. Ils decidaient de tout sans
+  // jamais paraitre : un essai a blanc doit les montrer avant que quoi que ce soit parte.
+  const h = j.sante ?? {};
+  console.log("");
+  console.log("— sante sur 24 h —");
+  console.log("   envoyes            :", h.envoyes24 ?? "?");
+  console.log("   plaintes           :", h.plaintes ?? "?", "→", h.tauxPlaintes ?? "?", " seuil", (h.seuils||{}).plaintes ?? "?");
+  console.log("   rebonds            :", h.rebonds ?? "?", "→", h.tauxRebonds ?? "?", " seuil", (h.seuils||{}).rebonds ?? "?");
+  console.log("   stop:outreach      :", h.stopOutreach ?? "non pose");
   console.log("\n— 10 premiers —");
   for (const x of r.slice(0,10)) console.log("  ", x.kind.padEnd(16), x.to);
 });' <<< "$R"
