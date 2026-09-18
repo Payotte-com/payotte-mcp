@@ -2266,10 +2266,17 @@ const OPT_OUT_SWITCH = '2026-08-02';
 // un passage de 1 000 courriels ne coûte que 10 sous-requêtes : le budget Cloudflare
 // n'est plus le facteur limitant, le forfait Resend et la réputation du domaine le sont.
 const TAILLE_LOT = 100;
-const RESEND_DAY_CAP = 3000;   // plafond dur. Le compte est passé au forfait Resend Pro le
+const RESEND_DAY_CAP = 6000;   // plafond dur. Le compte est passé au forfait Resend Pro le
                                // 2026-09-02 : 50 000/mois, AUCUNE limite journalière. Ce
                                // chiffre ne borne donc plus la FACTURE mais la RÉPUTATION —
                                // c'est le sommet de la rampe de septembre, pas un quota.
+                               // 3 000 → 6 000 le 18 sept. 2026 (décision proprio). Il
+                               // bridait `dailySendCap` (6 000 au palier du 18) sans que
+                               // rien ne le dise : le plus petit des deux gagne, donc le
+                               // palier du jour n'avait aucun effet. 6 000/jour × 22 jours
+                               // ouvrables = 132 000, bien au-delà des 50 000 du forfait —
+                               // ce n'est donc plus lui le garde-fou de la facture, c'est
+                               // `OUTREACH_RAMPE` et les seuils plaintes/rebonds.
 // Rythme choisi (décision proprio, 3 août 2026) : un petit filet tous les jours plutôt qu'une
 // rafale, sans jamais approcher les limites de Resend, et le domaine (37 courriels dans sa
 // vie au 1er août) monte en charge doucement — c'est ce qui décide si les prochains
@@ -2439,6 +2446,44 @@ const localHour = (tz, at) =>
 // compris à Terre-Neuve, dont le décalage d'une demi-heure ferait rater un test à la minute
 // près (10 h 00 à St. John's = 12 h 30 UTC, une heure qui n'existe pas au calendrier du cron ;
 // c'est le passage de 13 h UTC, soit 10 h 30 locale, qui la sert).
+/* ── PASSAGES DE RENFORT (18 sept. 2026) ──────────────────────────────────────────
+   LE FREIN N'EST PAS UN PLAFOND, C'EST LE BUDGET KV D'UNE INVOCATION. Mesuré le
+   18 septembre : `KV_BUDGET` vaut 880 opérations, la boucle des prospects paie UNE
+   lecture par candidat EXAMINÉ (`kvLot` sur la tranche de 40), le démarrage en mange
+   ~80 et la réserve experts en gèle 120. Un passage ne peut donc regarder qu'environ
+   680 candidats, quoi qu'on écrive dans `RESEND_DAY_CAP` ou `OUTREACH_RAMPE`. Ce
+   jour-là : 4 800 autorisés, 703 partis — et le passage de 14 h UTC, qui porte le
+   Québec et l'Ontario (5 534 personnes en attente, 70 % du carnet restant), en a sorti
+   189.
+
+   La règle des 10 h locales ne donne qu'UN passage par province et par jour. Or le cron
+   tourne de 12 à 18 h UTC : les heures 12 et 18 ne servent PERSONNE (aucune province
+   n'est à 10 h locale) et repartent avec leur budget de 880 intact. C'est de la capacité
+   déjà payée qui dort.
+
+   Ce réglage rouvre ces heures-là pour des provinces nommées. Ce n'est PAS le forçage de
+   `PROVINCES_DU_JOUR` : celui-ci est daté et remplace le filtre pour toute la journée ;
+   celui-là est permanent, s'AJOUTE aux provinces déjà à 10 h, et ne vaut que pour les
+   heures qu'on lui donne.
+
+   ⚠ L'HEURE LOCALE RESTE LA SEULE CHOSE QUI COMPTE. 18 h UTC = 14 h à Montréal et
+   Toronto, en plein milieu de l'après-midi ouvrable : c'est l'esprit de la règle des
+   10 h, pas une entorse. 12 h UTC = 8 h de l'Est, tôt mais ouvrable — et 7 h une fois
+   l'heure d'hiver revenue, ce qui ne l'est plus. NE PAS y mettre une province de
+   l'Ouest : 12 h UTC = 5 h du matin en Colombie-Britannique.
+
+   Format : « HH:PROV,PROV;HH:PROV » en heures UTC. Vide = personne, comportement d'avant. */
+function renfortA(heureUTC, env) {
+  const brut = String(env?.HEURES_RENFORT || '');
+  const out = new Set();
+  for (const bloc of brut.split(';').map((x) => x.trim()).filter(Boolean)) {
+    const [h, provs] = bloc.split(':');
+    if (Number(h) !== Number(heureUTC) || !provs) continue;
+    for (const p of provs.split(',').map((x) => x.trim().toUpperCase()).filter(Boolean)) out.add(p);
+  }
+  return out;
+}
+
 function zonesAt10h(at = new Date()) {
   return new Set(Object.entries(PROV_TZ)
     .filter(([, tz]) => localHour(tz, at) === SEND_LOCAL_HOUR)
@@ -2626,7 +2671,10 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
     let n = 0;
     for (let u = at.getUTCHours(); u <= CRON_DERNIERE_HEURE_UTC; u++) {
       const d = new Date(at); d.setUTCHours(u, 0, 0, 0);
-      if (zonesAt10h(d).size) n++;
+      // Une heure de RENFORT sert désormais des provinces : elle compte dans le partage,
+      // sinon les passages d'avant se répartiraient le plafond comme si elle n'existait pas
+      // et le renfort n'hériterait que du reliquat.
+      if (zonesAt10h(d).size || renfortA(u, env).size) n++;
     }
     return Math.max(1, n);
   })();
@@ -2894,8 +2942,13 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
 
   // Fuseaux servis à ce passage. En dry-run on ne filtre pas : le rapport doit montrer
   // l'audience du mois entier, pas la seule tranche de 10 h en cours.
-  const zones = zonesAt10h(at);
+  // 10 h locales + provinces de RENFORT de cette heure-ci (voir `renfortA`). Le renfort
+  // s'AJOUTE, il ne remplace rien : une province déjà à 10 h reste servie normalement.
+  const renfort = renfortA(at.getUTCHours(), env);
+  const zones = new Set([...zonesAt10h(at), ...renfort]);
+  if (renfort.size && !dryRun) console.log(`[bulletin] renfort ${at.getUTCHours()} h UTC : ${[...renfort].join(' ')}`);
   report.zones = [...zones];
+  report.renfort = [...renfort];
 
   const market = await F('/api/market.json').catch(() => ({ cities: [] }));
   const allActive = (market.cities || []).filter(hasMarketStats);

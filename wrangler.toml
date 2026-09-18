@@ -80,6 +80,31 @@ MAIL_FROM_OUTREACH = "Payotte <outreach@payotte.com>"
 # POUR S'EN RESERVIR UN JOUR : reposer ZONES_TOUTES_JUSQU_AU avec une date FUTURE, et
 # la poser AVANT 12 h UTC, sinon la journée est déjà passée.
 
+# ── PASSAGES DE RENFORT POUR LE QUÉBEC ET L'ONTARIO (18 sept. 2026) ─────────────
+# LE DÉBIT N'EST PAS BRIDÉ PAR UN PLAFOND, mais par le budget de 880 opérations KV
+# d'UNE invocation : la boucle des prospects paie une lecture par candidat examiné, donc
+# un passage ne regarde jamais plus de ~680 personnes. Mesuré le 18 septembre : 4 800
+# autorisés, 703 partis, et le passage de 14 h UTC — celui qui porte QC+ON, 5 534
+# personnes en attente, 70 % du carnet restant — en a sorti 189.
+#
+# La règle des 10 h locales ne donne qu'UN passage par province et par jour. Le cron
+# tourne pourtant de 12 à 18 h UTC, et les heures 12 et 18 ne servent PERSONNE : aucune
+# province n'est à 10 h locale à ce moment-là. Deux invocations par jour repartaient avec
+# leur budget de 880 intact. C'est cette capacité-là qu'on récupère, et rien d'autre : le
+# plafond quotidien ne bouge pas, c'est le PARTAGE qui change.
+#
+# ⚠ SEULEMENT DES PROVINCES DE L'EST, ET C'EST LA RAISON D'ÊTRE DU RÉGLAGE.
+#   18 h UTC = 14 h à Montréal et Toronto — plein après-midi ouvrable, l'esprit de la
+#            règle des 10 h est respecté à la lettre.
+#   12 h UTC =  8 h de l'Est — tôt, mais ouvrable pour des professionnels de
+#            l'immobilier. ⚠ DEVIENT 7 h AU PASSAGE À L'HEURE D'HIVER (1er nov. 2026) :
+#            retirer « 12:QC,ON » à ce moment-là, ou l'avancer à 13 h UTC.
+# NE JAMAIS y mettre une province de l'Ouest : 12 h UTC = 5 h du matin en C.-B.
+#
+# Format : « HH:PROV,PROV;HH:PROV » en heures UTC. Vide (ou absent) = comportement
+# d'avant, un seul passage par province et par jour.
+HEURES_RENFORT = "12:QC,ON;18:QC,ON"
+
 OUTREACH_RAMPE = "2026-09-09:75,2026-09-10:150,2026-09-11:300,2026-09-14:600,2026-09-15:1200,2026-09-16:2400,2026-09-17:4800"
 
 # ── FORÇAGE DE PROVINCES POUR UNE JOURNÉE (14 sept. 2026, demande proprio) ───────
