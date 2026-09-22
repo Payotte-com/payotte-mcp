@@ -2432,11 +2432,31 @@ const PROV_TZ = {
   NS: 'America/Halifax',   NB: 'America/Moncton',    PE: 'America/Halifax',
   NL: 'America/St_Johns',
 };
+/* ── LES HEURES LOCALES D'ENVOI (22 sept. 2026, décision du propriétaire) ─────────
+   C'ÉTAIT UNE HEURE, C'EST MAINTENANT TROIS. `SEND_LOCAL_HOUR = 10` traitait 10 h
+   comme une règle ; c'était une prudence, pas une obligation. 11 h et 14 h locales sont
+   des heures ouvrables aussi banales que 10 h, et chacune ajoute un passage par fuseau.
+
+   ⚠ CE QUI EST PROTÉGÉ RESTE PROTÉGÉ, et c'est tout l'intérêt de garder un filtre par
+   HEURE LOCALE plutôt que par heure UTC : quelle que soit la province, personne n'est
+   servi avant 10 h ni après 15 h chez lui. Ne JAMAIS y mettre une heure hors de cette
+   plage — c'est la seule chose qui empêche d'écrire à quelqu'un à 6 h du matin, et
+   c'est l'accident que tout ce mécanisme existe pour éviter.
+
+   ⚠ ET C'EST UN LEVIER DE DÉBIT, PAS DE CONFORT. Le frein réel est le budget KV d'UNE
+   invocation (880 opérations, plafond Cloudflare à 1 000) : mesuré aujourd'hui, ça donne
+   ~135 destinataires par passage. Trois heures locales au lieu d'une, c'est trois fois
+   plus de passages qui ont du travail — pas un passage plus gros. */
+const HEURES_LOCALES_ENVOI = new Set([10, 11, 14]);
+/* Conservé pour les quelques lectures qui veulent « l'heure de référence ». */
 const SEND_LOCAL_HOUR = 10;
 // Dernière heure UTC où le cron tourne — doit rester en phase avec `crons` de wrangler.toml
-// ("0 12-18 * * *"). Sert à savoir combien de passages restent dans la journée pour partager
-// le plafond quotidien entre les fuseaux (voir « part équitable » dans runBulletin).
-const CRON_DERNIERE_HEURE_UTC = 18;
+// ("0,30 12-21 * * *"). Sert à savoir combien de passages restent dans la journée pour
+// partager le plafond quotidien entre les fuseaux (voir « part équitable » dans runBulletin).
+// ⚠ PORTÉE DE 18 À 21 LE 22 SEPT. : sans ça, 14 h locale en Colombie-Britannique (21 h UTC)
+// n'aurait jamais de passage. Toute modification des `crons` doit se refléter ICI, sinon le
+// partage du plafond compte des passages qui n'existent pas — ou en oublie qui existent.
+const CRON_DERNIERE_HEURE_UTC = 21;
 
 const localHour = (tz, at) =>
   Number(new Intl.DateTimeFormat('en-CA', { timeZone: tz, hour: 'numeric', hour12: false }).format(at));
@@ -2486,7 +2506,7 @@ function renfortA(heureUTC, env) {
 
 function zonesAt10h(at = new Date()) {
   return new Set(Object.entries(PROV_TZ)
-    .filter(([, tz]) => localHour(tz, at) === SEND_LOCAL_HOUR)
+    .filter(([, tz]) => HEURES_LOCALES_ENVOI.has(localHour(tz, at)))
     .map(([code]) => code));
 }
 
@@ -2667,10 +2687,20 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
     return Math.max(0, plafond);
   };
 
+  /* ⚠ LE CRON TOURNE AUSSI À LA DEMIE (22 sept. 2026). Le compte se fait donc par pas de
+     30 minutes, sinon il annonce moitié moins de passages qu'il n'y en aura et chaque
+     passage se croit autorisé à dépenser le double de sa part.
+     Une invocation à 14 h 30 voit la MÊME heure locale qu'à 14 h — c'est voulu : elle ne
+     sert pas d'autres provinces, elle apporte un second budget KV de 880 opérations aux
+     mêmes. C'est là qu'est le débit. */
   const passagesRestants = (() => {
     let n = 0;
-    for (let u = at.getUTCHours(); u <= CRON_DERNIERE_HEURE_UTC; u++) {
-      const d = new Date(at); d.setUTCHours(u, 0, 0, 0);
+    const depart = at.getUTCHours() * 60 + at.getUTCMinutes();
+    for (let m = 0; m <= CRON_DERNIERE_HEURE_UTC * 60 + 30; m += 30) {
+      if (m < depart) continue;
+      const u = Math.floor(m / 60);
+      if (u > CRON_DERNIERE_HEURE_UTC) break;
+      const d = new Date(at); d.setUTCHours(u, m % 60, 0, 0);
       // Une heure de RENFORT sert désormais des provinces : elle compte dans le partage,
       // sinon les passages d'avant se répartiraient le plafond comme si elle n'existait pas
       // et le renfort n'hériterait que du reliquat.
@@ -3005,7 +3035,13 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
      « fin » à la sortie normale. Un « debut » resté seul EST la signature d'un passage
      mort — le passage suivant le voit et le met en tête de son récapitulatif. C'est la
      seule trace qui survive à un isolat tué net, et elle coûte deux écritures KV. */
-  const temoin = `run:${dayKey}:${String(at.getUTCHours()).padStart(2, '0')}`;
+  /* ⚠ LE TÉMOIN PORTE L'HEURE ET LA MINUTE (22 sept. 2026). Il n'indexait que l'heure ;
+     depuis que le cron tourne aussi à la demie, les passages de 14 h et de 14 h 30
+     auraient écrit la MÊME clé. Le second aurait écrasé le premier, et un passage mort à
+     14 h serait devenu invisible dès que celui de 14 h 30 se terminait — exactement la
+     panne silencieuse que ce témoin existe pour rendre visible. */
+  const temoin = `run:${dayKey}:${String(at.getUTCHours()).padStart(2, '0')}`
+    + (at.getUTCMinutes() >= 15 ? '30' : '');
   if (!dryRun && env.SUBSCRIBERS) {
     const morts = [];
     for (const h of await kvKeys(env.SUBSCRIBERS, `run:${dayKey}:`)) {

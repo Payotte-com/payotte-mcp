@@ -167,7 +167,18 @@ id = "6b341a2d876b49d78bb5651936ccac8e"
 # La vague mensuelle (~455 destinataires) s'étale ainsi sur environ trois semaines. Une fois
 # tout le monde servi, plus rien jusqu'au 1er.
 [triggers]
-crons = ["0 12-18 * * *"]
+# ⚠ ÉLARGI LE 22 SEPT. 2026, ET C'EST LE LEVIER DE DÉBIT. Le frein n'a jamais été le
+# plafond quotidien (6 000) ni la rampe (4 800) : c'est le budget KV d'UNE invocation —
+# 880 opérations comptées, plafond Cloudflare à 1 000 — soit ~135 destinataires par
+# passage. Sept passages plafonnaient donc la journée vers 900, quoi qu'on règle ailleurs.
+# Vingt passages (toutes les demi-heures de 12 h à 21 h UTC) apportent vingt budgets.
+# La demie ne sert PAS d'autres provinces : elle apporte un second budget aux mêmes.
+# ⚠ 21 h UTC EST NÉCESSAIRE : 14 h locale en Colombie-Britannique. Et c'est sans danger,
+# parce que le filtre qui protège est l'HEURE LOCALE (10, 11, 14), pas l'heure UTC — à
+# 21 h UTC il est 17 h au Québec, donc le Québec n'est pas servi.
+# ⚠ TOUTE MODIFICATION ICI DOIT SE REFLÉTER DANS `CRON_DERNIERE_HEURE_UTC` (src/index.js),
+# sinon le partage du plafond compte des passages qui n'existent pas.
+crons = ["0,30 12-21 * * *"]
 
 # ── JOURNAUX (posé le 9 sept. 2026) ──────────────────────────────────────────────
 # Sans ce bloc, `console.log` et `console.error` ne vont NULLE PART : ils ne sont visibles
