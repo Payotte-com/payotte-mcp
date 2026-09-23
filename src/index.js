@@ -3132,7 +3132,46 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
   // Liste hissée hors de la boucle : elle sert DEUX fois — pour servir, puis pour le
   // recensement par province du récapitulatif. Un `kv.list()` de plus serait gratuit en
   // budget de sous-requêtes, mais pas en temps d'exécution (2 100 clés paginées).
-  const clesProspects = env.SUBSCRIBERS ? await kvListe('s:') : [];
+  /* ── LE CURSEUR TOURNANT (23 sept. 2026) ────────────────────────────────────────
+     LE DÉFAUT QU'IL CORRIGE, MESURÉ LE 22 SEPTEMBRE. Ce jour-là, dix-neuf passages ont
+     tourné, aucun n'est mort, et la journée a fait 617 envois — vingt-cinq de plus que
+     la veille, qui n'en avait que sept. Ajouter des passages ne servait à rien, et
+     voici pourquoi : `kvListe` rend les clés dans l'ordre alphabétique, et CHAQUE
+     passage repartait du même début. Il dépensait son budget KV sur la même tête de
+     liste, dont les domaines avaient déjà reçu leurs `MAX_PAR_DOMAINE` du jour, puis
+     s'arrêtait. Sept passages parcouraient sept fois le même dixième du carnet.
+
+     Le profil de la journée le dit sans ambiguïté : gros quand une province NEUVE
+     s'ouvre (135 à 12 h, 156 à 16 h), zéro sur les passages suivants des MÊMES
+     provinces. 617 envois à cinq par domaine, c'est ~123 domaines touchés sur 3 780 —
+     trois pour cent du carnet exploités par jour.
+
+     ⚠ CE N'EST PAS UN PLAFOND QU'ON LÈVE, C'EST UN PARCOURS QU'ON REPREND. Le garde
+     par domaine reste à 5, la rampe reste, le plafond du jour reste. On cesse
+     simplement de relire les mêmes adresses.
+
+     ⚠ ET IL TOURNE, IL NE S'ARRÊTE PAS AU BOUT. Arrivé à la fin du carnet, le passage
+     suivant reprend au début — sinon le curseur se figerait sur la dernière clé et le
+     programme s'arrêterait net le jour où il aurait fini un tour. Les adresses déjà
+     servies ce mois-ci sont écartées gratuitement plus bas ; repasser dessus ne coûte
+     qu'une comparaison en mémoire.
+
+     Coût : deux opérations KV par passage, une lecture et une écriture. */
+  const CLE_CURSEUR = 'curseur:prospects';
+  let curseurDepart = null;
+  if (env.SUBSCRIBERS && !dryRun) {
+    try { ctr.kv++; curseurDepart = await env.SUBSCRIBERS.get(CLE_CURSEUR); } catch { curseurDepart = null; }
+  }
+  let clesProspects = env.SUBSCRIBERS ? await kvListe('s:') : [];
+  if (curseurDepart && clesProspects.length) {
+    /* On cherche la première clé STRICTEMENT après le curseur. Une clé supprimée entre
+       deux passages ne bloque donc rien : on repart de la suivante, quelle qu'elle soit. */
+    let i = clesProspects.findIndex((k) => k > curseurDepart);
+    if (i < 0) i = 0;                                   // fin du carnet atteinte : on boucle
+    if (i > 0) clesProspects = [...clesProspects.slice(i), ...clesProspects.slice(0, i)];
+    report.curseurDepart = curseurDepart;
+    report.curseurIndex = i;
+  }
   if (env.SUBSCRIBERS) {
     // ── FILTRER AVANT DE LIRE (2026-08-13) ────────────────────────────────────────
     // Le 13 août, AUCUN bulletin n'est parti et aucun rapport n'a été émis : le passage
@@ -3200,9 +3239,13 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
       candidats.push({ key, sep, city, id });
     }
 
+    /* Si la boucle va jusqu'au bout sans s'arrêter, le carnet entier a été examiné :
+       le curseur se pose alors sur la DERNIÈRE clé, et le passage suivant reprendra au
+       début par la rotation. */
+    let curseurFin = candidats.length ? candidats[candidats.length - 1].key : null;
     const LOT_KV = 40;
     for (let i = 0; !dryRun && i < candidats.length; i += LOT_KV) {
-      if (!canSend('prospect')) { report.pending += candidats.length - i; break; }
+      if (!canSend('prospect')) { report.pending += candidats.length - i; curseurFin = candidats[i]?.key ?? curseurFin; break; }
       // RÉSERVE : `EXPERTS_SHARE` protège la part d'ENVOI des experts, pas le budget KV.
       // Les prospects tournent en premier — sans réserve ils le videraient et les experts
       // ne seraient jamais servis, quel que soit EXPERTS_SHARE. La réserve couvre les
@@ -3212,6 +3255,10 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
         // intact. On le COMPTE pour que le récapitulatif le dise au lieu de mentir.
         report.pending += candidats.length - i;
         report.kvEpuise = (report.kvEpuise || 0) + (candidats.length - i);
+        /* ⚠ LE CURSEUR POINTE SUR CE QU'ON N'A PAS REGARDÉ, pas sur ce qu'on a envoyé.
+           Pointer sur le dernier ENVOYÉ sauterait les candidats lus puis écartés (rebond,
+           désabonné, domaine saturé) — ils ne reviendraient jamais. */
+        curseurFin = candidats[i]?.key ?? curseurFin;
         break;
       }
       const tranche = candidats.slice(i, i + LOT_KV);
@@ -3267,6 +3314,19 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
                     etiquette: `prospect ${rec.email}` });
         if (file.length >= TAILLE_LOT) await viderFile();
       }
+    }
+
+    /* ── ON POSE LE CURSEUR, ET SEULEMENT SI L'ON A AVANCÉ ──────────────────────────
+       Écrit à la SORTIE du bloc prospects, donc une fois par passage, qu'il ait envoyé
+       ou non : un passage qui a tout écarté (rebonds, désabonnés, domaines saturés) a
+       quand même LU ces clés, et les relire au passage suivant serait exactement le
+       défaut qu'on corrige.
+       ⚠ Jamais en dry-run : une simulation ne doit pas déplacer la position réelle du
+       programme. C'est la même règle que partout ailleurs ici. */
+    if (env.SUBSCRIBERS && !dryRun && curseurFin) {
+      ctr.kv++;
+      await env.SUBSCRIBERS.put(CLE_CURSEUR, curseurFin).catch(() => {});
+      report.curseurFin = curseurFin;
     }
   }
 
