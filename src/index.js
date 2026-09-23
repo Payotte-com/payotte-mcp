@@ -2016,7 +2016,16 @@ const NOMS_VILLES = {
 const nomVilleBulletin = (c, fr) => NOMS_VILLES[c?.slug]?.[fr ? 0 : 1] ?? c?.name;
 // Portée affichée = la CHAMBRE (sigle court), jamais geographyScope : ce champ porte parfois des
 // notes de travail (« Aucun montant en $ ne concerne la ville de Hamilton seule — … »).
-const chambreCourte = (c) => { const b = String(c.board ?? ''); return b.length <= 20 ? b.replace(/\s*\/\s*CREA$/, '') : (b.split(/[\s(/]/)[0] || ''); };
+// Nom court de la chambre : le SIGLE entre parenthèses s'il existe (NSAR, GVR, RAE…), sinon ce
+// qui précède « / » (APCIQ, TRREB, NLAR), sinon le nom s'il est court. L'ancienne règle gardait
+// le premier MOT des noms longs : « Nova » pour la Nova Scotia Association of REALTORS.
+const chambreCourte = (c) => {
+  const b = String(c.board ?? '').trim();
+  const sigle = /\(([A-Z]{2,})\)/.exec(b);
+  if (sigle) return sigle[1];
+  const avant = b.split('/')[0].trim();
+  return avant.length <= 34 ? avant : (b.split(/[\s(]/)[0] || '');
+};
 const periodeLisible = (rm, fr) => { const q = /^(\d{4})-[QT](\d)$/.exec(String(rm)); if (q) return fr ? `${q[2] === '1' ? '1er' : q[2] + 'e'} trimestre ${q[1]}` : `Q${q[2]} ${q[1]}`; return moisLisible(rm, fr); };
 const moisDeDate = (iso, fr) => moisLisible(String(iso).slice(0, 7), fr);
 
