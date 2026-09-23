@@ -1876,6 +1876,261 @@ function renderPulse({ segment, stage, city, expert, lang, unsubUrl, macro = nul
   return { subject, html };
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// BULLETIN PROVINCIAL — DEUX VARIANTES (branché le 23 sept. 2026, décision proprio :
+// « oui je m'engage, branche les deux variantes »). DERRIÈRE `PROVINCIAL_ACTIF`, FERMÉ.
+//
+// À QUI. Les 5 423 clés `s:prov-{province}:{courriel}` : des professionnels récoltés
+// dans une municipalité où Payotte ne publie pas de chiffres. Jusqu'ici la boucle des
+// prospects les sautait (`cityBySlug` ne connaît pas « prov-quebec »).
+//
+// DEUX VARIANTES, choisies par la municipalité réelle du destinataire (`villeReelle`) :
+//   · BANLIEUE    — la municipalité est dans le territoire publié d'une chambre que
+//                   Payotte suit (table `BANLIEUES_ZONES`, Statistique Canada, recensement
+//                   2021). Le courriel donne le pouls de CETTE zone et NOMME sa portée
+//                   (« Chiffres de la RMR de Montréal, qui englobe Candiac »). ~1 634 adresses.
+//   · PROVINCIALE — tout le reste. Statistique ACI provinciale quand elle existe (MB, NS,
+//                   NB), sinon les trois grands marchés suivis dans la province, chacun
+//                   avec SA chambre et SA période. ~3 789 adresses.
+//
+// ⚠ LE TEXTE EST CELUI DU PROTOTYPE VALIDÉ PAR GRÉGORY le 23 sept. (scratchpad
+// `bulletin-provincial/rendre.mjs`, aperçu claude.ai/artifact/D2MEnj4K38u5DdFcrvF3gD).
+// Seules les SOURCES changent : le prototype lisait les fichiers du dépôt du site, le
+// worker lit les flux publics (/api/market.json, /api/villes-couvertes.json,
+// /api/province-market.json). Toute retouche de phrase ici est une retouche du texte
+// validé : la faire valider d'abord.
+//
+// ⚠ TORONTO, CALGARY, VICTORIA, ST. CATHARINES publient pour la VILLE SEULE : leurs
+// banlieues ne sont pas dans la table et restent au provincial. C'est voulu — dire
+// « chiffres de Toronto, qui englobe Vaughan » serait faux.
+
+// Normalisation des noms de municipalités — LA MÊME que celle qui a produit la table :
+// minuscules, accents retirés, « St. »/« Ste » → saint/sainte, tout le reste en espaces.
+// ⚠ Pas la même que `normVille` (tirets) : c'est celle de la table, et c'est la table
+// qu'on interroge.
+const normMunicipalite = (s) => String(s ?? '').toLowerCase().normalize('NFD')
+  .replace(/\p{Diacritic}/gu, '')
+  .replace(/\bste\b\.?/g, 'sainte').replace(/\bst\b\.?/g, 'saint')
+  .replace(/[^a-z0-9]+/g, ' ').trim();
+
+// Banlieue → zone publiée. Clé « province|slug de la zone », valeur = municipalités
+// normalisées séparées par « | ». 255 municipalités. Langley exclue (FVREB, pas GVR) ;
+// Sherwood Park → edmonton (hameau de Strathcona County).
+const BANLIEUES_ZONES_BRUT = {
+  'alberta|edmonton':
+    'alexander 134|beaumont|betula beach|bon accord|bruderheim|calmar|devon|edmonton|enoch cree nation|'
+    + 'fort saskatchewan|gibbons|golden days|itaska beach|kapasiwin|lakeview|leduc|leduc county|legal|'
+    + 'morinville|parkland county|point alison|redwater|saint albert|seba beach|sherwood park|spring lake|'
+    + 'spruce grove|stony plain|strathcona county|sturgeon county|sundance beach|thorsby|wabamun 133a|'
+    + 'wabamun 133b|warburg',
+  'british-columbia|vancouver':
+    'anmore|barnston island 3|belcarra|bowen island|burnaby|burrard inlet 3|capilano 5|coquitlam|'
+    + 'coquitlam 1|coquitlam 2|delta|katzie 1|katzie 2|lions bay|maple ridge|matsqui 4|mcmillan island 6|'
+    + 'metro vancouver a|mission 1|musqueam 2|musqueam 4|new westminster|north vancouver|pitt meadows|'
+    + 'port coquitlam|port moody|richmond|semiahmoo|seymour creek 2|surrey|tsawwassen|vancouver|'
+    + 'west vancouver|white rock|whonnock 1',
+  'new-brunswick|moncton':
+    'coverdale|dieppe|dorchester|elgin|fort folly 1|hillsborough|hopewell|memramcook|moncton|riverview|'
+    + 'saint paul|salisbury',
+  'newfoundland-and-labrador|st-johns':
+    'bauline|bay bulls|conception bay south|flatrock|holyrood|logy bay middle cove outer cove|mount pearl|'
+    + 'paradise|petty harbour maddox cove|portugal cove saint philip s|pouch cove|saint john s|torbay|'
+    + 'witless bay',
+  'ontario|windsor':
+    'amherstburg|essex|kingsville|lakeshore|lasalle|leamington|tecumseh|windsor',
+  'quebec|montreal':
+    'baie d urfe|beaconsfield|beauharnois|beloeil|blainville|bois des filion|boisbriand|boucherville|'
+    + 'brossard|candiac|carignan|chambly|charlemagne|chateauguay|cote saint luc|coteau du lac|delson|'
+    + 'deux montagnes|dollard des ormeaux|dorval|gore|hampstead|hudson|kahnawake|kanesatake|kirkland|'
+    + 'l assomption|l epiphanie|l ile cadieux|l ile dorval|l ile perrot|la prairie|laval|lavaltrie|lery|'
+    + 'les cedres|les coteaux|longueuil|lorraine|mascouche|mcmasterville|mercier|mirabel|mont royal|'
+    + 'mont saint hilaire|montreal|montreal est|montreal ouest|notre dame de l ile perrot|oka|'
+    + 'otterburn park|pincourt|pointe calumet|pointe claire|pointe des cascades|repentigny|richelieu|'
+    + 'rosemere|saint amable|saint basile le grand|saint bruno de montarville|saint colomban|saint constant|'
+    + 'saint eustache|saint isidore|saint jean sur richelieu|saint jerome|saint joseph du lac|saint lambert|'
+    + 'saint lazare|saint lin laurentides|saint mathias sur richelieu|saint mathieu|'
+    + 'saint mathieu de beloeil|saint philippe|saint placide|saint roch de l achigan|saint sulpice|'
+    + 'saint zotique|sainte anne de bellevue|sainte anne des plaines|sainte catherine|sainte julie|'
+    + 'sainte marthe sur le lac|sainte therese|senneville|terrasse vaudreuil|terrebonne|varennes|'
+    + 'vaudreuil dorion|vaudreuil sur le lac|vercheres|westmount',
+  'quebec|quebec-city':
+    'beaumont|boischatel|chateau richer|fossambault sur le lac|l ancienne lorette|l ange gardien|'
+    + 'lac beauport|lac delage|lac saint joseph|levis|neuville|notre dame des anges|quebec|'
+    + 'saint antoine de tilly|saint apollinaire|saint augustin de desmaures|'
+    + 'saint francois de l ile d orleans|saint gabriel de valcartier|saint henri|'
+    + 'saint jean de l ile d orleans|saint lambert de lauzon|saint laurent de l ile d orleans|'
+    + 'saint pierre de l ile d orleans|sainte brigitte de laval|sainte catherine de la jacques cartier|'
+    + 'sainte famille de l ile d orleans|sainte petronille|shannon|stoneham et tewkesbury|wendake',
+  'quebec|saguenay':
+    'begin|ferland et boilleau|larouche|saguenay|saint charles de bourget|saint david de falardeau|'
+    + 'saint felix d otis|saint fulgence|saint honore|sainte rose du nord',
+  'quebec|sherbrooke':
+    'ascot corner|compton|hatley|magog|north hatley|orford|saint denis de brompton|sherbrooke|stoke|'
+    + 'val joli|waterville',
+  'quebec|trois-rivieres':
+    'becancour|champlain|saint luc de vincennes|saint maurice|trois rivieres|wolinak|yamachiche',
+};
+// Index construit une fois au chargement : « province|municipalité » → slug de zone.
+const BANLIEUES_ZONES = (() => {
+  const m = new Map();
+  for (const [cle, liste] of Object.entries(BANLIEUES_ZONES_BRUT)) {
+    const [prov, zone] = cle.split('|');
+    for (const muni of liste.split('|')) m.set(`${prov}|${muni}`, zone);
+  }
+  return m;
+})();
+/** Slug de la zone publiée qui englobe cette municipalité, ou null (→ provincial). */
+const zoneDeBanlieue = (provSlug, villeReelle) =>
+  BANLIEUES_ZONES.get(`${provSlug}|${normMunicipalite(villeReelle)}`) ?? null;
+
+// Territoires publiés qui INCLUENT les banlieues (portée de la chambre vérifiée le 23 sept.) :
+// hors de cette liste, la ville-centre ne publie que pour elle-même → bulletin provincial.
+const PORTEE_RMR = {
+  montreal: ['la RMR de Montréal', 'the Montréal CMA'], 'quebec-city': ['la RMR de Québec', 'the Québec CMA'],
+  gatineau: ['la RMR de Gatineau', 'the Gatineau CMA'], sherbrooke: ['la RMR de Sherbrooke', 'the Sherbrooke CMA'],
+  'trois-rivieres': ['la RMR de Trois-Rivières', 'the Trois-Rivières CMA'], saguenay: ['la RMR de Saguenay', 'the Saguenay CMA'],
+  'st-johns': ["la RMR de St. John's", "the St. John's CMA"], moncton: ['le Grand Moncton', 'Greater Moncton'],
+  windsor: ['Windsor-Essex', 'Windsor-Essex'], edmonton: ['le Grand Edmonton', 'Greater Edmonton'],
+  ottawa: ['la région de la chambre d’Ottawa (OREB)', 'the Ottawa board region (OREB)'], vancouver: ['Metro Vancouver (territoire GVR)', 'Metro Vancouver (GVR area)'],
+};
+
+// Les cinq métiers de Payotte. Un arpenteur, un courtier d'assurance n'y sont pas : ils
+// ne se voient promettre aucune place (voir `finProposer`).
+const METIER_PLACE = { 'real-estate-broker': ['un courtier immobilier', 'one real estate broker'], 'mortgage-broker': ['un courtier hypothécaire', 'one mortgage broker'],
+  'home-inspector': ['un inspecteur en bâtiment', 'one home inspector'], 'notary-lawyer': ['un notaire', 'one real estate lawyer'],
+  appraiser: ['un évaluateur agréé', 'one appraiser'] };
+const PROV_PREP = { quebec: 'au Québec', ontario: 'en Ontario', 'british-columbia': 'en Colombie-Britannique', alberta: 'en Alberta',
+  saskatchewan: 'en Saskatchewan', manitoba: 'au Manitoba', 'nova-scotia': 'en Nouvelle-Écosse', 'new-brunswick': 'au Nouveau-Brunswick',
+  'prince-edward-island': "à l'Île-du-Prince-Édouard", 'newfoundland-and-labrador': 'à Terre-Neuve-et-Labrador' };
+const PROV_DU = { quebec: 'du Québec', ontario: "de l'Ontario", 'british-columbia': 'de la Colombie-Britannique', alberta: "de l'Alberta",
+  saskatchewan: 'de la Saskatchewan', manitoba: 'du Manitoba', 'nova-scotia': 'de la Nouvelle-Écosse', 'new-brunswick': 'du Nouveau-Brunswick',
+  'prince-edward-island': "de l'Île-du-Prince-Édouard", 'newfoundland-and-labrador': 'de Terre-Neuve-et-Labrador' };
+
+// Noms d'affichage : /api/market.json écrit « Montreal », « Quebec », « Sudbury ». Le
+// prototype lisait les noms bilingues de cities.json ; seules ces trois villes diffèrent
+// (comparé le 23 sept. 2026 sur les 74 villes du flux). Les autres gardent `c.name`.
+const NOMS_VILLES = {
+  montreal: ['Montréal', 'Montreal'], 'quebec-city': ['Québec', 'Quebec City'],
+  sudbury: ['Greater Sudbury', 'Greater Sudbury'],
+};
+const nomVilleBulletin = (c, fr) => NOMS_VILLES[c?.slug]?.[fr ? 0 : 1] ?? c?.name;
+// Portée affichée = la CHAMBRE (sigle court), jamais geographyScope : ce champ porte parfois des
+// notes de travail (« Aucun montant en $ ne concerne la ville de Hamilton seule — … »).
+const chambreCourte = (c) => { const b = String(c.board ?? ''); return b.length <= 20 ? b.replace(/\s*\/\s*CREA$/, '') : (b.split(/[\s(/]/)[0] || ''); };
+const periodeLisible = (rm, fr) => { const q = /^(\d{4})-[QT](\d)$/.exec(String(rm)); if (q) return fr ? `${q[2] === '1' ? '1er' : q[2] + 'e'} trimestre ${q[1]}` : `Q${q[2]} ${q[1]}`; return moisLisible(rm, fr); };
+const moisDeDate = (iso, fr) => moisLisible(String(iso).slice(0, 7), fr);
+
+// Une phrase, et seulement tant que le relevé est frais (CITATIONS_LU_LE + 45 jours).
+function citationsProv(fr) {
+  if (!fraisDeLecture()) return '';
+  const n = CITATIONS_30J.toLocaleString(fr ? 'fr-CA' : 'en-CA');
+  // « Les IA » à la demande de Grégory ; « au moins » parce que le chiffre est celui de
+  // Copilot SEUL (Bing AI Performance) — c'est un plancher, pas le total des IA.
+  return fr ? ` En août, les IA ont cité payotte.com au moins <b>${n} fois</b>.`
+            : ` In August, AI assistants cited payotte.com at least <b>${n} times</b>.`;
+}
+
+function finProposer({ villeReelle, metier, fr, voisins, ancre }) {
+  const qui = METIER_PLACE[metier]?.[fr ? 0 : 1];
+  // La rareté ne se promet qu'aux cinq métiers de Payotte : un arpenteur n'aura jamais de place.
+  const rarete = qui ? (fr ? ` Une seule place par secteur et par métier : elle ne nommera qu'${qui}.` : ` One seat per sector and profession: it will name ${qui} only.`) : '';
+  const texte = fr
+    ? `<b>${villeReelle}</b> n'a pas encore sa page.${voisins ? ` ${ancre}, ${voisins} professionnels vérifiés ont la leur.` : ''}${rarete} Les villes les plus demandées ouvrent en premier.`
+    : `<b>${villeReelle}</b> has no page yet.${voisins ? ` ${ancre}, ${voisins} verified professionals have theirs.` : ''}${rarete} The most requested cities open first.`;
+  return CLOSE('#fdf6f7', '#f3d9dd', P(texte + citationsProv(fr)) +
+    BTN(`${SITE}${fr ? '/contact' : '/en/contact'}`, fr ? `Proposer ${villeReelle} →` : `Put ${villeReelle} forward →`));
+}
+
+const pctBulletinProv = (v, fr) => v === 0 ? `<span style="color:#6f6769;">${fr ? 'stable' : 'flat'}</span>` : `<span style="color:${v > 0 ? '#1f7a44' : '#b3261e'};">${fmtPct(Math.round(v * 10) / 10, fr)}</span>`;
+const rowBulletinProv = (g, d, sous = '') => `<tr><td style="padding:10px 0;border-bottom:1px solid #f1ecec;font-size:14px;color:#211c1e;">${g}${sous ? `<div style="font-size:11px;color:#a49c9e;">${sous}</div>` : ''}</td><td align="right" style="padding:10px 0;border-bottom:1px solid #f1ecec;font-size:14px;font-weight:bold;color:#211c1e;white-space:nowrap;">${d}</td></tr>`;
+
+/**
+ * Variante BANLIEUE : le pouls de la zone publiée qui englobe la municipalité, portée NOMMÉE.
+ * `ctx` = { cities (market.json), macro, publiesVille(slug), publiesProvince(provSlug), provMarket }.
+ * Rend null si la zone n'a pas de chiffres ce mois-ci (l'appelant retombe sur le provincial).
+ */
+function renderBanlieue({ citySlug, villeReelle, metier, lang, unsubUrl, postale = '' }, ctx) {
+  const fr = lang !== 'en';
+  const c = (ctx.cities || []).find((x) => x.slug === citySlug);
+  if (!c || refOf(c).valeur == null || !PORTEE_RMR[citySlug]) return null;
+  const macro = ctx.macro;
+  const nomRmr = nomVilleBulletin(c, fr);
+  const nb = (v) => Number(v).toLocaleString(fr ? 'fr-CA' : 'en-CA');
+  const pct = (v) => pctBulletinProv(v, fr);
+  const row = rowBulletinProv;
+  const r = refOf(c);
+  let lignes = row(fr ? 'Prix de référence' : 'Reference price', `${fmtMoney(r.valeur, fr)} ${r.yoy != null ? pct(r.yoy) : ''}`, `${chambreCourte(c)} · ${periodeLisible(c.referenceMonth, fr)}`);
+  if (c.sales != null) lignes += row(fr ? 'Ventes du mois' : 'Sales', nb(c.sales));
+  if (c.monthsOfInventory != null) lignes += row(fr ? "Mois d'inventaire" : 'Months of inventory', String(c.monthsOfInventory).replace('.', fr ? ',' : '.'));
+  const rt = macro?.rates ?? {};
+  if (rt.mortgage5yrFixed?.percent != null) lignes += row(fr ? 'Taux fixe 5 ans (moyenne)' : '5-yr fixed (average)', `${rt.mortgage5yrFixed.percent.toLocaleString(fr ? 'fr-CA' : 'en-CA')} %`, `${fr ? 'Banque du Canada' : 'Bank of Canada'} · ${moisDeDate(rt.mortgage5yrFixed.observed, fr)}`);
+  const zone = PORTEE_RMR[citySlug][fr ? 0 : 1];
+  const portee = fr ? `Chiffres de ${zone}, qui englobe ${villeReelle}.` : `Figures for ${zone}, which includes ${villeReelle}.`;
+  const subject = fr ? `${villeReelle} : votre marché, ce mois-ci` : `${villeReelle}: your market, this month`;
+  const tete = `<tr><td style="padding:24px 32px 18px 32px;border-bottom:1px solid #f1ecec;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td><a href="${SITE}"><img src="${LOGO}" width="140" height="29" alt="Payotte" style="display:block;border:0;"></a></td><td align="right" style="font-size:11px;letter-spacing:.5px;color:#c8102e;">${villeReelle}</td></tr></table></td></tr>`;
+  const corps = `<tr><td style="padding:24px 32px 4px 32px;"><div style="font-family:Georgia,'Times New Roman',serif;font-size:21px;color:#211c1e;margin-bottom:6px;">${fr ? 'Le pouls du marché' : 'The market pulse'} — ${villeReelle}</div><div style="font-size:12.5px;color:#6f6769;margin-bottom:12px;">${portee}</div><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid #f1ecec;">${lignes}</table></td></tr>`;
+  const close = finProposer({ villeReelle, metier, fr, voisins: ctx.publiesVille(citySlug), ancre: fr ? `À ${nomRmr}` : `In ${nomRmr}` });
+  const foot = FOOT(fr ? `Pouls de ${zone}, une fois par mois.` : `${zone} pulse, once a month.`, unsubUrl, fr ? 'Se désabonner' : 'Unsubscribe', postale, fr);
+  return { subject, html: `<div style="background:#f5f3f2;margin:0;padding:28px 12px;font-family:Arial,Helvetica,sans-serif;"><table role="presentation" width="580" cellpadding="0" cellspacing="0" border="0" align="center" style="max-width:580px;width:100%;background:#ffffff;border:1px solid #eae5e5;border-radius:8px;">${tete}${corps}${close}${foot}</table></div>` };
+}
+
+/**
+ * Variante PROVINCIALE (la « version courte » du 23 sept. : 3 marchés, chantiers et taux sur
+ * une ligne chacun, fin en deux phrases, un seul bouton). La statistique ACI provinciale
+ * (MB, NS, NB) passe en premier quand /api/province-market.json est là ; SANS ce flux, on
+ * retombe sur les trois grands marchés suivis dans la province — jamais une moyenne maison.
+ * Rend null s'il n'y a AUCUN chiffre de marché à montrer (rien à envoyer).
+ */
+function renderProvincial({ provSlug, villeReelle, metier, lang, unsubUrl, postale = '' }, ctx) {
+  const fr = lang !== 'en';
+  const nom = PROV_NOMS[provSlug]?.[fr ? 0 : 1];
+  const code = PROV_TO_CODE[provSlug]?.toUpperCase();
+  if (!nom || !code) return null;
+  const macro = ctx.macro;
+  const nb = (v) => Number(v).toLocaleString(fr ? 'fr-CA' : 'en-CA');
+  const pct = (v) => pctBulletinProv(v, fr);
+  const row = rowBulletinProv;
+  const pm = (ctx.provMarket || []).find((x) => x.slug === provSlug);
+  let lignes = '';
+  if (pm?.benchmark_hpi != null) {
+    lignes += row(fr ? 'Prix de référence (province)' : 'Benchmark price (province)', `${fmtMoney(pm.benchmark_hpi, fr)} ${pct(pm.benchmark_yoy_pct)}`, `${fr ? 'ACI' : 'CREA'} · ${moisLisible(pm.reference_month, fr)}`);
+    lignes += row(fr ? 'Ventes du mois' : 'Sales', `${nb(pm.sales)} ${pct(pm.sales_yoy_pct)}`);
+  } else {
+    for (const c of (ctx.cities || []).filter((c) => c.province === code && refOf(c).valeur != null && !/aucun montant|ne concerne|seule\b/i.test(c.geographyScope ?? '')).sort((a, b) => (b.sales ?? 0) - (a.sales ?? 0)).slice(0, 3)) {
+      const r = refOf(c);
+      lignes += row(nomVilleBulletin(c, fr), `${fmtMoney(r.valeur, fr)} ${r.yoy != null ? pct(r.yoy) : ''}`, `${chambreCourte(c)} · ${periodeLisible(c.referenceMonth, fr)}`);
+    }
+  }
+  if (!lignes) return null;
+  const hs = macro?.chantiers?.find((r) => r.isProvince && r.province === provSlug);
+  if (hs?.startsSaar != null) lignes += row(fr ? 'Mises en chantier (rythme annuel)' : 'Housing starts (annual rate)', `${nb(hs.startsSaar)} ${hs.changeYoyPct != null ? pct(hs.changeYoyPct) : ''}`, `${fr ? 'SCHL' : 'CMHC'} · ${moisDeDate(hs.referenceMonth, fr)}`);
+  const r = macro?.rates ?? {};
+  if (r.mortgage5yrFixed?.percent != null) lignes += row(fr ? 'Taux fixe 5 ans (moyenne)' : '5-yr fixed (average)', `${r.mortgage5yrFixed.percent.toLocaleString(fr ? 'fr-CA' : 'en-CA')} %`, `${fr ? 'Banque du Canada' : 'Bank of Canada'} · ${moisDeDate(r.mortgage5yrFixed.observed, fr)}`);
+
+  const subject = fr ? `Le marché ${PROV_PREP[provSlug]}, ce mois-ci` : `${nom}’s market, this month`;
+  const tete = `<tr><td style="padding:24px 32px 18px 32px;border-bottom:1px solid #f1ecec;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td><a href="${SITE}"><img src="${LOGO}" width="140" height="29" alt="Payotte" style="display:block;border:0;"></a></td><td align="right" style="font-size:11px;letter-spacing:.5px;color:#c8102e;">${nom}</td></tr></table></td></tr>`;
+  const corps = `<tr><td style="padding:24px 32px 4px 32px;"><div style="font-family:Georgia,'Times New Roman',serif;font-size:21px;color:#211c1e;margin-bottom:12px;">${fr ? 'Le pouls du marché' : 'The market pulse'} — ${nom}</div><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid #f1ecec;">${lignes}</table></td></tr>`;
+  const close = finProposer({ villeReelle, metier, fr,
+    voisins: ctx.publiesProvince(provSlug),
+    ancre: fr ? `Ailleurs ${PROV_PREP[provSlug]}` : `Elsewhere in ${nom}` });
+  const foot = FOOT(fr ? `Pouls ${PROV_DU[provSlug]}, une fois par mois.` : `${nom}'s pulse, once a month.`, unsubUrl, fr ? 'Se désabonner' : 'Unsubscribe', postale, fr);
+  return { subject, html: `<div style="background:#f5f3f2;margin:0;padding:28px 12px;font-family:Arial,Helvetica,sans-serif;"><table role="presentation" width="580" cellpadding="0" cellspacing="0" border="0" align="center" style="max-width:580px;width:100%;background:#ffffff;border:1px solid #eae5e5;border-radius:8px;">${tete}${corps}${close}${foot}</table></div>` };
+}
+
+/**
+ * Point d'entrée unique : choisit la variante et la rend. Rend { subject, html, variante,
+ * zone } ou null (rien de vrai à dire → on n'envoie pas).
+ */
+function renderBulletinProvincial({ provSlug, villeReelle, metier, lang, unsubUrl, postale = '' }, ctx) {
+  const zone = zoneDeBanlieue(provSlug, villeReelle);
+  if (zone) {
+    const b = renderBanlieue({ citySlug: zone, villeReelle, metier, lang, unsubUrl, postale }, ctx);
+    if (b) return { ...b, variante: 'banlieue', zone };
+  }
+  const p = renderProvincial({ provSlug, villeReelle, metier, lang, unsubUrl, postale }, ctx);
+  return p ? { ...p, variante: 'provincial', zone: null } : null;
+}
+
 // Resend limite à 2 requêtes/seconde (429 au-delà). La boucle du bulletin tire en rafale :
 // on espace les appels pour rester sous la barre. 600 ms ≈ 1,6 envoi/s.
 const RESEND_MIN_GAP_MS = 600;
@@ -2583,6 +2838,17 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
   // la rampe est un plafond quotidien, pas un plafond par passage.
   // Adresse postale LCAP : lue une fois, criée si absente (voir `adressePostale`).
   const postale = adressePostale(env);
+  /* ── INTERRUPTEUR DU BULLETIN PROVINCIAL (23 sept. 2026) — FERMÉ PAR DÉFAUT ─────────
+     Absent, ou toute valeur autre que "1" : les clés `s:prov-*` sont sautées comme avant,
+     au caractère près. Ouvert : elles entrent dans la boucle des prospects, par le MÊME
+     chemin (gardes, rampe, plafonds, marques `servi:`, désabonnement, adresse LCAP).
+     ⚠ POURQUOI FERMÉ : le compte est au palier GRATUIT de Workers KV (1 000 écritures par
+     jour, ~910 déjà consommées en moyenne en septembre). 5 423 destinataires de plus,
+     c'est plus de clics, de rebonds et de désabonnements — donc d'écritures du webhook et
+     de `/unsubscribe` — et un quota crevé fait ÉCHOUER les désabonnements (LCAP art. 11).
+     Ouvrir SEULEMENT après le passage au palier payant :
+        wrangler.toml [vars] → PROVINCIAL_ACTIF = "1"   puis   npx wrangler deploy */
+  const provincialActif = env.PROVINCIAL_ACTIF === '1';
   if (!postale && !dryRun) {
     console.log('[bulletin] ⚠️ ADRESSE POSTALE MANQUANTE — exigée par la LCAP (Règlement art. 2(2)). '
       + 'Poser ADRESSE_POSTALE dans wrangler.toml. Les envois continuent, la mention légale est incomplète.');
@@ -3030,8 +3296,17 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
   const cityBySlug = Object.fromEntries(active.map((c) => [c.slug, c]));
   report.activeCities = active.length;
 
+  /* Province servie à ce passage ? Même règle que `active` ci-dessus, mais pour les clés
+     `s:prov-*`, qui n'ont pas de ville dans `cityBySlug`. Ne sert que si l'interrupteur
+     du bulletin provincial est ouvert. */
+  const provinceServie = (code) => dryRun
+    || (forcees ? forcees.has(code) : toutesZones || zones.has(code));
   // Aucune province à 10 h : on s'arrête là (1 feed, 1 lecture KV). Le cas normal 6 fois sur 7.
-  if (!active.length) { report.budgetUsed = ctr.subs; return report; }
+  // (Interrupteur provincial ouvert : on continue aussi si une zone est servie sans ville
+  // active — une province sans marché suivi peut avoir des clés `s:prov-*`.)
+  if (!active.length && !(provincialActif && (dryRun || forcees?.size || toutesZones || zones.size))) {
+    report.budgetUsed = ctr.subs; return report;
+  }
 
   /* ── TÉMOIN D'EXÉCUTION (9 sept. 2026) ──────────────────────────────────────────
      Le 9 septembre, quatre passages sur cinq ont été tués net à 30 s par la limite des
@@ -3204,9 +3479,10 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
        contenus segmentés s'effacent au profit du générique — un courriel plus fade
        vaut mieux qu'un courriel qui affirme le contraire de la réalité. */
     let couvertes = null;
+    let villesCouvertes = null;   // les entrées complètes — le bulletin provincial en tire ses décomptes
     try {
       const vc = await F('/api/villes-couvertes.json');
-      if (Array.isArray(vc?.villes)) couvertes = new Set(vc.villes.map((v) => v.slug));
+      if (Array.isArray(vc?.villes)) { couvertes = new Set(vc.villes.map((v) => v.slug)); villesCouvertes = vc.villes; }
     } catch { couvertes = null; }
     if (!couvertes) console.warn('  ▸ villes-couvertes.json illisible — prospects sur le contenu générique.');
 
@@ -3227,12 +3503,43 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
           dès que `rec` est lu — avant tout le reste, plus après.
        3. Ce qui reste à lire l'est PAR TRANCHES PARALLÈLES de 40, sous budget KV compté.
           Un passage ne peut plus mourir de soif : il s'arrête et il le DIT. */
+    /* Données du bulletin provincial, chargées au PREMIER destinataire provincial et une
+       seule fois : /api/province-market.json (statistique ACI de MB, NS, NB) coûte UNE
+       sous-requête. Flux absent ou illisible → `provMarket` vide et la variante
+       provinciale retombe sur les trois marchés suivis. Interrupteur fermé : jamais appelé. */
+    let ctxProvincial = null;
+    const contexteProvincial = async () => {
+      if (ctxProvincial) return ctxProvincial;
+      let provMarket = [];
+      try {
+        const pmj = await F('/api/province-market.json');
+        if (Array.isArray(pmj?.provinces)) provMarket = pmj.provinces;
+      } catch { provMarket = []; }
+      const parSlug = new Map((villesCouvertes || []).map((v) => [v.slug, v]));
+      ctxProvincial = {
+        cities: market.cities || [], macro, provMarket,
+        // Décomptes de fiches PUBLIÉES (même filtre que le site : `professional`, score non rouge).
+        // Flux absent → null, et la phrase « N professionnels vérifiés » disparaît simplement.
+        publiesVille: (slug) => (villesCouvertes ? (parSlug.get(normVille(slug))?.fiches ?? 0) : null),
+        publiesProvince: (prov) => (villesCouvertes
+          ? villesCouvertes.filter((v) => v.province === prov).reduce((n, v) => n + (v.fiches || 0), 0) : null),
+      };
+      return ctxProvincial;
+    };
+
     const candidats = [];
     for (const key of clesProspects) {
       const sep = key.indexOf(':');
       if (sep < 1) continue;                         // clé malformée : on ne devine pas
       const city = cityBySlug[key.slice(0, sep)];
-      if (!city) continue;                           // hors du fuseau servi à cette heure
+      /* BULLETIN PROVINCIAL : `s:prov-{province}:…` n'a pas de ville. Interrupteur FERMÉ,
+         la ligne `if (!city) continue` qui suit reste le seul chemin — comportement d'avant. */
+      let provSlug = null;
+      if (!city && provincialActif && key.startsWith('prov-')) {
+        provSlug = key.slice(5, sep);
+        const code = PROV_TO_CODE[provSlug]?.toUpperCase();
+        if (!code || !provinceServie(code)) continue;   // hors du fuseau servi à cette heure
+      } else if (!city) continue;                    // hors du fuseau servi à cette heure
       const id = `prospect:${key}`;
       if (done.has(id)) continue;                    // déjà servi ce cycle
       // DRY-RUN : ni lecture de valeur, ni rendu. Le dry-run ne filtre pas par fuseau
@@ -3244,7 +3551,7 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
         report.recipients.push({ to: key.slice(sep + 1), kind: 'prospect', city: key.slice(0, sep) });
         continue;
       }
-      candidats.push({ key, sep, city, id });
+      candidats.push(provSlug ? { key, sep, city, id, provSlug } : { key, sep, city, id });
     }
 
     /* Si la boucle va jusqu'au bout sans s'arrêter, le carnet entier a été examiné :
@@ -3286,10 +3593,23 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
         // contact récolté. La distinction est celle du flux, pas celle de la personne.
         const fluxRec = rec.source === 'form-ville' ? 'bulletin' : 'outreach';
         if (stopOutreach && fluxRec === 'outreach') { report.pending++; return; }
+        if (c.provSlug) {
+          /* Le FUSEAU se lit sur la province de la VALEUR (la clé l'a déjà filtré ; une
+             valeur qui la contredit n'est pas servie ici, elle ne l'est nulle part — on
+             le signale plutôt que de deviner). */
+          const provVal = String(rec.province || c.provSlug);
+          const codeVal = PROV_TO_CODE[provVal]?.toUpperCase();
+          if (!codeVal || !provinceServie(codeVal)) { report.skipped.push(`${rec.email} (province ${provVal} hors fuseau)`); return; }
+          if (!rec.villeReelle) { report.skipped.push(`${rec.email} (provincial sans villeReelle)`); return; }
+          // Drapeau de la récolte resté LEVÉ nulle part = « à valider avant envoi » : on n'envoie pas.
+          if (rec.drapeau && !rec.drapeauLeve) { report.skipped.push(`${rec.email} (drapeau non levé)`); return; }
+          retenus.push({ ...c, provSlug: provVal, rec, fluxRec });
+          return;
+        }
         retenus.push({ ...c, rec, fluxRec });
       });
 
-      for (const { key, sep, city, id, rec, fluxRec } of retenus) {
+      for (const { key, sep, city, id, rec, fluxRec, provSlug } of retenus) {
         if (!canSend('prospect')) { report.pending++; continue; }
         if (fluxRec === 'outreach' && dejaOutreach + report.outreachEnvoyes >= rampeOutreach()) { report.pending++; continue; }
         // Garde-fou : si la valeur stockée ne concordait pas avec sa clé, l'identifiant
@@ -3301,6 +3621,30 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
         // l'adresse repassera telle quelle au prochain passage.
         if (!await prendreCreneauDomaine(rec.email)) { report.pending++; continue; }
         const unsubUrl = `${origin}/unsubscribe?e=${encodeURIComponent(rec.email)}&c=${encodeURIComponent(rec.city)}&t=${await hmacHex(env, `u:${rec.email}:${rec.city}`)}`;
+        if (provSlug) {
+          // BULLETIN PROVINCIAL — même file, mêmes marques, même désabonnement ; seul le gabarit change.
+          const ctxP = await contexteProvincial();
+          const v = renderBulletinProvincial({ provSlug, villeReelle: rec.villeReelle, metier: rec.metier, lang: rec.lang, unsubUrl, postale }, ctxP);
+          if (!v) {
+            // Rien de vrai à dire (aucun chiffre de marché) : le créneau de domaine déjà pris
+            // est rendu, rien n'est marqué, l'adresse repassera quand la donnée reviendra.
+            const dom = domaineDe(rec.email); domCache.set(dom, Math.max(0, (domCache.get(dom) ?? 1) - 1));
+            report.skipped.push(`${rec.email} (provincial : aucun chiffre de marché pour ${provSlug})`);
+            continue;
+          }
+          report.prospects++; report.recipients.push({ to: rec.email, kind: 'prospect', city: rec.city, variante: v.variante, zone: v.zone });
+          report.provincial = report.provincial || { banlieue: 0, provincial: 0 };
+          report.provincial[v.variante]++;
+          report.attempts++;
+          done.add(idReel);
+          if (fluxRec === 'outreach') report.outreachEnvoyes++;
+          file.push({ to: rec.email, subject: v.subject, html: v.html, unsubUrl, cle: idReel,
+                      flux: fluxRec,
+                      sousFlux: 'bulletin-provincial',   // MESURE — étiquette Resend distincte, même routage
+                      etiquette: `provincial ${rec.email}` });
+          if (file.length >= TAILLE_LOT) await viderFile();
+          continue;
+        }
         const { subject, html } = renderPulse({ segment: 'prospect', city, lang: rec.lang, unsubUrl, macro, metier: rec.metier , postale,
           villeCouverte: couvertes ? couvertes.has(normVille(city.slug ?? key.slice(0, sep))) : null });
         report.prospects++; report.recipients.push({ to: rec.email, kind: 'prospect', city: rec.city });
@@ -3527,7 +3871,9 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
     for (const key of clesProspects) {
       const sep = key.indexOf(':');
       if (sep < 1) continue;
-      const code = provDeVille[key.slice(0, sep)];
+      let code = provDeVille[key.slice(0, sep)];
+      // Interrupteur provincial ouvert : `s:prov-*` compte dans sa province (fermé : « sans marché », comme avant).
+      if (!code && provincialActif && key.startsWith('prov-')) code = PROV_TO_CODE[key.slice(5, sep)]?.toUpperCase();
       if (!code) { sansMarche++; continue; }
       const p = (par[code] ||= { total: 0, servis: 0 });
       p.total++;
@@ -4324,7 +4670,9 @@ async function handleUnsubscribe(env, url) {
     }));
     await env.SUBSCRIBERS.delete(`s:${ville}:${email}`);
   }
-  return subPage('fr', 'Désabonné / Unsubscribed', `${email} ne recevra plus le bulletin de ${ville}. / will no longer receive this bulletin.`);
+  // Bulletin provincial : la « ville » est `prov-{province}` — on affiche la province, pas le slug.
+  const nomBulletin = ville.startsWith('prov-') ? (PROV_NOMS[ville.slice(5)]?.[0] ?? ville) : ville;
+  return subPage('fr', 'Désabonné / Unsubscribed', `${email} ne recevra plus le bulletin de ${nomBulletin}. / will no longer receive this bulletin.`);
 }
 
 
