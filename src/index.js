@@ -496,13 +496,21 @@ async function statsMarche(args = {}) {
       availableCities: data.cities.map((c) => c.name),
     };
   }
-  // Verdict acheteur/équilibré/vendeur — convention standard des chambres (ACI) :
-  // < 4 mois d'inventaire = vendeurs, 4-6 = équilibré, > 6 = acheteurs.
+  // Verdict acheteur/équilibré/vendeur — MÊME échelle que le site (payotte-astro,
+  // src/lib/cityMarketProse.ts) : APCIQ au Québec (< 8 mois = vendeurs, 8-10 = équilibré,
+  // > 10 = acheteurs), convention des chambres ailleurs (< 4, 4-6, > 6). Jusqu'au 2026-09-23,
+  // le worker appliquait 4-6 partout : Montréal (5,4 mois) sortait « équilibré » ici et
+  // « vendeurs » sur la page. Toute modification de seuil se fait aux DEUX endroits.
   const moi = city.monthsOfInventory;
+  const apciq = city.province === 'QC';
   const marketBalance = moi == null ? null : {
-    verdict: moi < 4 ? "seller's market" : moi <= 6 ? 'balanced market' : "buyer's market",
+    verdict: apciq
+      ? (moi < 8 ? "seller's market" : moi <= 10 ? 'balanced market' : "buyer's market")
+      : (moi < 4 ? "seller's market" : moi <= 6 ? 'balanced market' : "buyer's market"),
     monthsOfInventory: moi,
-    convention: 'Standard board convention: under 4 months of inventory = seller’s, 4-6 = balanced, over 6 = buyer’s.',
+    convention: apciq
+      ? 'Quebec APCIQ scale (Centris): under 8 months of inventory = seller’s, 8-10 = balanced, over 10 = buyer’s.'
+      : 'Standard board convention: under 4 months of inventory = seller’s, 4-6 = balanced, over 6 = buyer’s.',
   };
 
   // Mises en chantier (SCHL) + indice du prix du neuf (StatCan), joints par citySlug —
