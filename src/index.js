@@ -1181,8 +1181,29 @@ async function confirmRelay(env, url) {
     expert.url);
 }
 
+/* ── « LES IA VOUS ONT PRÉSENTÉ N FOIS » (28 sept. 2026) ──────────────────────────
+   Compte, par expert et par mois, chaque fois que `trouver_expert` le renvoie à un
+   assistant. C'est la preuve sociale du courriel de novembre aux experts, et elle ne
+   peut pas se reconstituer après coup : ce qui n'est pas compté aujourd'hui est perdu.
+   Clé `vu:{slug}:{AAAA-MM}` dans COUNTERS, même forme que `m:` (relais confirmés).
+   Le slug se lit dans l'URL de la fiche : /canada/{prov}/{ville}/{secteur}/{profession}
+   → `{profession}--{secteur}`, la forme de experts.json.
+   ⚠ Un compteur qui échoue ne casse jamais la réponse (bumpCounter avale l'erreur). */
+async function trouverExpertCompte(args, env) {
+  const r = await trouverExpert(args);
+  const mois = new Date().toISOString().slice(0, 7);
+  const slugs = (r?.experts ?? []).map((e) => {
+    try {
+      const seg = new URL(e.url).pathname.replace(/\.html$/, '').split('/').filter(Boolean);
+      return seg.length >= 5 ? `${seg[seg.length - 1]}--${seg[seg.length - 2]}` : null;
+    } catch { return null; }
+  }).filter(Boolean);
+  await Promise.all(slugs.map((s) => bumpCounter(env, `vu:${s}:${mois}`, 400 * 86400)));
+  return r;
+}
+
 const TOOL_IMPL = {
-  trouver_expert: trouverExpert,
+  trouver_expert: trouverExpertCompte,
   verifier_titre: verifierTitre,
   stats_marche: statsMarche,
   taux_courants: tauxCourants,
