@@ -8,7 +8,7 @@
  *      par le propriétaire ; titre réservé d'évaluateur agréé ; TAQ) ;
  *   2. la politique de confidentialité : elle dit « 48 heures » pour les demandes de contact ;
  *      un dossier garde nom, adresse et réponses 30 jours → la page /privacy doit le dire avant.
- * En attendant, le propriétaire (Grégory) teste le parcours complet avec ?essai=<CONTACTS_TOKEN>.
+ * En attendant, le propriétaire (Grégory) teste le parcours complet avec ?essai=<EF_ESSAI_TOKEN>.
  *
  * DÉCISION DU PROPRIÉTAIRE (28 sept. 2026) : « Le classement est gratuit, le reste peut être
  * vendable. […] Ça sera qu'un forfait par dossier. » Aucun référencement rémunéré : les renvois
@@ -73,7 +73,12 @@ small,.muted{color:var(--muted)}a{color:var(--red)}
 }
 
 const actif = (env) => env.EF_DOSSIER_ACTIF === '1' && Boolean(env.STRIPE_SECRET_KEY) && Boolean(env.STRIPE_WEBHOOK_SECRET);
-const essaiOk = (env, v) => Boolean(env.CONTACTS_TOKEN) && typeof v === 'string' && v.length > 8 && v === env.CONTACTS_TOKEN;
+// Jeton d'essai : EF_ESSAI_TOKEN (choisi par le propriétaire, `wrangler secret put EF_ESSAI_TOKEN`),
+// à défaut CONTACTS_TOKEN. Un secret Cloudflare ne se relit pas : d'où un jeton dédié qu'on connaît.
+const essaiOk = (env, v) => {
+  if (typeof v !== 'string' || v.length < 12) return false;
+  return (Boolean(env.EF_ESSAI_TOKEN) && v === env.EF_ESSAI_TOKEN) || (Boolean(env.CONTACTS_TOKEN) && v === env.CONTACTS_TOKEN);
+};
 const prixCents = (env) => { const n = Number(env.EF_PRIX_CENTS); return Number.isInteger(n) && n >= 1000 ? n : 9900; };
 
 // ─────────────────────────────────────────────────────────────── 1. questionnaire
