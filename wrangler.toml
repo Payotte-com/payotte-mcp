@@ -117,6 +117,15 @@ HEURES_RENFORT = "12:QC,ON;18:QC,ON"
 # le « # » de la ligne ci-dessous, puis `npx wrangler deploy`.
 PROVINCIAL_ACTIF = "1"
 
+# ── PLAFOND PAR DOMAINE : 5 → 10 (28 sept. 2026, demande proprio) ────────────────
+# Pour finir la tournée de septembre, dominée par remax-quebec.com (1 637 adresses) et
+# royallepage.ca (1 224). S'applique à TOUT domaine d'entreprise ; les messageries grand
+# public (gmail, hotmail…) n'ont plus de plafond depuis le commit 44095dd. Simulé : +200
+# envois/jour seulement, parce que la part par passage (70 % de la rampe ÷ passages) mord
+# avant. ⚠ Plus d'adresses d'un même serveur d'entreprise le même jour = plus de risque
+# qu'une plainte fasse bloquer le domaine entier. Revenir à 5 en retirant la ligne.
+MAX_PAR_DOMAINE = "10"
+
 OUTREACH_RAMPE = "2026-09-09:75,2026-09-10:150,2026-09-11:300,2026-09-14:600,2026-09-15:1200,2026-09-16:2400,2026-09-17:4800"
 
 # ── FORÇAGE DE PROVINCES POUR UNE JOURNÉE (14 sept. 2026, demande proprio) ───────
