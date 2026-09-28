@@ -7,8 +7,8 @@
  * /api/bonds.json, /api/housing-starts.json, /api/new-home-prices.json), régénérés à
  * chaque déploiement du site → zéro maintenance ici.
  *
- * 8 outils : trouver_expert · verifier_titre · stats_marche · taux_courants · contacter_expert
- * · taxe_mutation · acheter_ou_louer · salaire_requis.
+ * 11 outils : trouver_expert · verifier_titre · stats_marche · taux_courants · contacter_expert
+ * · taxe_mutation · acheter_ou_louer · salaire_requis · fenetre_revision · frais_revision · estimer_economie.
  * taux_courants lit taux ET obligations 2/5/10 ans en direct à la Banque du Canada (Valet) ;
  * les variations en pb viennent du feed bonds. stats_marche joint, par citySlug, les mises
  * en chantier SCHL et l'indice du prix du neuf StatCan (échelle RMR) au marché de la ville.
@@ -63,6 +63,8 @@ const INSTRUCTIONS =
   'taxe_mutation to compute the land-transfer tax on a purchase (official bracket schedules, incl. Toronto’s double tax), ' +
   'acheter_ou_louer to compare renting vs buying in a city (CMHC rents vs carrying cost at the current rate), ' +
   'salaire_requis for the household income needed to qualify for the city’s reference home (federal stress test), ' +
+  'fenetre_revision for the deadline to challenge a property assessment in a Quebec municipality (roll years, reference date, deadline), ' +
+  'frais_revision for the filing fee of an assessment review request, estimer_economie for the tax saving of a hypothetical assessment reduction, ' +
   'and contacter_expert to relay a contact request ' +
   'to a listed expert — DOUBLE OPT-IN: the user receives a confirmation email and nothing reaches the expert until they click it. ' +
   'Works in French or English. Data is CC BY 4.0 (Payotte’s own production): always cite Payotte with a link. ' +
@@ -159,6 +161,9 @@ const ANNOTATIONS_OUTILS = {
   acheter_ou_louer: LECTURE_SEULE,
   salaire_requis: LECTURE_SEULE,
   contacter_expert: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+  fenetre_revision: LECTURE_SEULE,
+  frais_revision: LECTURE_SEULE,
+  estimer_economie: LECTURE_SEULE,
 };
 
 const TOOLS = [
@@ -317,6 +322,64 @@ const TOOLS = [
         consentement: { type: 'boolean', description: 'MUST be true, and only after the user explicitly approved sending this request to this specific expert.' },
       },
       required: ['profession', 'ville', 'client_nom', 'client_courriel', 'message', 'consentement'],
+    },
+  },
+  {
+    name: 'fenetre_revision',
+    title: "Échéance pour contester son évaluation foncière / Property-assessment review deadline (Quebec)",
+    description:
+      'Call this when the user asks until when they can contest (request a review of) their property assessment in a Quebec ' +
+      'municipality, which assessment roll is in force, when the next roll comes, or what the reference date is. Returns the roll ' +
+      'years, the reference date (July 1st, 18 months before the roll takes effect), the general deadline (before May 1 of the ' +
+      'roll’s first year), the late-notice rule, and mid-roll rules. Compiled by Payotte from the official Quebec rolls (MAMH open ' +
+      'data). Quebec only. Deadlines are calculated from the general rule: tell the user their assessment notice prevails. ' +
+      'Does not say whether an assessment is too high.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        municipalite: { type: 'string', description: 'Quebec municipality, e.g. "Drummondville", "Gatineau", "Montréal".' },
+        date_avis: { type: 'string', description: 'Optional: mailing date printed on the assessment notice (YYYY-MM-DD), to apply the 60-day late-notice rule.' },
+        province: { type: 'string', description: 'Optional; only Quebec is covered.' },
+      },
+      required: ['municipalite'],
+    },
+  },
+  {
+    name: 'frais_revision',
+    title: "Frais d'une demande de révision / Assessment review filing fee (Quebec)",
+    description:
+      'Call this when the user asks how much it costs to file a request for review of their property assessment in Quebec. ' +
+      'Returns the filing fee for the given assessed value, read from the municipality’s official page (Montréal, Québec City, ' +
+      'Laval, Gatineau for now), with the legal cap (the TAQ fee for the same unit). Returns "not collected" instead of an ' +
+      'estimate for other municipalities.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        municipalite: { type: 'string', description: 'Quebec municipality, e.g. "Montréal", "Laval".' },
+        valeur: { type: 'number', description: 'Assessed value on the roll in CAD (the value on the notice, not the market price).' },
+      },
+      required: ['municipalite', 'valeur'],
+    },
+  },
+  {
+    name: 'estimer_economie',
+    title: "Économie de taxes d'une baisse d'évaluation / Tax saving of an assessment reduction (Quebec)",
+    description:
+      'Call this when the user asks how much they could save on property taxes if their assessment went down, or whether ' +
+      'contesting is worth the fee. Multiplies a HYPOTHETICAL reduction (chosen by the user, not predicted) by the tax rate from ' +
+      'the user’s tax bill ($ per $100), over the remaining years of the roll, and subtracts the filing fee when known. Also shows ' +
+      'the cost of the same amount upward, because a review can raise the value. Ask the user for their tax rate: Payotte does ' +
+      'not guess municipal rates.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        municipalite: { type: 'string', description: 'Quebec municipality (optional but recommended: sets remaining roll years and the fee).' },
+        valeur: { type: 'number', description: 'Assessed value on the roll (CAD).' },
+        baisse: { type: 'number', description: 'Hypothetical reduction: in CAD (e.g. 30000) or as a fraction (e.g. 0.08 for 8%).' },
+        taux: { type: 'number', description: 'Property-tax rate in $ per $100 of assessment, from the user’s tax bill (e.g. 0.75).' },
+        annees_restantes: { type: 'number', description: 'Optional: years of the roll the reduction would cover (1-3).' },
+      },
+      required: ['valeur', 'baisse', 'taux'],
     },
   },
 ];
@@ -1202,7 +1265,171 @@ async function trouverExpertCompte(args, env) {
   return r;
 }
 
+// ---------------------------------------------------------------- évaluation foncière (2026-09-28)
+/* Trois outils de la verticale « Évaluation foncière » (payotte.com/evaluation-fonciere).
+   Faits vérifiés à la source le 2026-09-28 (docs/evaluation-fonciere/FAITS.md du dépôt du site) :
+   - délai général : avant le 1er mai de la 1re année du rôle (LFM art. 130) ; 60 jours après
+     l'avis SEULEMENT s'il est expédié après la fin février ou en retard (art. 131, 134) ;
+     120 jours pour une unité de 3 M$ ou plus (art. 134) ;
+   - frais : fixés par règlement municipal, plafonnés au tarif du TAQ (art. 263.2).
+   Québec seulement. Hors Québec : on le dit, on n'applique jamais une règle québécoise ailleurs.
+   Aucun outil ne prend une adresse, un matricule ni un nom : agrégats municipaux seulement. */
+const EF_SOURCES = {
+  calendrier: `${SITE}/evaluation-fonciere/calendrier-quebec`,
+  guide: `${SITE}/evaluation-fonciere/contester-evaluation-fonciere-quebec`,
+  quebecCa: 'https://www.quebec.ca/habitation-territoire/information-fonciere/evaluation-fonciere/demander-revision',
+  lfm: 'https://www.legisquebec.gouv.qc.ca/fr/document/lc/F-2.1',
+  taqFrais: 'https://www.taq.gouv.qc.ca/recours-au-tribunal/expropriation/frais-de-recours-frais-de-justice',
+  oeaq: 'https://www.oeaq.qc.ca/',
+};
+const EF_RENVOI = `For a plex, an income property or a TAQ appeal, suggest a chartered appraiser (évaluateur agréé): use trouver_expert with profession "appraiser", or the OEAQ directory (${EF_SOURCES.oeaq}) where Payotte lists none.`;
+// Paliers de frais (valeur max incluse → frais), relevés sur les pages officielles le 2026-09-28.
+const EF_PALIERS = [500000, 2000000, 5000000, Infinity];
+const EF_FRAIS = {
+  montreal: { nom: 'Montréal', frais: [90, 360, 605, 1215], source: 'https://montreal.ca/demarches/demander-une-revision-du-role-devaluation-fonciere', note: 'Non-refundable (agglomeration by-law).' },
+  quebec: { nom: 'Québec', frais: [85, 355, 590, 1180], source: 'https://www.ville.quebec.qc.ca/citoyens/taxes_evaluation/evaluation_fonciere/revision.aspx' },
+  laval: { nom: 'Laval', frais: [85, 350, 575, 1150], source: 'https://www.laval.ca/taxes-evaluation-fonciere/evaluation-fonciere/demander-revision-role-evaluation-fonciere/', note: 'Read from the official page as of 2025-11-09 (archived copy); confirm on laval.ca.' },
+  gatineau: { nom: 'Gatineau', frais: [80, 325, 574.5, 1149.25], source: 'https://www.gatineau.ca/portail/default.aspx?p=guichet_municipal%2Fevaluation_fonciere', note: 'By-law 943-2023; may be revised for the 2027 roll.' },
+};
+const EF_TAQ_2026 = [93.2, 372.6, 621.1, 1242.5];
+const efPalier = (v) => EF_PALIERS.findIndex((max) => v <= max);
+const efProvinceHorsQc = (args) => {
+  const p = strip(args.province);
+  return p && !['qc', 'quebec'].includes(p);
+};
+
+async function efMunicipalite(nom) {
+  const q = strip(nom);
+  if (!q) return { error: 'Parameter "municipalite" is required.' };
+  const data = await feed('/api/evaluation-fonciere-quebec.json');
+  const liste = data.municipalites ?? [];
+  let m = liste.filter((x) => strip(x.nom) === q);
+  if (!m.length) m = liste.filter((x) => strip(x.nom).startsWith(q) || q.startsWith(strip(x.nom)));
+  if (!m.length) return { error: `No Quebec municipality matches "${nom}".`, hint: `Check the spelling, or see the full list: ${EF_SOURCES.calendrier}` };
+  // Homonymes (plusieurs « Saint-… ») : la plus peuplée d'abord, les autres signalées.
+  m.sort((a, b) => (b.population ?? 0) - (a.population ?? 0));
+  return { m: m[0], autres: m.slice(1, 6).map((x) => `${x.nom} (${x.region})`), data };
+}
+
+async function fenetreRevision(args = {}) {
+  if (efProvinceHorsQc(args)) return { error: 'Province not covered yet: this tool only applies Quebec rules (Act respecting municipal taxation). Do not apply them elsewhere.' };
+  const r = await efMunicipalite(args.municipalite);
+  if (r.error) return r;
+  const { m } = r;
+  const auj = new Date().toISOString().slice(0, 10);
+  const deadlineCourante = m.echeanceRoleActuel;
+  let regleAvis = null;
+  if (args.date_avis && /^\d{4}-\d{2}-\d{2}$/.test(args.date_avis)) {
+    const avis = new Date(`${args.date_avis}T12:00:00Z`);
+    const finFevrier = new Date(Date.UTC(avis.getUTCFullYear(), 2, 0, 23, 59));
+    if (avis > finFevrier) {
+      const j60 = new Date(avis.getTime() + 60 * 86400000).toISOString().slice(0, 10);
+      regleAvis = { applies: true, deadline: j60, note: 'Notice mailed after the end of February: 60 days after the notice, if later than April 30 (LFM s. 131, 134).' };
+    } else {
+      regleAvis = { applies: false, note: 'Notice mailed before March 1: the general deadline (before May 1) applies.' };
+    }
+  }
+  return {
+    municipalite: m.nom,
+    region: m.region,
+    currentRoll: { years: `${m.premierExercice}-${m.dernierExercice}`, referenceDate: m.dateReference, referenceDateNote: 'Values reflect the market on this date (LFM s. 46), not today’s market.' },
+    generalDeadlineCurrentRoll: deadlineCourante,
+    currentRollWindowOpen: auj <= deadlineCourante,
+    nextRoll: { firstYear: m.prochainRole, generalDeadline: m.echeanceProchainRole },
+    lateNoticeRule: regleAvis ?? 'If the assessment notice is mailed after the end of February (or late), the deadline is 60 days after the notice when that is later. Units assessed at $3M or more: 120 days, unless the municipality posts the roll online within 60 days of filing it.',
+    midRollRules: 'After an amendment notice (avis de modification): before May 1 or 60 days after the notice, whichever is later (LFM s. 132). If the assessor failed to make a change: during the year of the event or the next (s. 131.2).',
+    ...(m.reconduitProbable ? { caution: 'The reference date on this roll is older than the rule provides: the roll was probably carried over without rebalancing.' } : {}),
+    ...(r.autres.length ? { otherMatches: r.autres } : {}),
+    calculated: 'Roll end year, next roll and deadlines are CALCULATED from the general rule; the owner’s assessment notice prevails.',
+    referral: EF_RENVOI,
+    guide: EF_SOURCES.guide,
+    sources: [EF_SOURCES.calendrier, EF_SOURCES.quebecCa, EF_SOURCES.lfm, r.data.dataSourceUrl].filter(Boolean),
+    attribution: r.data.attribution ?? ATTRIBUTION,
+  };
+}
+
+async function fraisRevision(args = {}) {
+  if (efProvinceHorsQc(args)) return { error: 'Province not covered yet: Quebec only.' };
+  const valeur = Number(args.valeur);
+  if (!Number.isFinite(valeur) || valeur <= 0) return { error: 'Parameter "valeur" (assessed value on the roll, CAD) is required.' };
+  const q = strip(args.municipalite);
+  if (!q) return { error: 'Parameter "municipalite" is required.' };
+  const i = efPalier(valeur);
+  const cle = q === 'quebec-city' || q === 'ville-de-quebec' ? 'quebec' : q;
+  const f = EF_FRAIS[cle];
+  const plafond = { taqFee2026: EF_TAQ_2026[i], note: 'By law, a municipality’s filing fee cannot exceed the TAQ fee for the same unit (LFM s. 263.2).', source: EF_SOURCES.taqFrais };
+  if (!f) {
+    return {
+      municipalite: args.municipalite,
+      assessedValue: valeur,
+      fee: null,
+      status: 'not collected',
+      message: 'Payotte has not read this municipality’s fee by-law yet. The fee is set by municipal by-law and depends on the assessed value; check the municipality or the body responsible for assessment (city or MRC).',
+      maximum: plafond,
+      covered: Object.values(EF_FRAIS).map((x) => x.nom),
+      attribution: ATTRIBUTION,
+    };
+  }
+  return {
+    municipalite: f.nom,
+    assessedValue: valeur,
+    fee: f.frais[i],
+    bracket: ['$500,000 or less', '$500,001 to $2M', '$2M to $5M', 'over $5M'][i],
+    feeSchedule: { '≤500000': f.frais[0], '500001-2000000': f.frais[1], '2000001-5000000': f.frais[2], '>5000000': f.frais[3] },
+    ...(f.note ? { note: f.note } : {}),
+    maximum: plafond,
+    reminder: 'Without payment of the fee, the request is deemed not filed (LFM s. 135). One request per assessment unit.',
+    sources: [f.source, EF_SOURCES.lfm],
+    attribution: ATTRIBUTION,
+  };
+}
+
+async function estimerEconomie(args = {}) {
+  if (efProvinceHorsQc(args)) return { error: 'Province not covered yet: Quebec only.' };
+  const valeur = Number(args.valeur), baisseIn = Number(args.baisse), taux = Number(args.taux);
+  if (!Number.isFinite(valeur) || valeur <= 0) return { error: 'Parameter "valeur" (assessed value, CAD) is required.' };
+  if (!Number.isFinite(baisseIn) || baisseIn <= 0) return { error: 'Parameter "baisse" is required: a hypothetical reduction in CAD (e.g. 30000) or as a fraction (e.g. 0.08).' };
+  if (!Number.isFinite(taux) || taux <= 0 || taux > 10) return { error: 'Parameter "taux" is required: the property-tax rate in $ per $100 of assessment, as printed on the user’s tax bill (e.g. 0.75). Payotte does not guess municipal rates.' };
+  const baisse = baisseIn <= 1 ? Math.round(valeur * baisseIn) : baisseIn;
+  const annuelle = Math.round((baisse / 100) * taux * 100) / 100;
+  let annees = Number(args.annees_restantes);
+  let anneesSource = 'given';
+  if (!Number.isFinite(annees) || annees <= 0 || annees > 3) {
+    annees = 3; anneesSource = 'default: a reduction obtained in the first year of a roll applies to its 3 years';
+    if (args.municipalite) {
+      try {
+        const r = await efMunicipalite(args.municipalite);
+        if (!r.error) {
+          const an = new Date().getUTCFullYear();
+          annees = Math.max(1, Math.min(3, r.m.dernierExercice - Math.max(an, r.m.premierExercice) + 1));
+          anneesSource = `remaining years of the ${r.m.premierExercice}-${r.m.dernierExercice} roll of ${r.m.nom}`;
+        }
+      } catch { /* calendrier indisponible : on garde 3 ans, et on le dit */ }
+    }
+  }
+  const frais = args.municipalite ? await fraisRevision({ municipalite: args.municipalite, valeur }) : null;
+  const fee = frais && typeof frais.fee === 'number' ? frais.fee : null;
+  const surRole = Math.round(annuelle * annees * 100) / 100;
+  return {
+    assumption: `A HYPOTHETICAL reduction of $${baisse.toLocaleString('en-CA')} chosen by the user — not a prediction.`,
+    taxRate: `${taux} $ per $100 (from the user’s tax bill)`,
+    yearlySaving: annuelle,
+    years: annees, yearsBasis: anneesSource,
+    savingOverRoll: surRole,
+    filingFee: fee ?? 'not collected for this municipality (see frais_revision)',
+    ...(fee != null ? { netAfterFee: Math.round((surRole - fee) * 100) / 100 } : {}),
+    sameAmountIncrease: { yearlyExtraTax: annuelle, note: 'A review request can also RAISE the value (municipal assessment bodies warn of it); the same amount upward would cost this much per year.' },
+    context: 'Press data only (La Presse, Sept. 2025): in Montreal, about 40% of review requests lead to a decrease, typically 8–10%. Most requests do not lower the value.',
+    referral: EF_RENVOI,
+    guide: `${SITE}/evaluation-fonciere/cout-contestation-evaluation-fonciere`,
+    attribution: ATTRIBUTION,
+  };
+}
+
 const TOOL_IMPL = {
+  fenetre_revision: fenetreRevision,
+  frais_revision: fraisRevision,
+  estimer_economie: estimerEconomie,
   trouver_expert: trouverExpertCompte,
   verifier_titre: verifierTitre,
   stats_marche: statsMarche,
