@@ -3076,6 +3076,19 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
   // premier lot ne parte.
   const MAX_PAR_DOMAINE = Number(env.MAX_PAR_DOMAINE || 5);
   const domaineDe = (email) => String(email || '').split('@')[1]?.toLowerCase() || '?';
+  /* ── LES MESSAGERIES GRAND PUBLIC NE SONT PAS DES FIRMES (28 sept. 2026, demande proprio) ──
+     Le plafond de 5 existe pour les bannières : 26 adresses d'un même cabinet sur UN serveur
+     d'entreprise. gmail.com ou hotmail.com, ce sont des milliers de personnes sans lien entre
+     elles, sur des serveurs qui encaissent des millions de messages par heure. Au 28 sept.,
+     1 545 adresses restantes (gmail 951, hotmail 456, outlook 138) attendaient 5 par jour :
+     jusqu'à 190 jours pour gmail seul. Le compteur continue de monter (le rapport les voit),
+     il ne bloque simplement plus. */
+  const MESSAGERIES_PUBLIQUES = new Set([
+    'gmail.com', 'googlemail.com', 'hotmail.com', 'hotmail.ca', 'outlook.com', 'live.com',
+    'live.ca', 'msn.com', 'yahoo.com', 'yahoo.ca', 'icloud.com', 'me.com', 'mac.com',
+    'aol.com', 'protonmail.com', 'proton.me',
+  ]);
+  const plafondDomaine = (dom) => (MESSAGERIES_PUBLIQUES.has(dom) ? Infinity : MAX_PAR_DOMAINE);
   /* ── UNE CLÉ PAR JOUR, PAS UNE PAR DOMAINE (2026-09-14, palier gratuit) ───────────
      `dom:{jour}:{domaine}` coûtait une LECTURE par domaine et une ÉCRITURE par domaine et
      par lot. Sur le palier gratuit Workers KV — 1 000 écritures par JOUR pour tout le
@@ -3108,7 +3121,7 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
     await chargerDom();
     const dom = domaineDe(email);
     const n = domCache.get(dom) ?? 0;
-    if (n >= MAX_PAR_DOMAINE) { report.reportesDomaine = (report.reportesDomaine || 0) + 1; return false; }
+    if (n >= plafondDomaine(dom)) { report.reportesDomaine = (report.reportesDomaine || 0) + 1; return false; }
     domCache.set(dom, n + 1);
     return true;
   };
@@ -3359,11 +3372,38 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
      Les deux alimentent le MÊME ensemble. À supprimer seulement après le 1er octobre,
      quand le cycle repart de zéro et qu'il ne reste plus d'ancienne marque vivante. */
   const done = new Set(env.SUBSCRIBERS ? await kvListe(`sent:${cycle}:`) : []);
+  /* ── LE CUMUL : UNE LECTURE AU LIEU D'UNE PAR LOT (28 sept. 2026) ─────────────────
+     Chaque lot `servi:` coûtait une lecture à CHAQUE passage, et les lots s'accumulent
+     tout le mois : 53 le 18 sept., 147 le 28. Le démarrage mangeait donc de plus en plus
+     du budget de 880 et chaque passage regardait moins d'adresses — le débit baissait de
+     jour en jour sans qu'aucun réglage ne bouge.
+     `servi-cumul:{cycle}` = { lots: [noms déjà fondus], ids: [identifiants] }. Un passage
+     lit le cumul, puis SEULEMENT les lots qu'il ne contient pas encore, et réécrit le
+     cumul dès qu'il en trouve 5 ou plus. Les lots eux-mêmes restent en place (TTL de
+     cycle) : le cumul n'est qu'un raccourci, le registre reste les lots.
+     ⚠ Le préfixe `servi-cumul:` ne commence PAS par `servi:{cycle}:` — sinon le cumul se
+     listerait lui-même comme un lot.
+     ⚠ Un lot illisible n'entre PAS dans `lots` du cumul : il sera relu au passage suivant. */
   if (env.SUBSCRIBERS) {
-    const lots = await kvListe(`servi:${cycle}:`);
+    const CLE_CUMUL = `servi-cumul:${cycle}`;
+    let cumul = null;
+    try { cumul = JSON.parse((await kvLot([CLE_CUMUL]))[0] || 'null'); } catch { cumul = null; }
+    const dejaFondus = new Set(Array.isArray(cumul?.lots) ? cumul.lots : []);
+    const idsCumul = Array.isArray(cumul?.ids) ? cumul.ids : [];
+    for (const id of idsCumul) done.add(id);
+    const lots = (await kvListe(`servi:${cycle}:`)).filter((k) => !dejaFondus.has(k));
     const blobs = lots.length ? await kvLot(lots.map((k) => `servi:${cycle}:${k}`)) : [];
-    for (const b of blobs) {
-      try { for (const id of JSON.parse(b || '[]')) done.add(id); } catch { /* lot illisible : ses adresses repartiront, jamais de doublon silencieux dans l'autre sens */ }
+    const lusOk = [], idsNeufs = [];
+    blobs.forEach((b, i) => {
+      try { const ids = JSON.parse(b || '[]'); for (const id of ids) { done.add(id); idsNeufs.push(id); } lusOk.push(lots[i]); }
+      catch { /* lot illisible : ses adresses repartiront, jamais de doublon silencieux dans l'autre sens */ }
+    });
+    report.lotsServiLus = lots.length;
+    if (!dryRun && lusOk.length >= 5) {
+      ctr.kv++;
+      await env.SUBSCRIBERS.put(CLE_CUMUL,
+        JSON.stringify({ lots: [...dejaFondus, ...lusOk], ids: [...idsCumul, ...idsNeufs] }),
+        { expirationTtl: CYCLE_TTL });
     }
   }
   const unsub = new Set(env.SUBSCRIBERS ? await kvListe('unsub:') : []);
@@ -3585,7 +3625,31 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
         curseurFin = candidats[i]?.key ?? curseurFin;
         break;
       }
-      const tranche = candidats.slice(i, i + LOT_KV);
+      /* ── LE DOMAINE SE LIT DANS LA CLÉ, AVANT DE PAYER LA VALEUR (28 sept. 2026) ──
+         La clé est `{ville}:{courriel}` : le domaine y est déjà. Avant, un candidat dont
+         le domaine avait eu ses 5 du jour était LU (une opération KV) puis écarté par
+         `prendreCreneauDomaine`. Le 28 sept., 138 domaines étaient pleins dès l'après-midi
+         et le carnet restant était dominé par remax-quebec (1 637) et royallepage (1 224) :
+         les passages lisaient ~580 adresses pour en garder 3 à 40. On les écarte ici,
+         gratuitement, et `prises` compte ce que la tranche va déjà réserver pour ne pas
+         lire 40 adresses d'un domaine à qui il reste 2 places. Le contrôle après lecture
+         reste en place — celui-ci n'est qu'un préfiltre, la règle vit toujours là-bas.
+         Le curseur n'en souffre pas : il pointe sur ce qu'on n'a pas REGARDÉ, et un
+         candidat écarté ici a été regardé, exactement comme avant. */
+      await chargerDom();
+      const prises = new Map();
+      const tranche = [];
+      let j = i;
+      for (; j < candidats.length && tranche.length < LOT_KV; j++) {
+        const c = candidats[j];
+        const dom = domaineDe(c.key.slice(c.sep + 1));
+        const n = (domCache.get(dom) ?? 0) + (prises.get(dom) ?? 0);
+        if (n >= plafondDomaine(dom)) { report.reportesDomaine = (report.reportesDomaine || 0) + 1; report.pending++; continue; }
+        prises.set(dom, (prises.get(dom) ?? 0) + 1);
+        tranche.push(c);
+      }
+      i = j - LOT_KV;   // la boucle ajoute LOT_KV : le prochain tour repart juste après ce qu'on a regardé
+      if (!tranche.length) continue;
       const valeurs = await kvLot(tranche.map((c) => `s:${c.key}`));
 
       // Tri À SEC : plus une seule opération KV ici, donc un candidat écarté ne coûte rien.
