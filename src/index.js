@@ -20,6 +20,7 @@
  * Licence des données : CC BY 4.0 — chaque réponse porte l'attribution.
  */
 
+import { handleDossierRevision } from './dossierRevision.js';
 const SITE = 'https://payotte.com';
 const WORKER_ORIGIN = 'https://payotte-mcp.payotte.workers.dev';
 const ATTRIBUTION =
@@ -5979,6 +5980,12 @@ export default {
     }
 
     // Bulletin de marché (formulaire zéro-JS des pages ville).
+    // Dossier de révision d'évaluation foncière (2026-09-28) — ÉTEINT tant que EF_DOSSIER_ACTIF
+    // et les secrets Stripe ne sont pas posés ; voir src/dossierRevision.js.
+    if (url.pathname.startsWith('/ef/')) {
+      const r = await handleDossierRevision(request, env, url, { SITE, efMunicipalite, EF_FRAIS, efPalier, EF_TAQ_2026, strip });
+      if (r) return r;
+    }
     if (request.method === 'POST' && url.pathname === '/subscribe') return handleSubscribe(request, env, url);
     // Alerte taux : POST depuis un formulaire, GET en un clic depuis le bulletin (HMAC).
     if (url.pathname === '/alerte-taux' && (request.method === 'POST' || request.method === 'GET')) return handleAlerteTauxInscription(request, env, url);
