@@ -141,6 +141,26 @@ async function allExperts(provinceSlugs = null) {
 
 // ---------------------------------------------------------------- les 3 outils
 
+/* ── ANNOTATIONS D'OUTILS (28 sept. 2026) ──────────────────────────────────────────
+   Exigées par l'annuaire des connecteurs de Claude et par celui des apps ChatGPT :
+   sans elles, le client ne sait pas qu'un outil est sans effet et redemande une
+   confirmation à chaque appel, et la soumission est refusée. Sept outils ne font que
+   LIRE des données publiques. `contacter_expert` ÉCRIT (il envoie un courriel de
+   confirmation à l'utilisateur, puis relaie sa demande à un tiers) : il n'est donc ni
+   en lecture seule ni idempotent, mais il ne détruit rien.
+   ⚠ Un outil ajouté à TOOLS sans entrée ici sort SANS annotation : l'ajouter aux deux. */
+const LECTURE_SEULE = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false };
+const ANNOTATIONS_OUTILS = {
+  trouver_expert: LECTURE_SEULE,
+  verifier_titre: LECTURE_SEULE,
+  stats_marche: LECTURE_SEULE,
+  taux_courants: LECTURE_SEULE,
+  taxe_mutation: LECTURE_SEULE,
+  acheter_ou_louer: LECTURE_SEULE,
+  salaire_requis: LECTURE_SEULE,
+  contacter_expert: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+};
+
 const TOOLS = [
   {
     name: 'trouver_expert',
@@ -5066,7 +5086,7 @@ async function handleRpc(msg, env) {
     case 'ping':
       return rpcResult(id, {});
     case 'tools/list':
-      return rpcResult(id, { tools: TOOLS });
+      return rpcResult(id, { tools: TOOLS.map((t) => ({ ...t, annotations: ANNOTATIONS_OUTILS[t.name] })) });
     case 'tools/call': {
       const impl = TOOL_IMPL[params.name];
       if (!impl) return rpcError(id, -32602, `Unknown tool: ${params.name}`);
