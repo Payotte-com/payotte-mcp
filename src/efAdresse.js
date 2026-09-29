@@ -241,6 +241,13 @@ function repondre(l, { prov, muniNom, dateValeurMuni, facteur, dateFacteur, stat
   };
 }
 const arrondir = (x) => Math.round(x / 5000) * 5000;
+const MOIS = { fr: ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'],
+  en: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'] };
+function dateLongue(iso, lang) {
+  const [a, m, j] = String(iso).split('-').map(Number);
+  if (!a || !m || !j) return iso;
+  return lang === 'fr' ? `${j === 1 ? '1er' : j} ${MOIS.fr[m - 1]} ${a}` : `${MOIS.en[m - 1]} ${j}, ${a}`;
+}
 
 // Mentions exigées par chaque licence, mot pour mot (voir unites/<prov>-SOURCE.md).
 const SOURCES = {
@@ -260,11 +267,20 @@ async function delai(prov, code, lang, deps) {
       const auj = new Date().toISOString().slice(0, 10);
       const ouvert = auj <= m.echeanceRoleActuel;
       const date = ouvert ? m.echeanceRoleActuel : m.echeanceProchainRole;
+      // Le rôle en vigueur, sa date de marché et le suivant, dits en toutes lettres : « valeur au
+      // 1er juillet 2024 » se lisait comme la date du dernier changement (Mirabel, 29 sept. 2026).
+      const role = { debut: m.premierExercice, fin: m.dernierExercice, prochain: m.prochainRole, prochainFin: m.prochainRole + 2,
+        dateMarche: m.dateReference, dateMarcheProchain: `${m.prochainRole - 2}-07-01` };
+      const J = (iso) => dateLongue(iso, lang);
       return {
-        ouvert, date,
+        ouvert, date, role,
         texte: lang === 'fr'
-          ? (ouvert ? `La fenêtre de révision est ouverte : demande à déposer au plus tard le ${date}.` : `La fenêtre du rôle ${m.premierExercice}-${m.dernierExercice} est fermée. Le prochain rôle entre en vigueur en ${m.prochainRole} ; date limite générale : ${date}. Une modification en cours de rôle (rénovation, erreur) rouvre un délai.`)
-          : (ouvert ? `The review window is open: file by ${date}.` : `The ${m.premierExercice}-${m.dernierExercice} roll window is closed. The next roll takes effect in ${m.prochainRole}; general deadline: ${date}. A mid-roll amendment reopens a window.`),
+          ? (ouvert
+            ? `Le rôle ${role.debut}-${role.fin} est en vigueur et sa fenêtre de révision est ouverte : demande à déposer au plus tard le ${J(date)}.`
+            : `Le rôle ${role.debut}-${role.fin} est en vigueur depuis le ${J(`${role.debut}-01-01`)} ; sa fenêtre de révision s'est fermée le ${J(m.echeanceRoleActuel)}. Le prochain rôle (${role.prochain}-${role.prochainFin}, valeurs au ${J(role.dateMarcheProchain)}) entre en vigueur en ${role.prochain} ; date limite générale : ${J(date)}. D'ici là, une modification en cours de rôle (rénovation, erreur) rouvre un délai.`)
+          : (ouvert
+            ? `The ${role.debut}-${role.fin} roll is in force and its review window is open: file by ${J(date)}.`
+            : `The ${role.debut}-${role.fin} roll has been in force since ${J(`${role.debut}-01-01`)}; its review window closed on ${J(m.echeanceRoleActuel)}. The next roll (${role.prochain}-${role.prochainFin}, values as of ${J(role.dateMarcheProchain)}) takes effect in ${role.prochain}; general deadline: ${J(date)}. Until then, a mid-roll amendment (renovation, error) reopens a window.`),
         lien: lang === 'fr' ? 'https://payotte.com/evaluation-fonciere/calendrier-quebec' : 'https://payotte.com/en/property-assessment/quebec-review-deadlines',
       };
     }
