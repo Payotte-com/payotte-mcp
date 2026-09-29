@@ -219,10 +219,10 @@ id = "6b341a2d876b49d78bb5651936ccac8e"
 # 29 sept. 2026 (après-midi) : le second déclencheur n'a JAMAIS été invoqué par Cloudflare
 # (analytique : 18 h 00 et 18 h 30 seulement). Un seul déclencheur aux 10 minutes ; le choix
 # des minutes vit dans le code (CRON_HEURES_10_MIN_UTC, passageCronActif dans src/index.js).
-# ⚠ 29 sept. 2026, 19 h 32 UTC : `*/10 12-21` n'a JAMAIS été invoqué non plus, et l'ancien horaire
-# a cessé dès qu'il a été remplacé (aucun passage à 19 h 10, 19 h 20 ni 19 h 30). Retour à
-# l'expression qui tourne réellement, en attendant de comprendre le planificateur de Cloudflare.
-crons = ["0,30 12-21 * * *"]
+# ⚠ PROPAGATION LENTE (mesurée le 29 sept. 2026) : déployé à 18 h 48 UTC, `*/10` a tourné pour la
+# première fois à 19 h 31 (≈ 40 min) ; l'ancien horaire a continué jusque-là (19 h 00). Un
+# changement de `crons` se juge au témoin `run:` UNE HEURE après, jamais à la minute suivante.
+crons = ["*/10 12-21 * * *"]
 
 # ── JOURNAUX (posé le 9 sept. 2026) ──────────────────────────────────────────────
 # Sans ce bloc, `console.log` et `console.error` ne vont NULLE PART : ils ne sont visibles
