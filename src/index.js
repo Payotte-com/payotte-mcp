@@ -3807,12 +3807,16 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
      `servi:{cycle}:reprise-resend` = toutes les clés du carnet dont l'adresse a déjà reçu
      un courriel. Tant que ce n'est pas fini, aucun prospect ne part (`repriseBloque`).
      Rien ne sort de Cloudflare ni de Resend. Inerte à partir d'octobre (cycle neuf). */
-  if (env.SUBSCRIBERS && env.RESEND_API_KEY && cycle === '2026-09' && !dryRun) {
+  // La clé d'envoi (`RESEND_API_KEY`) est « Sending access » : Resend répond 401 à la lecture.
+  // La lecture passe par une clé « Full access » à part, `RESEND_LECTURE_KEY`.
+  const cleLecture = env.RESEND_LECTURE_KEY || env.RESEND_API_KEY;
+  if (env.SUBSCRIBERS && cleLecture && cycle === '2026-09' && !dryRun) {
     const CLE_REPRISE = `reprise-resend:${cycle}`;
     let etat = null;
     try { ctr.kv++; etat = JSON.parse((await env.SUBSCRIBERS.get(CLE_REPRISE)) || 'null'); } catch { etat = null; }
     etat = etat || { apres: null, emails: [], pages: 0, fini: false };
     if (!etat.fini) {
+      delete etat.erreur;          // on retente à chaque passage : une clé corrigée doit suffire
       const vus = new Set(etat.emails);
       const debutCycle = `${cycle}-01`;
       const t0 = Date.now();
@@ -3823,7 +3827,7 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
         if (etat.apres) q.set('after', etat.apres);
         ctr.subs++;
         const r = await fetch(`https://api.resend.com/emails?${q}`, {
-          headers: { Authorization: `Bearer ${env.RESEND_API_KEY}` },
+          headers: { Authorization: `Bearer ${cleLecture}` },
         });
         if (r.status === 429) { await new Promise((ok) => setTimeout(ok, 1100)); continue; }
         if (!r.ok) { etat.erreur = `Resend GET /emails HTTP ${r.status}`; break; }
