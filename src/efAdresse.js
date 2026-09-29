@@ -28,6 +28,11 @@ export const PROVINCES_EF = {
   nb: { code: 'NB', nom: { fr: 'Nouveau-Brunswick', en: 'New Brunswick' }, slug: 'new-brunswick' },
   ab: { code: 'AB', nom: { fr: 'Alberta', en: 'Alberta' }, slug: 'alberta' },
   mb: { code: 'MB', nom: { fr: 'Manitoba', en: 'Manitoba' }, slug: 'manitoba' },
+  bc: { code: 'BC', nom: { fr: 'Colombie-Britannique', en: 'British Columbia' }, slug: 'british-columbia' },
+  on: { code: 'ON', nom: { fr: 'Ontario', en: 'Ontario' }, slug: 'ontario' },
+  sk: { code: 'SK', nom: { fr: 'Saskatchewan', en: 'Saskatchewan' }, slug: 'saskatchewan' },
+  pe: { code: 'PE', nom: { fr: 'Île-du-Prince-Édouard', en: 'Prince Edward Island' }, slug: 'prince-edward-island' },
+  nl: { code: 'NL', nom: { fr: 'Terre-Neuve-et-Labrador', en: 'Newfoundland and Labrador' }, slug: 'newfoundland-and-labrador' },
 };
 export const PROV_DE_SLUG = Object.fromEntries(Object.entries(PROVINCES_EF).map(([k, v]) => [v.slug, k]));
 
@@ -41,6 +46,19 @@ const BRUIT = new Set(('rue r avenue av ave boulevard boul blvd bd chemin ch rou
   'circle cir trail trl parkway pkwy highway hwy grove gate green heights hts point pt row square sq landing mews ' +
   'n s e w o ne nw se sw no so nord sud est ouest north south east west de du des la le les d l appt app apt unit unite suite ' +
   'ville city qc quebec ns nb ab mb').split(' '));
+
+// Type de voie et direction, ramenés à une forme canonique : ils départagent « Walden Dr » et « Walden Terr ».
+const TYPES = {
+  rue: 'rue', r: 'rue', avenue: 'av', av: 'av', ave: 'av', boulevard: 'boul', boul: 'boul', blvd: 'boul', bd: 'boul',
+  chemin: 'ch', ch: 'ch', route: 'rte', rte: 'rte', rang: 'rang', place: 'pl', pl: 'pl', terrasse: 'terr', terrace: 'terr', terr: 'terr', ter: 'terr',
+  croissant: 'cres', crescent: 'cres', cres: 'cres', impasse: 'imp', allee: 'allee', street: 'st', road: 'rd', rd: 'rd',
+  drive: 'dr', dr: 'dr', court: 'ct', ct: 'ct', crt: 'ct', lane: 'ln', ln: 'ln', way: 'way', close: 'cl', cl: 'cl', circle: 'cir', cir: 'cir',
+  trail: 'trl', trl: 'trl', parkway: 'pkwy', pkwy: 'pkwy', gate: 'gate', green: 'grn', grove: 'grv', heights: 'hts', hts: 'hts',
+  point: 'pt', pt: 'pt', row: 'row', square: 'sq', sq: 'sq', landing: 'lndg', mews: 'mews', bay: 'bay', park: 'pk', manor: 'mnr', view: 'vw', link: 'link', common: 'cmn', gardens: 'gdns',
+};
+const DIRS = { n: 'n', s: 's', e: 'e', w: 'w', o: 'w', ne: 'ne', nw: 'nw', no: 'nw', se: 'se', sw: 'sw', so: 'sw', nord: 'n', sud: 's', est: 'e', ouest: 'w', north: 'n', south: 's', east: 'e', west: 'w' };
+const typesDe = (t) => new Set(normRue(t).split(' ').map((w) => TYPES[w]).filter(Boolean));
+const dirsDe = (t) => new Set(normRue(t).split(' ').map((w) => DIRS[w]).filter(Boolean));
 
 /** Les groupes d'une unité, du plus précis au plus large. Même fonction à la construction et à la lecture. */
 export function groupe(u) {
@@ -115,7 +133,8 @@ export function analyser(q, prov = 'qc') {
   // Au Québec, « St-Laurent » veut dire Saint ; ailleurs, « St » est d'abord « Street » (donc du bruit).
   const ABR = prov === 'qc' ? { st: 'saint', ste: 'sainte', mt: 'mont' } : { ste: 'sainte' };
   const mots = normRue(reste).split(' ').map((w) => ABR[w] ?? w).filter((w) => w && !BRUIT.has(w));
-  return { num: Number(m[2]), suffixe: m[3] ? m[3].toUpperCase() : null, mots, apt: apt ? String(apt).toUpperCase() : null };
+  return { num: Number(m[2]), suffixe: m[3] ? m[3].toUpperCase() : null, mots, apt: apt ? String(apt).toUpperCase() : null,
+    types: typesDe(reste), dirs: dirsDe(reste) };
 }
 
 function score(ligne, req) {
@@ -126,7 +145,10 @@ function score(ligne, req) {
   let ok = 0;
   for (const w of req.mots) if (toks.some((t) => va(w, t))) ok++;
   const couverts = toks.filter((t) => req.mots.some((w) => va(w, t))).length / toks.length;
-  return ok / req.mots.length + 0.05 * couverts;     // à égalité, la rue dont le nom est le mieux couvert
+  const t = typesDe(ligne[3]), d = dirsDe(ligne[3]);
+  const bonusType = req.types.size && [...req.types].some((x) => t.has(x)) ? 0.08 : 0;
+  const bonusDir = req.dirs.size && [...req.dirs].some((x) => d.has(x)) ? 0.04 : 0;
+  return ok / req.mots.length + 0.05 * couverts + bonusType + bonusDir;   // à égalité : nom mieux couvert, bon type, bonne direction
 }
 
 /** Recherche + réponse. `deps` : { hmacHex, bumpCounter, feed } du worker. */
@@ -174,7 +196,7 @@ export async function efAdresse(env, url, request, deps) {
   const max = sansApt ? 40 : 12;
   if (sansApt) cand.sort((a, b) => b.l[9] - a.l[9]);
   const resultats = cand.slice(0, max).map(({ l }) => repondre(l, { prov, code, muniNom, dateValeurMuni, facteur, dateFacteur, stats, lang }));
-  return { resultats, sansApt, plus: cand.length > max ? cand.length - max : 0, delai: await delai(prov, code, lang, deps), source: SOURCES[prov] };
+  return { resultats, sansApt, plus: cand.length > max ? cand.length - max : 0, delai: await delai(prov, code, lang, deps), source: stats?.source ?? SOURCES[prov] };
 }
 
 function repondre(l, { prov, muniNom, dateValeurMuni, facteur, dateFacteur, stats, lang }) {

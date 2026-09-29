@@ -42,14 +42,18 @@ function quantiles(v) {
 const mode = (arr) => { const c = {}; let best = null; for (const x of arr) { c[x] = (c[x] ?? 0) + 1; if (best === null || c[x] > c[best]) best = x; } return best; };
 
 async function province(prov) {
-  const f = path.join(UNITES, `${prov}.ndjson.gz`);
+  // <prov>.ndjson.gz plus d'éventuels fichiers d'appoint <prov>2.ndjson.gz, <prov>3… (villes ajoutées plus tard).
+  const fichiersProv = fs.readdirSync(UNITES).filter((x) => new RegExp(`^${prov}\\d*\\.ndjson\\.gz$`).test(x)).sort().map((x) => path.join(UNITES, x));
+  // Mention de source par municipalité quand chaque ville a sa licence : <prov>-attributions.json = { muni: { nom, url } }.
+  const fa = path.join(UNITES, `${prov}-attributions.json`);
+  const attributions = fs.existsSync(fa) ? JSON.parse(fs.readFileSync(fa, 'utf8')) : {};
   const ff = path.join(UNITES, `${prov}-facteurs.json`);
   const { facteurs = {}, date: dateFacteur = null } = fs.existsSync(ff) ? JSON.parse(fs.readFileSync(ff, 'utf8')) : {};
 
   // 1. Tout en mémoire, par municipalité (2,6 M unités au Québec : ~1,5 Go de tas, passe avec --max-old-space-size).
   const munis = new Map();
   const parCle = new Map();
-  for await (const u of lignes(f)) {
+  for (const f of fichiersProv) for await (const u of lignes(f)) {
     if (!Number.isInteger(u.num) || !u.valeur || !USAGES.includes(u.usage) || EXCLURE[prov]?.(u)) continue;
     let m = munis.get(u.muni);
     if (!m) munis.set(u.muni, (m = { nom: u.muniNom, unites: [] }));
@@ -117,7 +121,7 @@ async function province(prov) {
       const r = ratios.get(`${code}|${us}`);
       if (r && r.length >= 20) ventes[us] = { n: r.length, q: quantiles(r), periode };
     }
-    fs.writeFileSync(path.join(dossier, 'stats.json'), JSON.stringify({ dateValeur, dateValeurAnt, groupes: stats, ventes }));
+    fs.writeFileSync(path.join(dossier, 'stats.json'), JSON.stringify({ dateValeur, dateValeurAnt, groupes: stats, ventes, source: attributions[code] ?? null }));
     fichiers++;
     // Nom inconnu du répertoire (3 codes au Québec en 2026) : on n'invente pas de nom.
     const nom = !m.nom || m.nom === code ? `Municipalité (code ${code})` : m.nom;
@@ -130,5 +134,5 @@ async function province(prov) {
 }
 
 const demandees = process.argv.slice(2);
-const presentes = fs.readdirSync(UNITES).filter((f) => /^[a-z]{2}\.ndjson\.gz$/.test(f)).map((f) => f.slice(0, 2));
+const presentes = [...new Set(fs.readdirSync(UNITES).filter((f) => /^[a-z]{2}\d*\.ndjson\.gz$/.test(f)).map((f) => f.slice(0, 2)))];
 for (const p of demandees.length ? demandees : presentes) await province(p);
