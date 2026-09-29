@@ -168,8 +168,13 @@ export async function efAdresse(env, url, request, deps) {
   const top = cand[0].s;
   cand = cand.filter((c) => c.s >= top - 0.01).slice(0, 40);
 
-  const resultats = cand.slice(0, 12).map(({ l }) => repondre(l, { prov, code, muniNom, dateValeurMuni, facteur, dateFacteur, stats, lang }));
-  return { resultats, plus: cand.length > 12 ? cand.length - 12 : 0, delai: await delai(prov, code, lang, deps), source: SOURCES[prov] };
+  // Condos sans numéro de logement dans la source (N.-É.) : toutes les unités, triées par valeur,
+  // pour qu'on reconnaisse la sienne d'après la valeur de son avis.
+  const sansApt = cand.every((c) => !c.l[5]);
+  const max = sansApt ? 40 : 12;
+  if (sansApt) cand.sort((a, b) => b.l[9] - a.l[9]);
+  const resultats = cand.slice(0, max).map(({ l }) => repondre(l, { prov, code, muniNom, dateValeurMuni, facteur, dateFacteur, stats, lang }));
+  return { resultats, sansApt, plus: cand.length > max ? cand.length - max : 0, delai: await delai(prov, code, lang, deps), source: SOURCES[prov] };
 }
 
 function repondre(l, { prov, muniNom, dateValeurMuni, facteur, dateFacteur, stats, lang }) {
@@ -218,7 +223,7 @@ const arrondir = (x) => Math.round(x / 5000) * 5000;
 // Mentions exigées par chaque licence, mot pour mot (voir unites/<prov>-SOURCE.md).
 const SOURCES = {
   qc: { nom: 'Rôles d’évaluation foncière du Québec, MAMH (Données Québec, CC BY 4.0)', url: 'https://www.donneesquebec.ca/recherche/dataset/roles-d-evaluation-fonciere-du-quebec' },
-  ns: { nom: 'Property Valuation Services Corporation (PVSC), Open Data & Information Government Licence', url: 'https://www.thedatazone.ca/' },
+  ns: { nom: 'PVSC — Contains information licensed under the Open Data & Information Government Licence – PVSC & Participating Municipalities', url: 'https://www.thedatazone.ca/' },
   nb: { nom: 'Contains information licenced under the GeoNB Open Data Licence (Service New Brunswick)', url: 'https://geonb.snb.ca/documents/license/geonb-odl_en.pdf' },
   ab: { nom: 'City of Calgary / City of Edmonton Open Data (Open Government Licence)', url: 'https://data.calgary.ca/' },
   mb: { nom: 'City of Winnipeg — Contains information licensed under the Open Government Licence – Canada', url: 'https://data.winnipeg.ca/Assessment-Taxation-Corporate/Assessment-Parcels/d4mq-wa44' },
