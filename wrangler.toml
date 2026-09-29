@@ -2,6 +2,16 @@ name = "payotte-mcp"
 main = "src/index.js"
 compatibility_date = "2026-07-01"
 
+# Réponse immédiate du bandeau d'évaluation foncière (29 sept. 2026) : unités et statistiques
+# construites par scripts/construire-ef-donnees.mjs. NON versionnées (dépôt public, ~200 Mo) :
+# relancer le script avant un `wrangler deploy` depuis une autre machine.
+# run_worker_first : le worker reçoit TOUTES les requêtes ; les fichiers ne se lisent que par
+# env.ASSETS depuis src/efAdresse.js (jamais servis en vrac au public).
+[assets]
+directory = "./ef-donnees"
+binding = "ASSETS"
+run_worker_first = true
+
 # Palier gratuit Cloudflare Workers : 100 000 requêtes/jour — largement suffisant.
 # URL après déploiement : https://payotte-mcp.<sous-domaine>.workers.dev/mcp
 

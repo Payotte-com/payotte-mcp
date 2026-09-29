@@ -7,3 +7,5 @@ node_modules/
 # Élargi de `src/*.bak-*` à toute la racine le 2026-08-26 (server.json,
 # package.json ont aussi leurs sauvegardes).
 *.bak-*
+# données du bandeau EF, reconstruites par scripts/construire-ef-donnees.mjs (29 sept. 2026)
+ef-donnees/

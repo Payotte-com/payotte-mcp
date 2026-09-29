@@ -21,6 +21,7 @@
  */
 
 import { handleDossierRevision } from './dossierRevision.js';
+import { efAdresse, efMunis } from './efAdresse.js';
 const SITE = 'https://payotte.com';
 const WORKER_ORIGIN = 'https://payotte-mcp.payotte.workers.dev';
 const ATTRIBUTION =
@@ -6046,7 +6047,9 @@ export default {
         ligne("Valeur à l'avis", 'Value on notice', b.valeurRole),
         ligne('Valeur que j’estime juste', 'Value I think is right', b.valeurEstimee),
         ligne('Projet', 'Plan', b.projet),
-        propre(b.note, 1000) ? `\n${propre(b.note, 1000)}` : null,
+        propre(b.note, 600) ? `\n${propre(b.note, 600)}` : null,
+        // Résumé de la réponse immédiate (chiffres publics du rôle), s'il y en a eu une.
+        b.resume ? `\n${fr ? 'Ce que Payotte lui a montré (données publiques du rôle)' : 'What Payotte showed them (public roll data)'} :\n${String(b.resume).slice(0, 900)}` : null,
       ].filter(Boolean).join('\n');
       const slug = propre(b.slug, 120);
       const prof = slug.split('--')[0];
@@ -6061,6 +6064,15 @@ export default {
       const mois = new Date().toISOString().slice(0, 7);
       await bumpCounter(env, `ef:d:${type}:${propre(b.province, 60)}:${mois}`, 400 * 86400);
       return json({ ok: true, pendingConfirmation: true });
+    }
+    // Réponse immédiate à l'adresse (bandeau EF) — src/efAdresse.js.
+    if (request.method === 'GET' && url.pathname === '/ef/munis') {
+      const l = await efMunis(env, String(url.searchParams.get('prov') ?? ''));
+      return l ? new Response(JSON.stringify(l), { headers: { ...CORS, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=86400' } }) : json({ error: 'not-covered' }, 404);
+    }
+    if (request.method === 'GET' && url.pathname === '/ef/adresse') {
+      const r = await efAdresse(env, url, request, { hmacHex, bumpCounter, feed });
+      return json(r, r.error ? 400 : 200);
     }
     if (request.method === 'GET' && url.pathname === '/ef/renvoi') {
       const u = String(url.searchParams.get('u') ?? '');
