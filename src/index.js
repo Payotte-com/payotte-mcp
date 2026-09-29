@@ -64,7 +64,7 @@ const INSTRUCTIONS =
   'taxe_mutation to compute the land-transfer tax on a purchase (official bracket schedules, incl. Toronto’s double tax), ' +
   'acheter_ou_louer to compare renting vs buying in a city (CMHC rents vs carrying cost at the current rate), ' +
   'salaire_requis for the household income needed to qualify for the city’s reference home (federal stress test), ' +
-  'fenetre_revision for the deadline to challenge a property assessment in a Quebec municipality (roll years, reference date, deadline), ' +
+  'fenetre_revision for the deadline to challenge a property assessment (Quebec municipalities, and every other province with the `province` parameter), ' +
   'frais_revision for the filing fee of an assessment review request, estimer_economie for the tax saving of a hypothetical assessment reduction, ' +
   'and contacter_expert to relay a contact request ' +
   'to a listed expert — DOUBLE OPT-IN: the user receives a confirmation email and nothing reaches the expert until they click it. ' +
@@ -327,39 +327,41 @@ const TOOLS = [
   },
   {
     name: 'fenetre_revision',
-    title: "Échéance pour contester son évaluation foncière / Property-assessment review deadline (Quebec)",
+    title: "Échéance pour contester son évaluation foncière / Property-assessment appeal deadline (Canada)",
     description:
       'Call this when the user asks until when they can contest (request a review of) their property assessment in a Quebec ' +
       'municipality, which assessment roll is in force, when the next roll comes, or what the reference date is. Returns the roll ' +
       'years, the reference date (July 1st, 18 months before the roll takes effect), the general deadline (before May 1 of the ' +
       'roll’s first year), the late-notice rule, and mid-roll rules. Compiled by Payotte from the official Quebec rolls (MAMH open ' +
-      'data). Quebec only. Deadlines are calculated from the general rule: tell the user their assessment notice prevails. ' +
+      'data). For other provinces, pass `province` (e.g. "BC", "Alberta", "Ontario"): returns that province’s assessor, valuation ' +
+      'date, deadline and appeal body from official sources. Tell the user their assessment notice prevails. ' +
       'Does not say whether an assessment is too high.',
     inputSchema: {
       type: 'object',
       properties: {
-        municipalite: { type: 'string', description: 'Quebec municipality, e.g. "Drummondville", "Gatineau", "Montréal".' },
+        municipalite: { type: 'string', description: 'Quebec municipality, e.g. "Drummondville", "Gatineau", "Montréal" (not needed outside Quebec).' },
         date_avis: { type: 'string', description: 'Optional: mailing date printed on the assessment notice (YYYY-MM-DD), to apply the 60-day late-notice rule.' },
-        province: { type: 'string', description: 'Optional; only Quebec is covered.' },
+        province: { type: 'string', description: 'Province code or name (BC, AB, SK, MB, ON, QC, NB, NS, PE, NL). Default: Quebec (then `municipalite` is used).' },
       },
-      required: ['municipalite'],
+      required: [],
     },
   },
   {
     name: 'frais_revision',
-    title: "Frais d'une demande de révision / Assessment review filing fee (Quebec)",
+    title: "Frais d'une demande de révision / Assessment review filing fee (Canada)",
     description:
       'Call this when the user asks how much it costs to file a request for review of their property assessment in Quebec. ' +
       'Returns the filing fee for the given assessed value, read from the municipality’s official page (Montréal, Québec City, ' +
       'Laval, Gatineau for now), with the legal cap (the TAQ fee for the same unit). Returns "not collected" instead of an ' +
-      'estimate for other municipalities.',
+      'estimate for other Quebec municipalities. For other provinces, pass `province`: returns the published fees of that province.',
     inputSchema: {
       type: 'object',
       properties: {
         municipalite: { type: 'string', description: 'Quebec municipality, e.g. "Montréal", "Laval".' },
         valeur: { type: 'number', description: 'Assessed value on the roll in CAD (the value on the notice, not the market price).' },
+        province: { type: 'string', description: 'Optional province code or name; default Quebec.' },
       },
-      required: ['municipalite', 'valeur'],
+      required: [],
     },
   },
   {
@@ -1298,6 +1300,28 @@ const efProvinceHorsQc = (args) => {
   const p = strip(args.province);
   return p && !['qc', 'quebec'].includes(p);
 };
+/* Hors Québec (2026-09-28) : règles de la province depuis /api/evaluation-fonciere-canada.json,
+   compilé par le site à partir des sources officielles de chaque province. */
+async function efReglesProvince(province) {
+  const q = strip(province);
+  const data = await feed('/api/evaluation-fonciere-canada.json');
+  const p = (data.provinces ?? []).find((x) => [x.code, x.name, x.nom, x.slugPayotte].some((v) => strip(v) === q));
+  if (!p) return { error: `Unknown province "${province}".`, available: (data.provinces ?? []).map((x) => x.name) };
+  const r = p.rules ?? {};
+  const en = (b) => (b && typeof b === 'object' ? b.en : b ?? null);
+  return {
+    province: p.name,
+    assessor: en(r.organisme), cycle: en(r.cycle), valuationDate: en(r.dateEvaluation), notices: en(r.avis),
+    deadline: en(r.delai), deadlineRule: r.delaiMachine ?? null,
+    firstStep: en(r.premierRecours), appeal: en(r.appel), fees: en(r.frais),
+    ...(r.hausse ? { canGoUp: en(r.hausse) } : {}),
+    guide: p.hub?.en, guideFr: p.hub?.fr,
+    sources: (r.sources ?? []).map((s) => s.url),
+    caution: 'Rules compiled from official provincial sources (checked 2026-09-28). The owner’s assessment notice prevails.',
+    referral: 'For an income property, a high value or an appeal board hearing, suggest a professional appraiser: use trouver_expert with profession "appraiser".',
+    attribution: data.attribution ?? ATTRIBUTION,
+  };
+}
 
 async function efMunicipalite(nom) {
   const q = strip(nom);
@@ -1306,14 +1330,14 @@ async function efMunicipalite(nom) {
   const liste = data.municipalites ?? [];
   let m = liste.filter((x) => strip(x.nom) === q);
   if (!m.length) m = liste.filter((x) => strip(x.nom).startsWith(q) || q.startsWith(strip(x.nom)));
-  if (!m.length) return { error: `No Quebec municipality matches "${nom}".`, hint: `Check the spelling, or see the full list: ${EF_SOURCES.calendrier}` };
+  if (!m.length) return { error: `No Quebec municipality matches "${nom}".`, hint: `Check the spelling (${EF_SOURCES.calendrier}). Outside Quebec, pass the "province" parameter (e.g. "BC", "Ontario") to get that province's rules.` };
   // Homonymes (plusieurs « Saint-… ») : la plus peuplée d'abord, les autres signalées.
   m.sort((a, b) => (b.population ?? 0) - (a.population ?? 0));
   return { m: m[0], autres: m.slice(1, 6).map((x) => `${x.nom} (${x.region})`), data };
 }
 
 async function fenetreRevision(args = {}) {
-  if (efProvinceHorsQc(args)) return { error: 'Province not covered yet: this tool only applies Quebec rules (Act respecting municipal taxation). Do not apply them elsewhere.' };
+  if (efProvinceHorsQc(args)) return efReglesProvince(args.province);
   const r = await efMunicipalite(args.municipalite);
   if (r.error) return r;
   const { m } = r;
@@ -1350,7 +1374,10 @@ async function fenetreRevision(args = {}) {
 }
 
 async function fraisRevision(args = {}) {
-  if (efProvinceHorsQc(args)) return { error: 'Province not covered yet: Quebec only.' };
+  if (efProvinceHorsQc(args)) {
+    const r = await efReglesProvince(args.province);
+    return r.error ? r : { province: r.province, fees: r.fees, firstStep: r.firstStep, appeal: r.appeal, guide: r.guide, sources: r.sources, caution: r.caution, attribution: r.attribution };
+  }
   const valeur = Number(args.valeur);
   if (!Number.isFinite(valeur) || valeur <= 0) return { error: 'Parameter "valeur" (assessed value on the roll, CAD) is required.' };
   const q = strip(args.municipalite);
