@@ -3472,8 +3472,12 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
 
   // `kind` vaut 'expert' ou 'prospect'. Défaut 'expert' : un appel non qualifié garde le
   // comportement d'avant (part entière) plutôt que de se retrouver bridé en silence.
+  // Vrai tant que la reprise des marques perdues (voir `repriseResend`) n'a pas fini : les
+  // prospects attendent, les experts (marqués par `intro:`) continuent.
+  let repriseBloque = false;
   const canSend = (kind = 'expert') => dryRun
-    || (left() - lotsAPrevoir() >= 0
+    || (!(kind === 'prospect' && repriseBloque)
+        && left() - lotsAPrevoir() >= 0
         && report.attempts < (kind === 'prospect' ? partProspects : partPassage)
         && daySoFar + report.attempts < dayCap);         // et jamais plus que le jour
 
@@ -3793,6 +3797,63 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
      forme actuelle. Quelques dizaines de clés là où il y en avait des milliers.
      Les deux alimentent le MÊME ensemble. À supprimer seulement après le 1er octobre,
      quand le cycle repart de zéro et qu'il ne reste plus d'ancienne marque vivante. */
+  /* ── REPRISE DES MARQUES PERDUES, SEPTEMBRE 2026 SEULEMENT (29 sept. 2026) ─────────
+     Du 22 au 29 sept., la clé `servi:` ne portait que l'heure : le passage de :30 écrasait
+     les lots de :00 (voir `heureUTC`). Resend a reçu 21 067 envois pour 16 294
+     destinataires ; ~2 000 personnes servies n'ont plus de marque et repartiraient.
+     Resend fait foi : chaque passage lit quelques pages de SON registre (`GET /emails`,
+     100 par page, du plus récent au plus ancien), garde le curseur et les adresses dans
+     `reprise-resend:{cycle}`, et quand le mois est lu en entier écrit UN lot
+     `servi:{cycle}:reprise-resend` = toutes les clés du carnet dont l'adresse a déjà reçu
+     un courriel. Tant que ce n'est pas fini, aucun prospect ne part (`repriseBloque`).
+     Rien ne sort de Cloudflare ni de Resend. Inerte à partir d'octobre (cycle neuf). */
+  if (env.SUBSCRIBERS && env.RESEND_API_KEY && cycle === '2026-09' && !dryRun) {
+    const CLE_REPRISE = `reprise-resend:${cycle}`;
+    let etat = null;
+    try { ctr.kv++; etat = JSON.parse((await env.SUBSCRIBERS.get(CLE_REPRISE)) || 'null'); } catch { etat = null; }
+    etat = etat || { apres: null, emails: [], pages: 0, fini: false };
+    if (!etat.fini) {
+      const vus = new Set(etat.emails);
+      const debutCycle = `${cycle}-01`;
+      const t0 = Date.now();
+      let finLecture = false;
+      // ~2 appels/s chez Resend, et le passage doit rester loin des 30 s.
+      while (!finLecture && Date.now() - t0 < 12000 && left() > 10) {
+        const q = new URLSearchParams({ limit: '100' });
+        if (etat.apres) q.set('after', etat.apres);
+        ctr.subs++;
+        const r = await fetch(`https://api.resend.com/emails?${q}`, {
+          headers: { Authorization: `Bearer ${env.RESEND_API_KEY}` },
+        });
+        if (r.status === 429) { await new Promise((ok) => setTimeout(ok, 1100)); continue; }
+        if (!r.ok) { etat.erreur = `Resend GET /emails HTTP ${r.status}`; break; }
+        const j = await r.json();
+        const lignes = Array.isArray(j?.data) ? j.data : [];
+        for (const m of lignes) {
+          if (String(m.created_at || '').slice(0, 10) < debutCycle) { finLecture = true; continue; }
+          for (const to of [].concat(m.to || [])) vus.add(String(to).trim().toLowerCase());
+        }
+        etat.pages++;
+        if (lignes.length) etat.apres = lignes[lignes.length - 1].id;
+        if (!j?.has_more || !lignes.length) finLecture = true;
+        await new Promise((ok) => setTimeout(ok, 520));
+      }
+      etat.emails = [...vus];
+      if (finLecture && !etat.erreur) {
+        const carnet = await kvListe('s:');
+        const ids = carnet.filter((k) => vus.has(k.slice(k.lastIndexOf(':') + 1).toLowerCase()))
+          .map((k) => `prospect:${k}`);
+        ctr.kv++;
+        await env.SUBSCRIBERS.put(`servi:${cycle}:reprise-resend`, JSON.stringify(ids), { expirationTtl: CYCLE_TTL });
+        etat.fini = true;
+        etat.marques = ids.length;
+      }
+      ctr.kv++;
+      await env.SUBSCRIBERS.put(CLE_REPRISE, JSON.stringify(etat), { expirationTtl: CYCLE_TTL });
+    }
+    repriseBloque = !etat.fini;
+    report.reprise = { pages: etat.pages, adresses: etat.emails.length, fini: etat.fini, marques: etat.marques ?? null, erreur: etat.erreur ?? null };
+  }
   const done = new Set(env.SUBSCRIBERS ? await kvListe(`sent:${cycle}:`) : []);
   /* ── LE CUMUL : UNE LECTURE AU LIEU D'UNE PAR LOT (28 sept. 2026) ─────────────────
      Chaque lot `servi:` coûtait une lecture à CHAQUE passage, et les lots s'accumulent
