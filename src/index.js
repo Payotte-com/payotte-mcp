@@ -5520,7 +5520,7 @@ async function runSequence(env, { at = new Date(), dryRun = false } = {}) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
@@ -6125,8 +6125,42 @@ export default {
       }).catch(() => null);
       const mois = new Date().toISOString().slice(0, 7);
       await bumpCounter(env, `ef:d:${type}:${propre(b.province, 60)}:${mois}`, 400 * 86400);
+      // Le verdict que la personne avait sous les yeux : la conversion « nettement au-dessus » → formulaire.
+      const vu = ['eleve', 'au-dessus', 'norme', 'plusieurs'].includes(b.signal) ? b.signal : 'aucun';
+      await bumpCounter(env, `efdv:${type}:${propre(b.province, 60)}:${vu}:${mois}`, 400 * 86400);
       return json({ ok: true });
     }
+    // ── Mesure du bandeau (29 sept. 2026) : compteurs par verdict + avis à Grégory à chaque
+    // recherche aboutie. RIEN de personnel : ni adresse, ni valeur, ni IP — /privacy promet que
+    // les recherches d'adresse ne sont pas conservées, et un courriel dans une boîte en serait une.
+    // Plafond de 100 avis par jour (un robot ne remplit pas la boîte) ; au-delà, seuls les compteurs montent.
+    const efMesurer = async (niveau, prov, bouton, verdict, muni, usage) => {
+      const mois = new Date().toISOString().slice(0, 7), jour = new Date().toISOString().slice(0, 10);
+      await bumpCounter(env, `efs:${niveau}:${prov}:${bouton}:${verdict}:${mois}`, 400 * 86400);
+      if (!env.RESEND_API_KEY || !env.COUNTERS) return;
+      if ((await bumpCounter(env, `efn:${jour}`, 2 * 86400)) > 100) return;
+      const V = { eleve: 'NETTEMENT AU-DESSUS', 'au-dessus': 'un peu au-dessus', norme: 'dans la norme', aucun: 'sans verdict', plusieurs: 'plusieurs unités à choisir' };
+      const heure = new Date().toLocaleString('fr-CA', { timeZone: 'America/Toronto', dateStyle: 'short', timeStyle: 'short' });
+      await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: env.MAIL_FROM || 'Payotte <relais@payotte.com>',
+          to: [REPORT_TO],
+          subject: `[Bandeau EF · recherche] ${bouton === 'contestation' ? 'Statut' : 'Estimation'} · ${muni} · ${V[verdict] ?? verdict}`,
+          text: [
+            `Une recherche vient d'aboutir dans le bandeau (${heure}).`, '',
+            `Bouton : ${bouton === 'contestation' ? 'Voir le statut de l’évaluation' : 'Voir une estimation gratuite'}`,
+            `Niveau : ${niveau === 'adresse' ? 'réponse à l’adresse' : 'filet Statistique Canada (valeur saisie)'}`,
+            `Province : ${prov.toUpperCase()} · Municipalité : ${muni}`,
+            `Type : ${usage || '—'} · Verdict : ${V[verdict] ?? verdict}`, '',
+            'Aucune adresse ni valeur n’est transmise (engagement de /privacy).',
+            `Totaux du mois : ${WORKER_ORIGIN}/ef/bandeau-stats?key=… (clé CONTACTS_TOKEN)`,
+          ].join('\n'),
+        }),
+      }).catch(() => null);
+    };
+
     // Réponse immédiate à l'adresse (bandeau EF) — src/efAdresse.js.
     if (request.method === 'GET' && url.pathname === '/ef/munis') {
       const l = await efMunis(env, String(url.searchParams.get('prov') ?? ''));
@@ -6138,10 +6172,20 @@ export default {
     }
     if (request.method === 'GET' && url.pathname === '/ef/filet') {
       const r = await efFilet(env, url, { feed });
+      if (!r.error) {
+        const bouton = url.searchParams.get('t') === 'contestation' ? 'contestation' : 'estimation';
+        ctx?.waitUntil(efMesurer('filet', String(url.searchParams.get('prov')), bouton, r.signal ?? 'aucun', r.municipalite, r.groupe));
+      }
       return json(r, r.error ? 400 : 200);
     }
     if (request.method === 'GET' && url.pathname === '/ef/adresse') {
       const r = await efAdresse(env, url, request, { hmacHex, bumpCounter, feed });
+      if (!r.error && r.resultats?.length) {
+        const x = r.resultats[0];
+        const bouton = url.searchParams.get('t') === 'contestation' ? 'contestation' : 'estimation';
+        const verdict = r.resultats.length > 1 ? 'plusieurs' : (x.signal ?? 'aucun');
+        ctx?.waitUntil(efMesurer('adresse', String(url.searchParams.get('prov')), bouton, verdict, x.municipalite, x.type));
+      }
       return json(r, r.error ? 400 : 200);
     }
     if (request.method === 'GET' && url.pathname === '/ef/renvoi') {
@@ -6157,7 +6201,7 @@ export default {
     if (request.method === 'GET' && url.pathname === '/ef/bandeau-stats') {
       if (!env.CONTACTS_TOKEN || url.searchParams.get('key') !== env.CONTACTS_TOKEN) return json({ error: 'unauthorized' }, 401);
       const out = {};
-      for (const pre of ['ef:d:', 'ef:c:', 'ef:o:']) {
+      for (const pre of ['ef:d:', 'ef:c:', 'ef:o:', 'efs:', 'efdv:']) {
         const l = await env.COUNTERS.list({ prefix: pre });
         for (const k of l.keys) out[k.name] = parseInt((await env.COUNTERS.get(k.name)) ?? '0', 10);
       }
