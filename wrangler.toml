@@ -113,7 +113,9 @@ MAIL_FROM_OUTREACH = "Payotte <outreach@payotte.com>"
 #
 # Format : « HH:PROV,PROV;HH:PROV » en heures UTC. Vide (ou absent) = comportement
 # d'avant, un seul passage par province et par jour.
-HEURES_RENFORT = "12:QC,ON;18:QC,ON"
+# 29 sept. 2026, demande de Grégory (« un paquet à 14 h, 14 h 30 et 15 h », banques QC et ON) :
+# 19 h UTC (15 h de l'Est) ne servait personne ; il sert désormais QC et ON comme 18 h.
+HEURES_RENFORT = "12:QC,ON;18:QC,ON;19:QC,ON"
 
 # ── BULLETIN PROVINCIAL — INTERRUPTEUR FERMÉ (branché le 23 sept. 2026) ─────────
 # Les 5 423 clés `s:prov-{province}:{courriel}` (municipalités sans chiffres de marché)
@@ -209,7 +211,11 @@ id = "6b341a2d876b49d78bb5651936ccac8e"
 # 21 h UTC il est 17 h au Québec, donc le Québec n'est pas servi.
 # ⚠ TOUTE MODIFICATION ICI DOIT SE REFLÉTER DANS `CRON_DERNIERE_HEURE_UTC` (src/index.js),
 # sinon le partage du plafond compte des passages qui n'existent pas.
-crons = ["0,30 12-21 * * *"]
+# 29 sept. 2026 : passages SUPPLÉMENTAIRES toutes les 10 minutes de 18 h à 19 h 50 UTC (14 h à
+# 15 h 50 de l'Est, heures de renfort QC/ON). Le débit d'un passage est borné par le budget KV
+# d'une invocation (~180 courriels), pas par le plafond du jour : plus d'invocations = plus
+# d'envois. Jamais deux à la même minute : ils se suivent, chacun marque ses envois avant le suivant.
+crons = ["0,30 12-21 * * *", "10,20,40,50 18-19 * * *"]
 
 # ── JOURNAUX (posé le 9 sept. 2026) ──────────────────────────────────────────────
 # Sans ce bloc, `console.log` et `console.error` ne vont NULLE PART : ils ne sont visibles
