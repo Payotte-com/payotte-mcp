@@ -100,6 +100,7 @@ const PROVINCE_ALIASES = {
   'saskatchewan': ['saskatchewan', 'sk'],
   'new-brunswick': ['new-brunswick', 'nouveau-brunswick', 'nb'],
   'newfoundland-and-labrador': ['newfoundland-and-labrador', 'newfoundland', 'terre-neuve', 'terre-neuve-et-labrador', 'nl'],
+  'prince-edward-island': ['prince-edward-island', 'ile-du-prince-edouard', 'pei', 'pe'],
 };
 
 function resolveAlias(table, value) {
@@ -1117,6 +1118,8 @@ async function contacterExpert(args = {}, env = {}) {
     slug: expert.slug, nom, courriel,
     tel: args.client_telephone ? String(args.client_telephone).trim() : null,
     message, lang: expert.lang, created: new Date().toISOString(),
+    origine: args.origine === 'bandeau-ef' ? 'bandeau-ef' : 'ia',
+    efType: args.ef_type ?? null, efProv: args.ef_province ?? null,
   }), { expirationTtl: PENDING_TTL });
 
   const frC = expert.lang === 'fr';
@@ -1133,7 +1136,9 @@ async function contacterExpert(args = {}, env = {}) {
       text: (frC
         ? [
             `Bonjour ${nom},`, '',
-            `Votre assistant IA a préparé, avec votre accord, une demande de contact pour ${expert.name} (${expert.professionLabel}, ${expert.sectorName}, ${expert.cityName}).`, '',
+            args.origine === 'bandeau-ef'
+              ? `Vous avez rempli sur payotte.com une demande pour ${expert.name} (${expert.professionLabel}, ${expert.sectorName}, ${expert.cityName}).`
+              : `Votre assistant IA a préparé, avec votre accord, une demande de contact pour ${expert.name} (${expert.professionLabel}, ${expert.sectorName}, ${expert.cityName}).`, '',
             `Votre message :`, message, '',
             `Pour la transmettre, cliquez (valide 48 h) :`, confirmUrl, '',
             `Si vous n'êtes pas à l'origine de cette demande, ignorez ce courriel — RIEN ne sera envoyé sans ce clic.`, '',
@@ -1141,7 +1146,9 @@ async function contacterExpert(args = {}, env = {}) {
           ]
         : [
             `Hello ${nom},`, '',
-            `Your AI assistant prepared, with your approval, a contact request for ${expert.name} (${expert.professionLabel}, ${expert.sectorName}, ${expert.cityName}).`, '',
+            args.origine === 'bandeau-ef'
+              ? `You filled in a request on payotte.com for ${expert.name} (${expert.professionLabel}, ${expert.sectorName}, ${expert.cityName}).`
+              : `Your AI assistant prepared, with your approval, a contact request for ${expert.name} (${expert.professionLabel}, ${expert.sectorName}, ${expert.cityName}).`, '',
             `Your message:`, message, '',
             `To send it, click (valid 48 h):`, confirmUrl, '',
             `If you did not initiate this request, ignore this email — NOTHING will be sent without this click.`, '',
@@ -1195,18 +1202,25 @@ async function confirmRelay(env, url) {
   const eN = await bumpCounter(env, `e:${expert.slug}:${day}`, 3 * 86400);
   if (eN > DAY_CAP_EXPERT) return subPage(pending.lang, fr ? 'Réessayez demain' : 'Try again tomorrow', fr ? 'Cet expert a atteint son maximum de demandes relayées aujourd’hui — recliquez demain.' : 'This expert reached today’s relayed-request maximum — click again tomorrow.');
   await bumpCounter(env, `m:${expert.slug}:${month}`, 400 * 86400); // futur rapport « les IA t'ont recommandé »
+  if (pending.origine === 'bandeau-ef') await bumpCounter(env, `ef:c:${pending.efType}:${pending.efProv}:${month}`, 400 * 86400); // bandeau EF : demandes CONFIRMÉES
   // Trace de consentement MINIMALE (audit §8d, compatible « rien conservé ») :
   // horodatage + empreinte HMAC du courriel + expert — JAMAIS le contenu.
   await env.COUNTERS.put(`cl:${token}`, JSON.stringify({ ts: new Date().toISOString(), rh: (await hmacHex(env, courriel)).slice(0, 16), slug: expert.slug }), { expirationTtl: 400 * 86400 });
 
   const frX = contact.lang === 'fr';
-  const subject = frX
+  const subject = pending.origine === 'bandeau-ef'
+    ? (frX
+        ? `${pending.efType === 'contestation' ? 'Évaluation foncière contestée' : "Demande d'estimation"} via Payotte — ${nom}`
+        : `${pending.efType === 'contestation' ? 'Assessment appeal' : 'Home estimate request'} via Payotte — ${nom}`)
+    : frX
     ? `Nouvelle demande de contact via Payotte — ${nom}`
     : `New contact request via Payotte — ${nom}`;
   const lines = frX
     ? [
         `Bonjour ${contact.name},`, '',
-        `Un client vous envoie une demande de contact via votre fiche Payotte (${expert.url}), préparée par son assistant IA et CONFIRMÉE par le client lui-même (clic sur un lien reçu à son adresse).`, '',
+        pending.origine === 'bandeau-ef'
+          ? `Un propriétaire vous envoie une demande ${pending.efType === 'contestation' ? "au sujet de son évaluation foncière (il la trouve trop haute)" : "d'estimation de sa propriété"}, depuis les pages Évaluation foncière de Payotte, qui l'ont dirigé vers votre fiche (${expert.url}). Il a CONFIRMÉ sa demande lui-même (clic sur un lien reçu à son adresse). Payotte ne touche aucune commission.`
+          : `Un client vous envoie une demande de contact via votre fiche Payotte (${expert.url}), préparée par son assistant IA et CONFIRMÉE par le client lui-même (clic sur un lien reçu à son adresse).`, '',
         `Nom : ${nom}`, `Courriel : ${courriel}`,
         ...(pending.tel ? [`Téléphone : ${pending.tel}`] : []), '',
         `Message :`, message, '',
@@ -1215,7 +1229,9 @@ async function confirmRelay(env, url) {
       ]
     : [
         `Hello ${contact.name},`, '',
-        `A client is sending you a contact request through your Payotte profile (${expert.url}), prepared by their AI assistant and CONFIRMED by the client themselves (click on a link received at their address).`, '',
+        pending.origine === 'bandeau-ef'
+          ? `A homeowner is sending you a request ${pending.efType === 'contestation' ? 'about their property assessment (they think it is too high)' : 'for an estimate of their home'}, from Payotte's property-assessment pages, which pointed them to your profile (${expert.url}). They CONFIRMED the request themselves (click on a link received at their address). Payotte takes no commission.`
+          : `A client is sending you a contact request through your Payotte profile (${expert.url}), prepared by their AI assistant and CONFIRMED by the client themselves (click on a link received at their address).`, '',
         `Name: ${nom}`, `Email: ${courriel}`,
         ...(pending.tel ? [`Phone: ${pending.tel}`] : []), '',
         `Message:`, message, '',
@@ -6009,6 +6025,63 @@ export default {
     // Bulletin de marché (formulaire zéro-JS des pages ville).
     // Dossier de révision d'évaluation foncière (2026-09-28) — ÉTEINT tant que EF_DOSSIER_ACTIF
     // et les secrets Stripe ne sont pas posés ; voir src/dossierRevision.js.
+    // ── BANDEAU À DEUX CHOIX des pages d'évaluation foncière (29 sept. 2026) ─────────────
+    // Le site (composant BandeauEF.astro) poste ici ; on passe par contacterExpert, donc même
+    // double confirmation, mêmes plafonds, rien de conservé après 48 h. Trois compteurs à part,
+    // par mois et par province : demandes créées (ef:d), confirmées (ef:c, dans confirmRelay)
+    // et renvois vers l'ordre là où Payotte n'a personne (ef:o) — c'est la carte du recrutement.
+    if (request.method === 'POST' && url.pathname === '/ef/demande') {
+      const b = await request.json().catch(() => null);
+      if (!b || typeof b !== 'object') return json({ error: 'bad-request' }, 400);
+      if (b.site) return json({ ok: true });                       // pot de miel : un robot a rempli le champ caché
+      const type = b.type === 'contestation' ? 'contestation' : 'estimation';
+      const propre = (v, n = 200) => String(v ?? '').replace(/[\r\n]+/g, ' ').slice(0, n).trim();
+      const fr = b.lang !== 'en';
+      const ligne = (lf, le, v) => (propre(v) ? `${fr ? lf : le} : ${propre(v)}` : null);
+      const message = [
+        fr ? (type === 'contestation' ? 'Objet : je trouve mon évaluation foncière trop haute.' : "Objet : je voudrais une estimation de ma propriété.")
+           : (type === 'contestation' ? 'Subject: I think my property assessment is too high.' : 'Subject: I would like an estimate of my home.'),
+        ligne('Propriété', 'Property', b.adresse),
+        ligne('Type', 'Type', b.typePropriete),
+        ligne("Valeur à l'avis", 'Value on notice', b.valeurRole),
+        ligne('Valeur que j’estime juste', 'Value I think is right', b.valeurEstimee),
+        ligne('Projet', 'Plan', b.projet),
+        propre(b.note, 1000) ? `\n${propre(b.note, 1000)}` : null,
+      ].filter(Boolean).join('\n');
+      const slug = propre(b.slug, 120);
+      const prof = slug.split('--')[0];
+      if (!['real-estate-broker', 'appraiser'].includes(prof)) return json({ error: 'bad-expert' }, 400);
+      const r = await contacterExpert({
+        consentement: b.consentement === true,
+        client_nom: propre(b.nom, 120), client_courriel: propre(b.courriel), client_telephone: propre(b.tel, 40) || undefined,
+        message, profession: prof, province: propre(b.province, 60), ville: propre(b.ville, 80), secteur: propre(b.secteur, 80),
+        origine: 'bandeau-ef', ef_type: type, ef_province: propre(b.province, 60),
+      }, env);
+      if (r.error) return json({ error: r.error }, 400);
+      const mois = new Date().toISOString().slice(0, 7);
+      await bumpCounter(env, `ef:d:${type}:${propre(b.province, 60)}:${mois}`, 400 * 86400);
+      return json({ ok: true, pendingConfirmation: true });
+    }
+    if (request.method === 'GET' && url.pathname === '/ef/renvoi') {
+      const u = String(url.searchParams.get('u') ?? '');
+      const permis = ['https://oeaq.qc.ca/', 'https://www.aicanada.ca/', 'https://registre.oaciq.com/', 'https://registrantsearch.reco.on.ca/',
+        'https://www.reca.ca/', 'https://www.bcfsa.ca/', 'https://fcnb.ca/', 'https://www.nsrec.ns.ca/', 'https://www.srec.ca/'];
+      if (!permis.some((x) => u.startsWith(x))) return Response.redirect(SITE, 302);   // jamais un redirecteur ouvert
+      const t = url.searchParams.get('t') === 'contestation' ? 'contestation' : 'estimation';
+      const prov = String(url.searchParams.get('p') ?? '').replace(/[^a-z-]/g, '').slice(0, 40) || 'inconnue';
+      await bumpCounter(env, `ef:o:${t}:${prov}:${new Date().toISOString().slice(0, 7)}`, 400 * 86400);
+      return Response.redirect(u, 302);
+    }
+    if (request.method === 'GET' && url.pathname === '/ef/bandeau-stats') {
+      if (!env.CONTACTS_TOKEN || url.searchParams.get('key') !== env.CONTACTS_TOKEN) return json({ error: 'unauthorized' }, 401);
+      const out = {};
+      for (const pre of ['ef:d:', 'ef:c:', 'ef:o:']) {
+        const l = await env.COUNTERS.list({ prefix: pre });
+        for (const k of l.keys) out[k.name] = parseInt((await env.COUNTERS.get(k.name)) ?? '0', 10);
+      }
+      return json(out);
+    }
+
     if (url.pathname.startsWith('/ef/')) {
       const r = await handleDossierRevision(request, env, url, { SITE, efMunicipalite, EF_FRAIS, efPalier, EF_TAQ_2026, strip });
       if (r) return r;
