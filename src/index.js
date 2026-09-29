@@ -3431,10 +3431,16 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
      APPELÉ dès la boucle des prospects) doit pouvoir retirer un slug de la cohorte au
      moment où il réécrit sa clé `intro:`. Déclarés après, ils seraient dans la zone morte
      temporelle du `let` et la première vidange lèverait une ReferenceError. */
-  // Identité du lot dans la clé `servi:` — l'heure du passage et un rang qui monte. Deux
-  // passages de la même heure ne peuvent pas exister (le cron est horaire), donc pas de
-  // collision possible entre exécutions.
-  const heureUTC = String(at.getUTCHours()).padStart(2, '0');
+  // Identité du lot dans la clé `servi:` — l'heure ET LA MINUTE du passage, un suffixe
+  // propre à l'exécution, et un rang qui monte.
+  // ⚠ DOUBLONS DU 22 AU 29 SEPT. 2026 : la clé ne portait que l'heure (« le cron est
+  // horaire »). Il ne l'était plus : passages à :00 et :30, puis aux 10 min de 18 h à 19 h.
+  // Le passage de :30 réécrivait `…-18-0`, `…-18-1`… par-dessus ceux de :00, leurs marques
+  // disparaissaient, et ces destinataires repartaient au passage suivant. Mesuré dans
+  // Resend : 21 067 envois pour 16 294 destinataires, 4 515 en trop (jusqu'à 6 fois la même
+  // personne). Ne jamais retirer la minute ni le suffixe de cette clé.
+  const heureUTC = String(at.getUTCHours()).padStart(2, '0')
+    + String(at.getUTCMinutes()).padStart(2, '0') + '-' + crypto.randomUUID().slice(0, 6);
   let lotNo = 0;
   const reIntro = new Set();      // rempli plus bas, une fois les experts atteints
   let cohorteConnue = false;      // a-t-on une cohorte FIABLE en main ?
