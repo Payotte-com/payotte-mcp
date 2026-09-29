@@ -216,7 +216,10 @@ id = "6b341a2d876b49d78bb5651936ccac8e"
 # 15 h 50 de l'Est, heures de renfort QC/ON). Le débit d'un passage est borné par le budget KV
 # d'une invocation (~180 courriels), pas par le plafond du jour : plus d'invocations = plus
 # d'envois. Jamais deux à la même minute : ils se suivent, chacun marque ses envois avant le suivant.
-crons = ["0,30 12-21 * * *", "10,20,40,50 18-19 * * *"]
+# 29 sept. 2026 (après-midi) : le second déclencheur n'a JAMAIS été invoqué par Cloudflare
+# (analytique : 18 h 00 et 18 h 30 seulement). Un seul déclencheur aux 10 minutes ; le choix
+# des minutes vit dans le code (CRON_HEURES_10_MIN_UTC, passageCronActif dans src/index.js).
+crons = ["*/10 12-21 * * *"]
 
 # ── JOURNAUX (posé le 9 sept. 2026) ──────────────────────────────────────────────
 # Sans ce bloc, `console.log` et `console.error` ne vont NULLE PART : ils ne sont visibles

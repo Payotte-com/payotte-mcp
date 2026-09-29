@@ -3131,6 +3131,19 @@ const SEND_LOCAL_HOUR = 10;
 // n'aurait jamais de passage. Toute modification des `crons` doit se refléter ICI, sinon le
 // partage du plafond compte des passages qui n'existent pas — ou en oublie qui existent.
 const CRON_DERNIERE_HEURE_UTC = 21;
+/* ⚠ PASSAGES AUX 10 MINUTES (29 sept. 2026). Un SECOND déclencheur
+   ("10,20,40,50 18-19 * * *") a été déployé à 17 h 46 UTC. Cloudflare l'affichait
+   dans les schedules du script, mais ne l'a JAMAIS invoqué : l'analytique
+   `workersInvocationsScheduled` n'a montré que 18 h 00 et 18 h 30. Il n'y a donc plus
+   qu'UN déclencheur, toutes les 10 minutes de 12 h à 21 h UTC, et c'est le code qui choisit les minutes :
+   :00 et :30 toute la journée, les 10 minutes seulement aux heures de ce jeu. */
+const CRON_HEURES_10_MIN_UTC = new Set([18, 19]);
+const creneauCron = (at) => {
+  const pas = CRON_HEURES_10_MIN_UTC.has(at.getUTCHours()) ? 10 : 30;
+  return Math.floor(at.getUTCMinutes() / pas) * pas;
+};
+const passageCronActif = (at) =>
+  at.getUTCMinutes() % 30 < 10 || CRON_HEURES_10_MIN_UTC.has(at.getUTCHours());
 
 const localHour = (tz, at) =>
   Number(new Intl.DateTimeFormat('en-CA', { timeZone: tz, hour: 'numeric', hour12: false }).format(at));
@@ -3381,10 +3394,11 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
   const passagesRestants = (() => {
     let n = 0;
     const depart = at.getUTCHours() * 60 + at.getUTCMinutes();
-    for (let m = 0; m <= CRON_DERNIERE_HEURE_UTC * 60 + 30; m += 30) {
+    for (let m = 0; m <= CRON_DERNIERE_HEURE_UTC * 60 + 50; m += 10) {
       if (m < depart) continue;
       const u = Math.floor(m / 60);
       if (u > CRON_DERNIERE_HEURE_UTC) break;
+      if (m % 30 && !CRON_HEURES_10_MIN_UTC.has(u)) continue;   // pas de passage à cette minute
       const d = new Date(at); d.setUTCHours(u, m % 60, 0, 0);
       // Une heure de RENFORT sert désormais des provinces : elle compte dans le partage,
       // sinon les passages d'avant se répartiraient le plafond comme si elle n'existait pas
@@ -3748,7 +3762,7 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
      14 h serait devenu invisible dès que celui de 14 h 30 se terminait — exactement la
      panne silencieuse que ce témoin existe pour rendre visible. */
   const temoin = `run:${dayKey}:${String(at.getUTCHours()).padStart(2, '0')}`
-    + (at.getUTCMinutes() >= 15 ? '30' : '');
+    + (creneauCron(at) ? String(creneauCron(at)).padStart(2, '0') : '');   // 18, 1810, 1830…
   if (!dryRun && env.SUBSCRIBERS) {
     const morts = [];
     for (const h of await kvKeys(env.SUBSCRIBERS, `run:${dayKey}:`)) {
@@ -6454,6 +6468,9 @@ const WORKER_MAIN = {
   // référence — filtrées, à chaque passage, par le fuseau horaire.
   async scheduled(event, env, ctx) {
     if (!env.RESEND_API_KEY) return;   // sans clé : aucun envoi (le dry-run reste dispo par route)
+    // Le déclencheur tourne aux 10 minutes ; hors des heures CRON_HEURES_10_MIN_UTC, seuls
+    // :00 et :30 travaillent — les autres minutes repartent avant toute lecture KV.
+    if (!passageCronActif(new Date(event.scheduledTime ?? Date.now()))) return;
     // L'ALERTE TAUX passe avant tout le reste : c'est le seul envoi daté par un ÉVÉNEMENT
     // (la Banque du Canada a bougé) et non par un calendrier qu'on choisit. Un bulletin
     // décalé d'une heure ne coûte rien ; une alerte de taux décalée n'est plus une alerte.
