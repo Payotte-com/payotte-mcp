@@ -273,3 +273,57 @@ async function delai(prov, code, lang, deps) {
     return p ? { texte: p.rules.delai[lang], lien: p.hub[lang] } : null;
   } catch { return null; }
 }
+
+/* ── FILET STATISTIQUE CANADA (CHSP 46-10-0093) ─────────────────────────────────────────────
+   Hors Québec, là où le rôle n'est pas publié par adresse : la personne donne la valeur de son
+   avis (et sa superficie si elle la connaît), on la situe face à la médiane de sa municipalité
+   pour le même type et la même époque. Pas de quantiles publiés : on donne l'écart à la médiane,
+   jamais un rang. Et on dit l'année des valeurs (2016 en Ontario, 2023 ailleurs). */
+const TYPES_CHSP = ['tous', 'detache', 'jumele', 'rangee', 'condo', 'autre'];
+const PERIODES_CHSP = ['tous', 'avant1961', '1961-1970', '1971-1980', '1981-1990', '1991-2000', '2001-2005', '2006-2010', '2011-2015', '2016-2020', '2021+'];
+
+export async function efFiletMunis(env, prov) {
+  if (!/^[a-z]{2}$/.test(prov) || !env.ASSETS) return null;
+  const d = await lireActif(env, `chsp/${prov}.json`);
+  return d ? { meta: d.meta, munis: d.munis.map(([csd, nom]) => [csd, nom]) } : null;
+}
+
+export async function efFilet(env, url, deps) {
+  const lang = url.searchParams.get('lang') === 'en' ? 'en' : 'fr';
+  const L = (f, e) => (lang === 'fr' ? f : e);
+  const prov = String(url.searchParams.get('prov') ?? '');
+  const csd = String(url.searchParams.get('csd') ?? '');
+  const type = TYPES_CHSP.includes(url.searchParams.get('type')) ? url.searchParams.get('type') : 'tous';
+  const periode = PERIODES_CHSP.includes(url.searchParams.get('periode')) ? url.searchParams.get('periode') : 'tous';
+  const valeur = Number(String(url.searchParams.get('valeur') ?? '').replace(/[^\d.]/g, ''));
+  const aire = Number(String(url.searchParams.get('aire') ?? '').replace(/[^\d.]/g, '')) || 0;   // pi²
+  if (!/^[a-z]{2}$/.test(prov) || !env.ASSETS) return { error: 'not-covered' };
+  if (!(valeur > 1000)) return { error: L('Indiquez la valeur inscrite à votre avis d’évaluation.', 'Enter the value on your assessment notice.') };
+  const d = await lireActif(env, `chsp/${prov}.json`);
+  const m = d?.munis.find((x) => x[0] === csd);
+  if (!m) return { error: L('Choisissez la municipalité dans la liste.', 'Pick the municipality from the list.') };
+  const [, nom, types] = m;
+  // Du plus précis au plus large : type × époque, type seul, tous types.
+  const essais = [[type, periode], [type, 'tous'], ['tous', 'tous']];
+  const [t, p] = essais.find(([a, b]) => types[a]?.[b]) ?? [];
+  if (!t) return { error: L('Statistique Canada ne publie pas de médiane pour cette municipalité.', 'Statistics Canada publishes no median for this municipality.') };
+  const [n, mediane, medianePi2, prudence] = types[t][p];
+  const parPi2 = aire > 200 && medianePi2 ? valeur / aire : null;
+  const ratio = parPi2 ? parPi2 / medianePi2 : valeur / mediane;
+  const ecart = Math.round((ratio - 1) * 100);
+  const signal = ratio >= 1.25 ? 'eleve' : ratio >= 1.1 ? 'au-dessus' : 'norme';
+  const LT = { tous: L('propriétés résidentielles', 'residential properties'), detache: L('maisons détachées', 'detached houses'), jumele: L('maisons jumelées', 'semi-detached houses'), rangee: L('maisons en rangée', 'row houses'), condo: L('condos', 'condos'), autre: L('autres logements', 'other dwellings') };
+  const LP = (x) => (x === 'tous' ? '' : x === 'avant1961' ? L(', construites avant 1961', ', built before 1961') : x === '2021+' ? L(', construites depuis 2021', ', built since 2021') : L(`, construites de ${x.replace('-', ' à ')}`, `, built ${x.replace('-', '–')}`));
+  let delai = null;
+  try {
+    const f = await deps.feed('/api/evaluation-fonciere-canada.json');
+    const pr = f.provinces.find((x) => x.code === prov.toUpperCase());
+    if (pr) delai = { texte: pr.rules.delai[lang], lien: pr.hub[lang] };
+  } catch { /* flux indisponible */ }
+  return {
+    municipalite: nom, groupe: LT[t] + LP(p), n, mediane, medianePi2: medianePi2 || null, prudence: !!prudence,
+    valeur, aire: aire || null, parPi2: parPi2 ? Math.round(parPi2) : null, ecart, signal, base: parPi2 ? 'pi2' : 'valeur',
+    anneeValeur: d.meta.anneeValeur ?? null, stock: d.meta.stock ?? null, note: d.meta.note ?? null,
+    delai, source: { nom: d.meta.attribution, url: d.meta.url },
+  };
+}

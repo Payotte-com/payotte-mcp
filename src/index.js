@@ -21,7 +21,7 @@
  */
 
 import { handleDossierRevision } from './dossierRevision.js';
-import { efAdresse, efMunis } from './efAdresse.js';
+import { efAdresse, efMunis, efFilet, efFiletMunis } from './efAdresse.js';
 const SITE = 'https://payotte.com';
 const WORKER_ORIGIN = 'https://payotte-mcp.payotte.workers.dev';
 const ATTRIBUTION =
@@ -6069,6 +6069,14 @@ export default {
     if (request.method === 'GET' && url.pathname === '/ef/munis') {
       const l = await efMunis(env, String(url.searchParams.get('prov') ?? ''));
       return l ? new Response(JSON.stringify(l), { headers: { ...CORS, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=86400' } }) : json({ error: 'not-covered' }, 404);
+    }
+    if (request.method === 'GET' && url.pathname === '/ef/filet-munis') {
+      const l = await efFiletMunis(env, String(url.searchParams.get('prov') ?? ''));
+      return l ? new Response(JSON.stringify(l), { headers: { ...CORS, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=86400' } }) : json({ error: 'not-covered' }, 404);
+    }
+    if (request.method === 'GET' && url.pathname === '/ef/filet') {
+      const r = await efFilet(env, url, { feed });
+      return json(r, r.error ? 400 : 200);
     }
     if (request.method === 'GET' && url.pathname === '/ef/adresse') {
       const r = await efAdresse(env, url, request, { hmacHex, bumpCounter, feed });

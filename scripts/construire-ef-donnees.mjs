@@ -135,4 +135,37 @@ async function province(prov) {
 
 const demandees = process.argv.slice(2);
 const presentes = [...new Set(fs.readdirSync(UNITES).filter((f) => /^[a-z]{2}\d*\.ndjson\.gz$/.test(f)).map((f) => f.slice(0, 2)))];
-for (const p of demandees.length ? demandees : presentes) await province(p);
+for (const p of (demandees.length ? demandees : presentes).filter((x) => x !== 'chsp')) await province(p);
+
+// ── Filet Statistique Canada (CHSP 46-10-0093) : médianes par municipalité, type et époque ─────────
+// Pour toutes les municipalités hors Québec sans données par adresse. Sortie : ef-donnees/chsp/<prov>.json
+// { meta, munis: [[csd, libellé, { type: { periode: [n, mediane, medianePi2|0, prudence 0|1] } }]] }.
+{
+  const fc = path.join(UNITES, 'chsp.json');
+  if (fs.existsSync(fc) && (!demandees.length || demandees.includes('chsp'))) {
+    const d = JSON.parse(fs.readFileSync(fc, 'utf8'));
+    fs.rmSync(path.join(SORTIE, 'chsp'), { recursive: true, force: true });
+    fs.mkdirSync(path.join(SORTIE, 'chsp'), { recursive: true });
+    const parProv = {};
+    for (const m of d.munis) (parProv[m.prov] ??= []).push(m);
+    for (const [prov, munis] of Object.entries(parProv)) {
+      const compte = {};
+      for (const m of munis) compte[m.nom] = (compte[m.nom] ?? 0) + 1;
+      const liste = munis.map((m) => {
+        const types = {};
+        for (const [t, pers] of Object.entries(m.types ?? {})) {
+          if (t === 'terrain' || t === 'multi') continue;
+          for (const [per, c] of Object.entries(pers)) {
+            if (!c?.mediane || per === 'sansobjet') continue;
+            (types[t] ??= {})[per] = [c.n ?? 0, c.mediane, c.medianePi2 ?? 0, c.prudence ? 1 : 0];
+          }
+        }
+        // Homonymes (Moncton City / Moncton Parish) : le genre StatCan les distingue.
+        return [m.csd, compte[m.nom] > 1 ? `${m.nom} (${m.genre})` : m.nom, types];
+      }).filter((x) => Object.keys(x[2]).length).sort((a, b) => a[1].localeCompare(b[1], 'fr'));
+      const meta = { anneeReference: d.meta.anneeReference, ...d.meta.provinces[prov], attribution: d.meta.attribution, url: d.meta.url };
+      fs.writeFileSync(path.join(SORTIE, 'chsp', `${prov}.json`), JSON.stringify({ meta, munis: liste }));
+    }
+    console.log(`✓ chsp : ${Object.keys(parProv).length} provinces et territoires, ${d.munis.length} municipalités`);
+  }
+}
