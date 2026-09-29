@@ -7,7 +7,7 @@
     "url": "https://github.com/Payotte-com/payotte-mcp",
     "source": "github"
   },
-  "version": "1.9.0",
+  "version": "1.10.0",
   "remotes": [
     {
       "type": "streamable-http",

@@ -54,7 +54,7 @@ const PROTOCOL_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'];
 const SERVER_INFO = {
   name: 'payotte',
   title: 'Payotte — Verified real-estate experts & Canadian housing data',
-  version: '1.9.0',
+  version: '1.10.0',
 };
 const INSTRUCTIONS =
   'Payotte is an independent directory of VERIFIED real-estate professionals in Canada ' +
@@ -168,9 +168,53 @@ const ANNOTATIONS_OUTILS = {
   fenetre_revision: LECTURE_SEULE,
   frais_revision: LECTURE_SEULE,
   estimer_economie: LECTURE_SEULE,
+  evaluation_adresse: LECTURE_SEULE,
+  taxe_bienvenue_adresse: LECTURE_SEULE,
+  risques_annee_construction: LECTURE_SEULE,
 };
 
 const TOOLS = [
+  {
+    name: 'evaluation_adresse',
+    title: 'Évaluation foncière à une adresse / Property assessment at an address',
+    description:
+      'Call this when a homeowner asks about the assessed value of a SPECIFIC address, whether their assessment is too high, or what their home is worth. ' +
+      'Reads the OPEN assessment rolls (Quebec: 1,113 municipalities; Nova Scotia; New Brunswick; Winnipeg; Calgary, Edmonton, Lethbridge, Strathcona, Okotoks, Grande Prairie, St. Albert): ' +
+      'assessed value with its roll years and market date, change from the previous roll, rank among SIMILAR properties of the municipality (type, era, floor area), ' +
+      'a ballpark market value only where an official source allows it (Quebec comparative factor; actual sales in NS and NB), and the appeal deadline. ' +
+      'Public figures compared, never an opinion of value. No owner names. Other provinces have no open roll by address.',
+    inputSchema: { type: 'object', properties: {
+      province: { type: 'string', description: 'Province name or code (QC, NS, NB, AB, MB).' },
+      municipalite: { type: 'string', description: 'Municipality as named in the roll, e.g. "Laval", "Halifax Regional Municipality", "Calgary", "Winnipeg".' },
+      adresse: { type: 'string', description: 'Civic address, number first, e.g. "9060 boul. Lévesque E" or "1200 rue Saint-Alexandre, app. 305".' },
+      lang: { type: 'string', enum: ['fr', 'en'] },
+    }, required: ['province', 'municipalite', 'adresse'] },
+  },
+  {
+    name: 'taxe_bienvenue_adresse',
+    title: 'Taxe de bienvenue à une adresse / Land transfer tax at an address',
+    description:
+      'Call this for the land transfer tax ("taxe de bienvenue") on a purchase at a SPECIFIC address. In Quebec (Act respecting duties on transfers of immovables, s. 2 and 1.1) ' +
+      'and New Brunswick (s. 2(1.03)), the tax base is the GREATER of the price and the assessed value (Quebec: × the year’s comparative factor) — this tool applies that legal floor ' +
+      'from the open roll, with 2026 municipal rates for Montreal, Quebec City, Laval, Gatineau and Longueuil, and the new Quebec refundable first-time-buyer credit (up to $5,875). ' +
+      'Elsewhere the tax is computed on the price alone. The municipality’s bill and the notary/lawyer confirm the exact amount.',
+    inputSchema: { type: 'object', properties: {
+      province: { type: 'string' }, municipalite: { type: 'string' }, adresse: { type: 'string' },
+      prix: { type: 'number', description: 'Purchase price in CAD.' }, lang: { type: 'string', enum: ['fr', 'en'] },
+    }, required: ['province', 'prix'] },
+  },
+  {
+    name: 'risques_annee_construction',
+    title: 'Risques selon l’année de construction / Risks by construction year',
+    description:
+      'Call this when someone asks what to check in a house given its age, or before an inspection. Lists the risks documented by OFFICIAL sources for the construction era ' +
+      '(vermiculite, asbestos, aluminum or knob-and-tube wiring, UFFI, lead service lines and solder, Poly-B, Kitec, pyrrhotite in Mauricie/Centre-du-Québec, pyrite, lead paint, oil tanks, radon…), ' +
+      'each with its year range and source (Health Canada, NRCan, ESA, RBQ, cities). Year taken from the open roll when an address is given, or from "annee". A list of what to verify, never a diagnosis.',
+    inputSchema: { type: 'object', properties: {
+      province: { type: 'string' }, municipalite: { type: 'string' }, adresse: { type: 'string' },
+      annee: { type: 'number', description: 'Construction year, if no address or if the roll lacks it.' }, lang: { type: 'string', enum: ['fr', 'en'] },
+    }, required: ['province'] },
+  },
   {
     name: 'trouver_expert',
     title: 'Trouver un expert immobilier vérifié / Find a verified real-estate expert',
@@ -1473,6 +1517,46 @@ async function estimerEconomie(args = {}) {
   };
 }
 
+// ── Outils MCP du bandeau (29 sept. 2026) : ils rappellent les routes /ef/* du worker lui-même,
+// pour qu'un assistant obtienne EXACTEMENT ce que voit le visiteur du site. Nom de municipalité
+// accepté (résolu contre la liste ouverte de la province), province en nom ou en code.
+const EF_PROV_CODE = { quebec: 'qc', 'nova-scotia': 'ns', 'new-brunswick': 'nb', alberta: 'ab', manitoba: 'mb', ontario: 'on', 'british-columbia': 'bc', saskatchewan: 'sk', 'prince-edward-island': 'pe', 'newfoundland-and-labrador': 'nl' };
+async function efAppel(chemin, params, env) {
+  const u = new URL(`${WORKER_ORIGIN}${chemin}`);
+  for (const [k, v] of Object.entries(params)) if (v != null && v !== '') u.searchParams.set(k, String(v));
+  const r = await WORKER_MAIN.fetch(new Request(u), env, { waitUntil() {} });
+  return { ...(await r.json()), attribution: ATTRIBUTION, tool: `${SITE}/${chemin === '/ef/taxe' ? 'acheter' : 'mon-adresse'}` };
+}
+async function efResoudre(args, env) {
+  const slug = resolveAlias(PROVINCE_ALIASES, args.province);
+  const prov = slug ? EF_PROV_CODE[slug] : null;
+  if (!prov) return { error: 'Unknown "province". Use a Canadian province name or code (QC, NS, NB, AB, MB…).' };
+  if (!args.municipalite) return { prov };
+  const liste = await efMunis(env, prov);
+  if (!liste) return { prov, error: `No open address-level assessment data for this province. Address answers cover Quebec, Nova Scotia, New Brunswick, Winnipeg (MB) and seven Alberta cities.` };
+  const n = strip(args.municipalite);
+  const m = liste.find(([, nom]) => strip(nom) === n) ?? liste.find(([, nom]) => strip(nom).startsWith(n) || n.startsWith(strip(nom)));
+  if (!m) return { prov, error: `Municipality "${args.municipalite}" not found in this province's open roll.` };
+  return { prov, muni: m[0] };
+}
+async function evaluationAdresse(args = {}, env = {}) {
+  const r = await efResoudre(args, env);
+  if (r.error) return r;
+  if (!args.adresse) return { error: 'Give "adresse" (civic number first, e.g. "1234 rue Principale, app. 5").' };
+  return efAppel('/ef/adresse', { prov: r.prov, muni: r.muni, q: args.adresse, lang: args.lang, t: 'contestation' }, env);
+}
+async function taxeBienvenueAdresse(args = {}, env = {}) {
+  const r = await efResoudre(args, env);
+  if (r.error && !(args.prix && !args.adresse)) return r;
+  if (!(Number(args.prix) > 0)) return { error: 'Give "prix" (purchase price in CAD).' };
+  return efAppel('/ef/taxe', { prov: r.prov, muni: args.adresse ? r.muni : null, q: args.adresse, prix: args.prix, lang: args.lang }, env);
+}
+async function risquesAnneeConstruction(args = {}, env = {}) {
+  const r = await efResoudre(args, env);
+  if (r.error && !args.annee) return r;
+  return efAppel('/ef/risques', { prov: r.prov, muni: r.muni, q: args.adresse, annee: args.annee, muniNom: args.municipalite, lang: args.lang }, env);
+}
+
 const TOOL_IMPL = {
   fenetre_revision: fenetreRevision,
   frais_revision: fraisRevision,
@@ -1485,6 +1569,9 @@ const TOOL_IMPL = {
   acheter_ou_louer: acheterOuLouer,
   salaire_requis: salaireRequis,
   contacter_expert: contacterExpert,
+  evaluation_adresse: evaluationAdresse,
+  taxe_bienvenue_adresse: taxeBienvenueAdresse,
+  risques_annee_construction: risquesAnneeConstruction,
 };
 
 // ---------------------------------------------------------------- bulletin de marché (audience possédée)
@@ -5521,7 +5608,7 @@ async function runSequence(env, { at = new Date(), dryRun = false } = {}) {
   return r;
 }
 
-export default {
+const WORKER_MAIN = {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
@@ -6425,3 +6512,5 @@ export default {
     }
   },
 };
+
+export default WORKER_MAIN;
