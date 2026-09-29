@@ -6054,16 +6054,78 @@ export default {
       const slug = propre(b.slug, 120);
       const prof = slug.split('--')[0];
       if (!['real-estate-broker', 'appraiser'].includes(prof)) return json({ error: 'bad-expert' }, 400);
-      const r = await contacterExpert({
-        consentement: b.consentement === true,
-        client_nom: propre(b.nom, 120), client_courriel: propre(b.courriel), client_telephone: propre(b.tel, 40) || undefined,
-        message, profession: prof, province: propre(b.province, 60), ville: propre(b.ville, 80), secteur: propre(b.secteur, 80),
-        origine: 'bandeau-ef', ef_type: type, ef_province: propre(b.province, 60),
-      }, env);
-      if (r.error) return json({ error: r.error }, 400);
+      // ── La demande part à GRÉGORY, pas au pro (décision du 29 sept. 2026) ─────────────────────
+      // « J'aimerais mieux que le site m'envoie le formulaire que je vais transférer afin d'être sûr
+      // d'avoir une réponse et que le client est pris en main. » Le pro suggéré, sa fiche et son
+      // courriel sont joints pour qu'il transfère en un clic ; « Répondre » écrit au client.
+      // Pas de clic de confirmation : c'est Grégory qui fait le tri. Garde-fous : pot de miel,
+      // domaine réel, 5 demandes par jour et par courriel (empreinte HMAC), consentement coché.
+      const E = (f, e) => (fr ? f : e);
+      if (b.consentement !== true) return json({ error: E('Cochez la case de consentement.', 'Please tick the consent box.') }, 400);
+      const nom = propre(b.nom, 120);
+      const courriel = propre(b.courriel).toLowerCase();
+      if (!nom || !EMAIL_RE.test(courriel)) return json({ error: E('Nom et courriel valide requis.', 'Name and a valid email are required.') }, 400);
+      if (looksLikeSpam(message)) return json({ error: E('Trop de liens dans le message.', 'Too many links in the message.') }, 400);
+      if (!(await domainExists(courriel))) return json({ error: E(`Le domaine « ${courriel.split('@')[1]} » n'existe pas : vérifiez votre courriel.`, `The domain "${courriel.split('@')[1]}" does not exist: check your email.`) }, 400);
+      if (!env.RESEND_API_KEY) return json({ ok: true, simulated: true });
+      const jour = new Date().toISOString().slice(0, 10);
+      if (env.COUNTERS) {
+        const rh = (await hmacHex(env, courriel)).slice(0, 16);
+        if ((await bumpCounter(env, `efr:${rh}:${jour}`, 3 * 86400)) > DAY_CAP_REQUESTER) return json({ error: E('Limite de demandes atteinte pour aujourd’hui.', 'Daily request limit reached.') }, 429);
+      }
+      // Le pro suggéré (et son courriel, relu à la source, pour le transfert).
+      let pro = null, contact = null;
+      try {
+        const rr = await resolveExperts({ profession: prof, province: propre(b.province, 60), ville: propre(b.ville, 80), secteur: propre(b.secteur, 80) });
+        pro = rr.matches?.length === 1 ? rr.matches[0] : null;
+        if (pro && env.CONTACTS_TOKEN) contact = (await feed(`/api/cx/${env.CONTACTS_TOKEN}.json`)).contacts?.[pro.slug] ?? null;
+      } catch { /* on envoie quand même, sans le pro */ }
+      const tel = propre(b.tel, 40);
+      const corps = [
+        `Nouvelle demande du bandeau Évaluation foncière — ${type === 'contestation' ? 'CONTESTATION (évaluation trop haute)' : 'ESTIMATION (combien vaut ma maison)'}`,
+        '',
+        `Client : ${nom}`, `Courriel : ${courriel}`, ...(tel ? [`Téléphone : ${tel}`] : []),
+        `Langue : ${fr ? 'français' : 'anglais'}`, `Page : ${SITE}${propre(b.page, 200)}`,
+        '',
+        message,
+        '',
+        pro
+          ? `Pro suggéré : ${pro.name} (${pro.professionLabel}, ${pro.sectorName}, ${pro.cityName})\nFiche : ${pro.url}\nCourriel du pro : ${contact?.email ?? '— (aucun au dossier)'}`
+          : `Pro suggéré : aucun résolu (${prof}, ${propre(b.ville, 80)} / ${propre(b.secteur, 80)})`,
+        '',
+        '— « Répondre » écrit directement au client. Pour transférer au pro : Transférer, à l’adresse ci-dessus.',
+      ].join('\n');
+      const envoi = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: env.MAIL_FROM || 'Payotte <relais@payotte.com>',
+          to: [REPORT_TO],
+          reply_to: courriel,
+          subject: `[Bandeau EF] ${type === 'contestation' ? 'Contestation' : 'Estimation'} — ${nom}${pro ? ` → ${pro.name}` : ''}`,
+          text: corps,
+        }),
+      }).catch(() => null);
+      if (!envoi || !envoi.ok) return json({ error: E('L’envoi n’a pas fonctionné, réessayez dans un instant.', 'Sending failed, please try again shortly.') }, 502);
+      // Accusé au client : il sait que quelqu'un a sa demande en main.
+      const qui = pro ? `${pro.name} (${pro.professionLabel}, ${pro.sectorName})` : '';
+      await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: env.MAIL_FROM || 'Payotte <relais@payotte.com>',
+          to: [courriel],
+          reply_to: REPORT_TO,
+          subject: E('Nous avons bien reçu votre demande — Payotte', 'We received your request — Payotte'),
+          text: (fr
+            ? [`Bonjour ${nom},`, '', `Nous avons bien reçu votre demande${qui ? ` pour ${qui}` : ''}. Payotte la transmet et s'assure que vous obteniez une réponse, généralement sous 48 h ouvrables.`, '', 'Une question d’ici là ? Répondez simplement à ce courriel.', '', '— Grégory Payotte, fondateur', 'https://payotte.com']
+            : [`Hello ${nom},`, '', `We received your request${qui ? ` for ${qui}` : ''}. Payotte forwards it and makes sure you get an answer, usually within 48 business hours.`, '', 'Any question in the meantime? Just reply to this email.', '', '— Grégory Payotte, founder', 'https://payotte.com']).join('\n'),
+          headers: { 'Auto-Submitted': 'auto-replied' },
+        }),
+      }).catch(() => null);
       const mois = new Date().toISOString().slice(0, 7);
       await bumpCounter(env, `ef:d:${type}:${propre(b.province, 60)}:${mois}`, 400 * 86400);
-      return json({ ok: true, pendingConfirmation: true });
+      return json({ ok: true });
     }
     // Réponse immédiate à l'adresse (bandeau EF) — src/efAdresse.js.
     if (request.method === 'GET' && url.pathname === '/ef/munis') {
