@@ -136,9 +136,10 @@ PROVINCIAL_ACTIF = "1"
 # envois/jour seulement, parce que la part par passage (70 % de la rampe ÷ passages) mord
 # avant. ⚠ Plus d'adresses d'un même serveur d'entreprise le même jour = plus de risque
 # qu'une plainte fasse bloquer le domaine entier. Revenir à 5 en retirant la ligne.
-MAX_PAR_DOMAINE = "10"
+# 29 sept. 2026 : 10 → 20 (Grégory : « monte un peu », 13 000 envois à finir cette semaine, rebonds bas).
+MAX_PAR_DOMAINE = "20"
 
-OUTREACH_RAMPE = "2026-09-09:75,2026-09-10:150,2026-09-11:300,2026-09-14:600,2026-09-15:1200,2026-09-16:2400,2026-09-17:4800"
+OUTREACH_RAMPE = "2026-09-09:75,2026-09-10:150,2026-09-11:300,2026-09-14:600,2026-09-15:1200,2026-09-16:2400,2026-09-17:4800,2026-09-29:6000"
 
 # ── FORÇAGE DE PROVINCES POUR UNE JOURNÉE (14 sept. 2026, demande proprio) ───────
 # QC et ON sont normalement servis au passage de 14 h UTC (10 h locale). Celui du
