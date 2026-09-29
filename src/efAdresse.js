@@ -225,7 +225,7 @@ const SOURCES = {
   qc: { nom: 'Rôles d’évaluation foncière du Québec, MAMH (Données Québec, CC BY 4.0)', url: 'https://www.donneesquebec.ca/recherche/dataset/roles-d-evaluation-fonciere-du-quebec' },
   ns: { nom: 'PVSC — Contains information licensed under the Open Data & Information Government Licence – PVSC & Participating Municipalities', url: 'https://www.thedatazone.ca/' },
   nb: { nom: 'Contains information licenced under the GeoNB Open Data Licence (Service New Brunswick)', url: 'https://geonb.snb.ca/documents/license/geonb-odl_en.pdf' },
-  ab: { nom: 'City of Calgary / City of Edmonton Open Data (Open Government Licence)', url: 'https://data.calgary.ca/' },
+  ab: { nom: 'Contains information licensed under the Open Government Licence – City of Calgary / City of Edmonton / Strathcona County; City of Lethbridge Open Data', url: 'https://data.calgary.ca/' },
   mb: { nom: 'City of Winnipeg — Contains information licensed under the Open Government Licence – Canada', url: 'https://data.winnipeg.ca/Assessment-Taxation-Corporate/Assessment-Parcels/d4mq-wa44' },
 };
 
