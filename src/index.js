@@ -22,6 +22,7 @@
 
 import { handleDossierRevision } from './dossierRevision.js';
 import { efAdresse, efMunis, efFilet, efFiletMunis } from './efAdresse.js';
+import RISQUES_EPOQUE from './data/risques-par-epoque.json';
 const SITE = 'https://payotte.com';
 const WORKER_ORIGIN = 'https://payotte-mcp.payotte.workers.dev';
 const ATTRIBUTION =
@@ -6223,6 +6224,49 @@ export default {
               prov === 'qc' ? 'In Quebec, the tax is computed on the greater of the price and the assessed value times the year’s comparative factor (Act respecting duties on transfers of immovables, s. 2 and 1.1).' : 'In New Brunswick, the tax is 1% of the greater of the price and the assessed value (Real Property Transfer Tax Act, s. 2(1.03)).')
           : L('Dans cette province, la taxe se calcule sur le prix : la valeur au rôle n’en est pas le plancher.', 'In this province, the tax is computed on the price: the assessed value is not a floor.'),
         verification: L('Le montant exact figure sur le compte de la municipalité et se confirme avec le notaire ou l’avocat.', 'The exact amount is on the municipality’s bill and is confirmed by the notary or lawyer.'),
+      });
+    }
+    // ── RISQUES SELON L'ANNÉE DE CONSTRUCTION (29 sept. 2026) ─────────────────────────────
+    // 24 risques documentés par des sources officielles (Santé Canada, RNCan, ESA, RBQ, villes…),
+    // ~/Payotte/donnees-evaluation-fonciere/risques-par-epoque.json. L'année vient de l'adresse
+    // (rôle ouvert) ou de la personne. On liste ce que l'époque EXPOSE à vérifier, jamais un diagnostic.
+    if (request.method === 'GET' && url.pathname === '/ef/risques') {
+      const q = url.searchParams, lang = q.get('lang') === 'en' ? 'en' : 'fr', L = (f, e) => (lang === 'fr' ? f : e);
+      const prov = String(q.get('prov') ?? '');
+      let annee = Number(q.get('annee')) || null, muniNom = String(q.get('muniNom') ?? ''), unite = null;
+      if (q.get('q') && q.get('muni')) {
+        const r = await efAdresse(env, url, request, { hmacHex, bumpCounter, feed });
+        if (r.error) return json(r, 400);
+        if (r.suggestions?.length || !r.resultats?.length) return json(r);
+        unite = r.resultats[0];
+        annee = unite.annee ?? annee;
+        muniNom = unite.municipalite;
+      }
+      if (!annee) return json({ error: L("Année de construction inconnue pour cette adresse : indiquez-la.", 'Construction year unknown for this address: enter it.'), besoinAnnee: true, unite }, 400);
+      // Région administrative (Québec) pour la pyrrhotite : tirée du calendrier des municipalités.
+      let region = null;
+      if (prov === 'qc' && q.get('muni')) {
+        try { const d = await feed('/api/evaluation-fonciere-quebec.json'); region = d.municipalites.find((m) => m.code === q.get('muni'))?.region ?? null; } catch { /* sans région */ }
+      }
+      const nm = strip(muniNom);
+      const dansPlage = (r) => (r.debut == null || annee >= r.debut) && (r.fin == null || annee <= r.fin);
+      const lieuOk = (r) => (!r.provinces || r.provinces.includes(prov))
+        && (!r.municipalites || r.municipalites.some((m) => strip(m) === nm || nm.startsWith(strip(m))))
+        && (!r.regions || (region && r.regions.some((g) => strip(region).includes(strip(g)))));
+      const epoque = [], toujours = [];
+      for (const r of RISQUES_EPOQUE) {
+        if (!lieuOk(r) || !dansPlage(r)) continue;
+        const item = { id: r.id, nom: r[`nom_${lang}`], resume: r[`resume_${lang}`], verification: r[`verification_${lang}`], source: { nom: r.source_nom, url: r.source_url }, certitude: r.certitude,
+          periode: r.debut == null && r.fin == null ? null : `${r.debut ?? L('avant', 'before')}${r.debut != null && r.fin != null ? '–' : ' '}${r.fin != null ? (r.debut == null ? r.fin + 1 : r.fin) : ''}`.trim() };
+        (r.debut == null && r.fin == null ? toujours : epoque).push(item);
+      }
+      const mois = new Date().toISOString().slice(0, 7);
+      ctx?.waitUntil(bumpCounter(env, `efs:risques:${prov}:${epoque.length ? 'expose' : 'aucun'}:${mois}`, 400 * 86400));
+      return json({
+        annee, anneeVient: unite?.annee ? 'role' : 'saisie', municipalite: muniNom || null, region,
+        unite: unite ? { adresse: unite.adresse, type: unite.type } : null,
+        epoque, toujours,
+        note: L("Ces points viennent de l'époque de construction, pas d'une visite : une rénovation a pu les régler, ou en créer d'autres. Seule une inspection le confirme.", 'These points come from the construction era, not a visit: a renovation may have fixed them, or created others. Only an inspection confirms it.'),
       });
     }
     if (request.method === 'GET' && url.pathname === '/ef/filet-munis') {
