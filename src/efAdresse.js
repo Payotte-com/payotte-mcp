@@ -196,7 +196,9 @@ export async function efAdresse(env, url, request, deps) {
   const max = sansApt ? 40 : 12;
   if (sansApt) cand.sort((a, b) => b.l[9] - a.l[9]);
   const resultats = cand.slice(0, max).map(({ l }) => repondre(l, { prov, code, muniNom, dateValeurMuni, facteur, dateFacteur, stats, lang }));
-  return { resultats, sansApt, plus: cand.length > max ? cand.length - max : 0, delai: await delai(prov, code, lang, deps), source: stats?.source ?? SOURCES[prov] };
+  const ro = stats?.role;
+  const role = ro ? { annee: ro.annee, note: ro[lang] ?? null } : null;
+  return { resultats, sansApt, plus: cand.length > max ? cand.length - max : 0, role, delai: await delai(prov, code, lang, deps), source: stats?.source ?? SOURCES[prov] };
 }
 
 function repondre(l, { prov, muniNom, dateValeurMuni, facteur, dateFacteur, stats, lang }) {
@@ -272,6 +274,16 @@ async function delai(prov, code, lang, deps) {
       const role = { debut: m.premierExercice, fin: m.dernierExercice, prochain: m.prochainRole, prochainFin: m.prochainRole + 2,
         dateMarche: m.dateReference, dateMarcheProchain: `${m.prochainRole - 2}-07-01` };
       const J = (iso) => dateLongue(iso, lang);
+      // Rôle qui aurait dû être remplacé (prolongé, fusion, nouveau rôle pas encore publié) : aucune date inventée.
+      if (m.rolePerime) {
+        return {
+          ouvert: false, date: null, role: { debut: role.debut, fin: role.fin, dateMarche: role.dateMarche, perime: true },
+          texte: lang === 'fr'
+            ? `Le fichier public le plus récent contient encore le rôle ${role.debut}-${role.fin}, qui aurait dû être remplacé : il a été prolongé ou le nouveau rôle n'est pas encore publié. Vérifiez les années du rôle et la date limite sur votre avis d'évaluation, ou auprès de la municipalité.`
+            : `The latest public file still holds the ${role.debut}-${role.fin} roll, which should have been replaced: it was extended or the new roll is not yet published. Check the roll years and the deadline on your assessment notice, or with the municipality.`,
+          lien: lang === 'fr' ? 'https://payotte.com/evaluation-fonciere/calendrier-quebec#roles-prolonges' : 'https://payotte.com/en/property-assessment/quebec-review-deadlines#roles-prolonges',
+        };
+      }
       return {
         ouvert, date, role,
         texte: lang === 'fr'

@@ -47,6 +47,10 @@ async function province(prov) {
   // Mention de source par municipalité quand chaque ville a sa licence : <prov>-attributions.json = { muni: { nom, url } }.
   const fa = path.join(UNITES, `${prov}-attributions.json`);
   const attributions = fs.existsSync(fa) ? JSON.parse(fs.readFileSync(fa, 'utf8')) : {};
+  // Année du rôle par municipalité, hors Québec : <prov>-roles.json = { "*": {annee}, muni: {annee, fr, en} }.
+  // Sans elle, « marché au 1er avril 2025 » se lisait comme la valeur en vigueur (Winnipeg = rôle 2027).
+  const fr_ = path.join(UNITES, `${prov}-roles.json`);
+  const roles = fs.existsSync(fr_) ? JSON.parse(fs.readFileSync(fr_, 'utf8')) : {};
   const ff = path.join(UNITES, `${prov}-facteurs.json`);
   const { facteurs = {}, date: dateFacteur = null } = fs.existsSync(ff) ? JSON.parse(fs.readFileSync(ff, 'utf8')) : {};
 
@@ -121,7 +125,7 @@ async function province(prov) {
       const r = ratios.get(`${code}|${us}`);
       if (r && r.length >= 20) ventes[us] = { n: r.length, q: quantiles(r), periode };
     }
-    fs.writeFileSync(path.join(dossier, 'stats.json'), JSON.stringify({ dateValeur, dateValeurAnt, groupes: stats, ventes, source: attributions[code] ?? null }));
+    fs.writeFileSync(path.join(dossier, 'stats.json'), JSON.stringify({ dateValeur, dateValeurAnt, groupes: stats, ventes, source: attributions[code] ?? null, role: roles[code] ?? roles['*'] ?? null }));
     fichiers++;
     // Nom inconnu du répertoire (3 codes au Québec en 2026) : on n'invente pas de nom.
     const nom = !m.nom || m.nom === code ? `Municipalité (code ${code})` : m.nom;
