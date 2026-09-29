@@ -733,7 +733,8 @@ async function taxeMutation(args = {}) {
   const rebates = {
     ontario: 'First-time buyers: provincial rebate up to $4,000 (covers the full tax up to ~$368,000). In Toronto, an additional municipal rebate up to $4,475 (combined up to $8,475).',
     'british-columbia': 'First-Time Home Buyers’ Program: full exemption up to $500,000 (max ~$8,000 saved), partial to $525,000.',
-    quebec: 'Refundable provincial credit up to $1,400 (TP-752.HA); Montreal has the targeted Accès Habitation program. Federal HBTC adds up to $1,500 everywhere.',
+    // Corrigé le 29 sept. 2026 (Finances Québec, document explicatif du 17 avril 2026) — aligné sur payotte-astro/src/lib/closingCosts.ts.
+    quebec: 'Since January 1, 2026: refundable Quebec credit on transfer duties up to $5,875 (100% of the first $5,000, then 25% of the next $3,500); non-refundable credit up to $1,400 (TP-752.HA) as well. Montreal has the targeted Accès Habitation program. Federal HBTC adds up to $1,500 everywhere.',
   };
   const common = {
     attribution: ATTRIBUTION,
@@ -6165,6 +6166,64 @@ export default {
     if (request.method === 'GET' && url.pathname === '/ef/munis') {
       const l = await efMunis(env, String(url.searchParams.get('prov') ?? ''));
       return l ? new Response(JSON.stringify(l), { headers: { ...CORS, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=86400' } }) : json({ error: 'not-covered' }, 404);
+    }
+    // ── TAXE DE BIENVENUE À L'ADRESSE (29 sept. 2026) ─────────────────────────────────────
+    // Québec (D-15.1, art. 2 al. 2 et art. 1.1) : base = le plus élevé du prix et de la valeur au
+    // rôle × facteur comparatif de l'année. N.-B. (R-2.1, art. 2(1.03)) : 1 % du plus élevé du prix
+    // et de la valeur évaluée. Ailleurs, la valeur au rôle n'est PAS un plancher : calcul sur le prix.
+    // Faits : ~/Payotte/donnees-evaluation-fonciere/FAITS-taxe-mutation-base.md.
+    if (request.method === 'GET' && url.pathname === '/ef/taxe') {
+      const q = url.searchParams, lang = q.get('lang') === 'en' ? 'en' : 'fr', L = (f, e) => (lang === 'fr' ? f : e);
+      const prov = String(q.get('prov') ?? ''), prix = Number(String(q.get('prix') ?? '').replace(/[^\d.]/g, ''));
+      if (!(prix > 1000)) return json({ error: L('Indiquez le prix d’achat.', 'Enter the purchase price.') }, 400);
+      const PROVS = { qc: 'quebec', nb: 'new-brunswick', ns: 'nova-scotia', ab: 'alberta', mb: 'manitoba', on: 'ontario', bc: 'british-columbia', sk: 'saskatchewan', pe: 'prince-edward-island', nl: 'newfoundland-and-labrador' };
+      if (!PROVS[prov]) return json({ error: 'province' }, 400);
+      // 1. Le logement et sa valeur au rôle (si une adresse est donnée et que la province est couverte).
+      let unite = null, facteur = null;
+      if (q.get('q') && q.get('muni') && ['qc', 'nb'].includes(prov)) {
+        const r = await efAdresse(env, url, request, { hmacHex, bumpCounter, feed });
+        if (r.error) return json(r, 400);
+        if (r.suggestions?.length || !r.resultats?.length) return json(r);
+        if (r.resultats.length > 1) return json({ resultats: r.resultats.map((x) => ({ adresse: x.adresse, type: x.type, valeur: x.valeur })), plusieurs: true, sansApt: r.sansApt });
+        unite = r.resultats[0];
+        // Le RFU du MAMH arrondit à 2 décimales ; une ville qui publie plus précis fait foi (Laval : 1,032 en 2026).
+        const FACTEURS_VILLE = { '65005': 1.032 };
+        facteur = prov === 'qc' ? (FACTEURS_VILLE[q.get('muni')] ?? (unite.ordre?.methode === 'facteur' ? unite.ordre.facteur : null)) : 1;
+      }
+      const plancher = unite && facteur ? Math.round(unite.valeur * facteur) : null;
+      const base = Math.max(prix, plancher ?? 0);
+      // 2. Le barème : taux municipaux 2026 relevés sur les sites des villes (Québec), sinon l'outil taxe_mutation.
+      const QC_VILLES = {
+        '66023': [[62900, 0.005], [315000, 0.01], [552300, 0.015], [1104700, 0.02], [2136500, 0.025], [3113000, 0.035], [Infinity, 0.04]],
+        '23027': [[62900, 0.005], [315000, 0.01], [500000, 0.015], [750000, 0.025], [Infinity, 0.03]],
+        '65005': [[62900, 0.005], [315000, 0.01], [500000, 0.015], [Infinity, 0.03]],
+        '81017': [[62900, 0.005], [315000, 0.01], [500000, 0.015], [Infinity, 0.03]],
+        '58227': [[62900, 0.005], [315000, 0.01], [630100, 0.015], [Infinity, 0.03]],
+      };
+      let taxe, noteBareme;
+      if (prov === 'qc') {
+        const grille = QC_VILLES[q.get('muni')];
+        taxe = Math.round(bracketTax(base, grille ?? LTT_QC_BASE));
+        noteBareme = grille ? L('Barème 2026 de la municipalité (taux au-delà de 500 000 $ fixés par règlement).', 'The municipality’s 2026 schedule (rates above $500,000 set by by-law).')
+          : (base > 500000 ? L('Barème de base 2026. Au-delà de 500 000 $, votre municipalité peut appliquer un taux plus élevé (jusqu’à 3 %) : c’est un minimum.', 'Base 2026 schedule. Above $500,000 your municipality may charge a higher rate (up to 3%): this is a minimum.') : L('Barème de base 2026 du Québec.', 'Quebec base 2026 schedule.'));
+      } else {
+        const t = await taxeMutation({ prix: base, province: PROVS[prov] });
+        if (t.error) return json({ error: t.error }, 400);
+        taxe = t.tax; noteBareme = t.note;
+      }
+      // 3. Crédit québécois pour premier acheteur (acquisitions depuis le 1er janv. 2026) : 100 % des 5 000 premiers $, 25 % des 3 500 suivants.
+      const credit = prov === 'qc' && taxe != null ? Math.round(Math.min(taxe, 5000) + 0.25 * Math.min(Math.max(taxe - 5000, 0), 3500)) : null;
+      const plancherLegal = ['qc', 'nb'].includes(prov);
+      return json({
+        prov, prix, unite: unite ? { adresse: unite.adresse, municipalite: unite.municipalite, type: unite.type, valeur: unite.valeur, dateValeur: unite.dateValeur } : null,
+        facteur, plancher, base, baseVient: plancher != null && plancher > prix ? 'plancher' : 'prix', taxe, noteBareme,
+        creditPremierAcheteur: credit,
+        regle: plancherLegal
+          ? L(prov === 'qc' ? 'Au Québec, la taxe se calcule sur le plus élevé du prix et de la valeur au rôle multipliée par le facteur comparatif de l’année (Loi concernant les droits sur les mutations immobilières, art. 2 et 1.1).' : 'Au Nouveau-Brunswick, la taxe est de 1 % du plus élevé du prix et de la valeur évaluée (Real Property Transfer Tax Act, art. 2(1.03)).',
+              prov === 'qc' ? 'In Quebec, the tax is computed on the greater of the price and the assessed value times the year’s comparative factor (Act respecting duties on transfers of immovables, s. 2 and 1.1).' : 'In New Brunswick, the tax is 1% of the greater of the price and the assessed value (Real Property Transfer Tax Act, s. 2(1.03)).')
+          : L('Dans cette province, la taxe se calcule sur le prix : la valeur au rôle n’en est pas le plancher.', 'In this province, the tax is computed on the price: the assessed value is not a floor.'),
+        verification: L('Le montant exact figure sur le compte de la municipalité et se confirme avec le notaire ou l’avocat.', 'The exact amount is on the municipality’s bill and is confirmed by the notary or lawyer.'),
+      });
     }
     if (request.method === 'GET' && url.pathname === '/ef/filet-munis') {
       const l = await efFiletMunis(env, String(url.searchParams.get('prov') ?? ''));
