@@ -23,6 +23,7 @@
 import { handleDossierRevision } from './dossierRevision.js';
 import { efAdresse, efMunis, efFilet, efFiletMunis } from './efAdresse.js';
 import RISQUES_EPOQUE from './data/risques-par-epoque.json';
+import TAUX_QC from './data/efTauxQc2026.json';
 const SITE = 'https://payotte.com';
 const WORKER_ORIGIN = 'https://payotte-mcp.payotte.workers.dev';
 const ATTRIBUTION =
@@ -1359,6 +1360,45 @@ const EF_FRAIS = {
 };
 const EF_TAQ_2026 = [93.2, 372.6, 621.1, 1242.5];
 const efPalier = (v) => EF_PALIERS.findIndex((max) => v <= max);
+/* ── ÉCONOMIE POSSIBLE À L'ADRESSE (30 sept. 2026) ─────────────────────────────────────
+   Grégory : « la réponse n'est pas assez évidente, peut-on chiffrer une fourchette d'économie ? »
+   Oui au Québec, sans rien demander au visiteur : le MAMH publie le taux résidentiel ADOPTÉ de
+   chaque municipalité (prévisions 2026, S57 ; scripts/construire-taux-qc.py). Seulement quand la
+   valeur ressort AU-DESSUS des semblables : dans la norme, aucun chiffre, on le dit.
+   Deux hypothèses, jamais une prédiction : (1) la hausse ramenée à la hausse médiane des
+   semblables, propre à CETTE propriété ; (2) une baisse typique de 8 à 10 % quand une demande
+   aboutit (La Presse, Montréal, sept. 2025 — donnée de presse, on le dit). La fourchette va du
+   plus petit au plus grand des trois montants. Taxes municipales seulement : ni taxe scolaire, ni
+   tarifs ; Montréal sans les taxes d'arrondissement (donc un minimum). */
+const EF_BAISSES_TYPIQUES = [0.08, 0.10];
+function efEconomie(x, codeMuni) {
+  if (!x || !(x.valeur > 0)) return null;
+  const taux = TAUX_QC.taux[codeMuni];
+  if (!taux) return { statut: 'sans-taux' };
+  const base = { taux, annee: TAUX_QC.annee, source: TAUX_QC.source, partiel: codeMuni === '66023' };
+  if (x.signal !== 'eleve' && x.signal !== 'au-dessus') return { ...base, statut: 'norme' };
+  const baisses = EF_BAISSES_TYPIQUES.map((p) => Math.round(x.valeur * p));
+  const c = x.comparables;
+  let ecartMediane = null;
+  if (x.valeurAnt > 0 && c?.hausseMediane != null) {
+    const cible = x.valeurAnt * (1 + c.hausseMediane / 100);
+    if (x.valeur > cible) ecartMediane = Math.round(x.valeur - cible);
+  }
+  const montants = [...baisses, ...(ecartMediane ? [ecartMediane] : [])];
+  const an = (b) => Math.round((b / 100) * taux);
+  const bas = Math.min(...montants), haut = Math.max(...montants);
+  const cle = strip(x.municipalite);
+  const f = EF_FRAIS[cle === 'ville-de-quebec' ? 'quebec' : cle];
+  const i = efPalier(x.valeur);
+  return {
+    ...base, statut: 'chiffre',
+    baisse: { bas, haut }, parAn: { bas: an(bas), haut: an(haut) }, annees: 3,
+    surRole: { bas: an(bas) * 3, haut: an(haut) * 3 },
+    ecartMediane, baissesTypiques: baisses,
+    frais: f ? { montant: f.frais[i], exact: true } : { montant: EF_TAQ_2026[i], exact: false },
+  };
+}
+
 const efProvinceHorsQc = (args) => {
   const p = strip(args.province);
   return p && !['qc', 'quebec'].includes(p);
@@ -6515,6 +6555,9 @@ const WORKER_MAIN = {
     }
     if (request.method === 'GET' && url.pathname === '/ef/adresse') {
       const r = await efAdresse(env, url, request, { hmacHex, bumpCounter, feed });
+      if (!r.error && url.searchParams.get('prov') === 'qc') {
+        for (const x of r.resultats ?? []) x.economie = efEconomie(x, String(url.searchParams.get('muni') ?? ''));
+      }
       if (!r.error && r.resultats?.length) {
         const x = r.resultats[0];
         const bouton = url.searchParams.get('t') === 'contestation' ? 'contestation' : 'estimation';
