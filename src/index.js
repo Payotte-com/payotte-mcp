@@ -1375,7 +1375,9 @@ function efEconomie(x, codeMuni) {
   if (!x || !(x.valeur > 0)) return null;
   const taux = TAUX_QC.taux[codeMuni];
   if (!taux) return { statut: 'sans-taux' };
-  const base = { taux, annee: TAUX_QC.annee, source: TAUX_QC.source, partiel: codeMuni === '66023' };
+  // taxeAnnuelle : la part municipale de la taxe foncière à ce taux, pour la valeur au rôle (30 sept.,
+  // « d'autres infos pour rendre ça plus intéressant »). Mêmes réserves : ni scolaire, ni tarifs.
+  const base = { taux, annee: TAUX_QC.annee, source: TAUX_QC.source, partiel: codeMuni === '66023', taxeAnnuelle: Math.round((x.valeur / 100) * taux) };
   if (x.signal !== 'eleve' && x.signal !== 'au-dessus') return { ...base, statut: 'norme' };
   const baisses = EF_BAISSES_TYPIQUES.map((p) => Math.round(x.valeur * p));
   const c = x.comparables;
@@ -6421,7 +6423,7 @@ const WORKER_MAIN = {
         body: JSON.stringify({
           from: env.MAIL_FROM || 'Payotte <relais@payotte.com>',
           to: [REPORT_TO],
-          subject: `[Bandeau EF · recherche] ${bouton === 'contestation' ? 'Statut' : 'Estimation'} · ${muni} · ${V[verdict] ?? verdict}`,
+          subject: `[Bandeau EF · recherche] ${bouton === 'contestation' ? 'Statut' : bouton === 'unique' ? 'Évaluation' : 'Estimation'} · ${muni} · ${V[verdict] ?? verdict}`,
           text: [
             `Une recherche vient d'aboutir dans le bandeau (${heure}).`, '',
             `Bouton : ${bouton === 'contestation' ? 'Voir le statut de l’évaluation' : 'Voir une estimation gratuite'}`,
@@ -6548,7 +6550,8 @@ const WORKER_MAIN = {
     if (request.method === 'GET' && url.pathname === '/ef/filet') {
       const r = await efFilet(env, url, { feed });
       if (!r.error) {
-        const bouton = url.searchParams.get('t') === 'contestation' ? 'contestation' : 'estimation';
+        const tq = url.searchParams.get('t');
+        const bouton = tq === 'contestation' ? 'contestation' : tq === 'unique' ? 'unique' : 'estimation';
         ctx?.waitUntil(efMesurer('filet', String(url.searchParams.get('prov')), bouton, r.signal ?? 'aucun', r.municipalite, r.groupe));
       }
       return json(r, r.error ? 400 : 200);
@@ -6560,11 +6563,21 @@ const WORKER_MAIN = {
       }
       if (!r.error && r.resultats?.length) {
         const x = r.resultats[0];
-        const bouton = url.searchParams.get('t') === 'contestation' ? 'contestation' : 'estimation';
+        const tq = url.searchParams.get('t');
+        const bouton = tq === 'contestation' ? 'contestation' : tq === 'unique' ? 'unique' : 'estimation';
         const verdict = r.resultats.length > 1 ? 'plusieurs' : (x.signal ?? 'aucun');
         ctx?.waitUntil(efMesurer('adresse', String(url.searchParams.get('prov')), bouton, verdict, x.municipalite, x.type));
       }
       return json(r, r.error ? 400 : 200);
+    }
+    // Le choix APRÈS la réponse (30 sept. 2026 : un seul bouton, le professionnel se choisit au vu du
+    // verdict). Compteur seulement : type choisi × province × verdict, par mois. Rien de personnel.
+    if (request.method === 'GET' && url.pathname === '/ef/choix') {
+      const t = url.searchParams.get('t') === 'contestation' ? 'contestation' : 'estimation';
+      const prov = String(url.searchParams.get('p') ?? '').replace(/[^a-z-]/g, '').slice(0, 40) || 'inconnue';
+      const v = ['eleve', 'au-dessus', 'norme'].includes(String(url.searchParams.get('v'))) ? url.searchParams.get('v') : 'aucun';
+      await bumpCounter(env, `ef:ch:${t}:${prov}:${v}:${new Date().toISOString().slice(0, 7)}`, 400 * 86400);
+      return new Response(null, { status: 204, headers: { 'Access-Control-Allow-Origin': '*' } });
     }
     if (request.method === 'GET' && url.pathname === '/ef/renvoi') {
       const u = String(url.searchParams.get('u') ?? '');
@@ -6579,7 +6592,7 @@ const WORKER_MAIN = {
     if (request.method === 'GET' && url.pathname === '/ef/bandeau-stats') {
       if (!env.CONTACTS_TOKEN || url.searchParams.get('key') !== env.CONTACTS_TOKEN) return json({ error: 'unauthorized' }, 401);
       const out = {};
-      for (const pre of ['ef:d:', 'ef:c:', 'ef:o:', 'efs:', 'efdv:']) {
+      for (const pre of ['ef:d:', 'ef:c:', 'ef:o:', 'ef:ch:', 'efs:', 'efdv:']) {
         const l = await env.COUNTERS.list({ prefix: pre });
         for (const k of l.keys) out[k.name] = parseInt((await env.COUNTERS.get(k.name)) ?? '0', 10);
       }
