@@ -139,6 +139,17 @@ PROVINCIAL_ACTIF = "1"
 # 29 sept. 2026 : 10 → 20 (Grégory : « monte un peu », 13 000 envois à finir cette semaine, rebonds bas).
 MAX_PAR_DOMAINE = "20"
 
+# ── JOURNÉE DU 30 SEPT. 2026 SEULEMENT (Grégory : « le rythme est beaucoup trop lent ») ──
+# Les trois réglages sont datés et deviennent inertes le 1er octobre, sans rien retirer.
+# Heures en UTC ; Montréal = UTC − 4.
+#   · 50 par domaine au lieu de 20 ;
+#   · passages aux 10 min de 17 h 40 à 19 h 50 UTC (13 h 40-15 h 50 à Montréal) ;
+#   · QC et ON jusqu'à 19 h 50 UTC ; Maritimes et T.-N.-L. tout de suite (17 et 18 h UTC) ;
+#     AB et C.-B. jusqu'à 21 h 30 UTC (17 h 30 à Montréal ; 15 h 30 AB, 14 h 30 C.-B.).
+MAX_PAR_DOMAINE_DU_JOUR = "2026-09-30:50"
+DIX_MIN_DU_JOUR = "2026-09-30:17,18,19"
+RENFORT_DU_JOUR = "2026-09-30|17:QC,ON,NS,NB,PE,NL,AB,BC;18:QC,ON,NS,NB,PE,NL,AB,BC;19:QC,ON,AB,BC;20:AB,BC;21:AB,BC"
+
 OUTREACH_RAMPE = "2026-09-09:75,2026-09-10:150,2026-09-11:300,2026-09-14:600,2026-09-15:1200,2026-09-16:2400,2026-09-17:4800,2026-09-29:6000"
 
 # ── FORÇAGE DE PROVINCES POUR UNE JOURNÉE (14 sept. 2026, demande proprio) ───────

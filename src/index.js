@@ -3180,12 +3180,19 @@ const CRON_DERNIERE_HEURE_UTC = 21;
    qu'UN déclencheur, toutes les 10 minutes de 12 h à 21 h UTC, et c'est le code qui choisit les minutes :
    :00 et :30 toute la journée, les 10 minutes seulement aux heures de ce jeu. */
 const CRON_HEURES_10_MIN_UTC = new Set([18, 19]);
-const creneauCron = (at) => {
-  const pas = CRON_HEURES_10_MIN_UTC.has(at.getUTCHours()) ? 10 : 30;
+/* Réglage DATÉ (30 sept. 2026, demande de Grégory) : `DIX_MIN_DU_JOUR = "AAAA-MM-JJ:17,18,19"`
+   remplace le jeu ci-dessus pour ce jour-là seulement ; le lendemain, il est inerte. */
+const heuresDixMin = (at, env) => {
+  const brut = String(env?.DIX_MIN_DU_JOUR || '');
+  if (brut.slice(0, 10) !== at.toISOString().slice(0, 10) || brut[10] !== ':') return CRON_HEURES_10_MIN_UTC;
+  return new Set(brut.slice(11).split(',').map((x) => Number(x.trim())).filter(Number.isFinite));
+};
+const creneauCron = (at, env) => {
+  const pas = heuresDixMin(at, env).has(at.getUTCHours()) ? 10 : 30;
   return Math.floor(at.getUTCMinutes() / pas) * pas;
 };
-const passageCronActif = (at) =>
-  at.getUTCMinutes() % 30 < 10 || CRON_HEURES_10_MIN_UTC.has(at.getUTCHours());
+const passageCronActif = (at, env) =>
+  at.getUTCMinutes() % 30 < 10 || heuresDixMin(at, env).has(at.getUTCHours());
 
 const localHour = (tz, at) =>
   Number(new Intl.DateTimeFormat('en-CA', { timeZone: tz, hour: 'numeric', hour12: false }).format(at));
@@ -3222,8 +3229,12 @@ const localHour = (tz, at) =>
    l'Ouest : 12 h UTC = 5 h du matin en Colombie-Britannique.
 
    Format : « HH:PROV,PROV;HH:PROV » en heures UTC. Vide = personne, comportement d'avant. */
-function renfortA(heureUTC, env) {
-  const brut = String(env?.HEURES_RENFORT || '');
+function renfortA(heureUTC, env, at = new Date()) {
+  /* Réglage DATÉ (30 sept. 2026) : `RENFORT_DU_JOUR = "AAAA-MM-JJ|HH:PROV,PROV;HH:PROV"`
+     REMPLACE `HEURES_RENFORT` pour ce jour-là seulement ; le lendemain, il est inerte. */
+  const jour = String(env?.RENFORT_DU_JOUR || '');
+  const brut = jour.slice(0, 10) === at.toISOString().slice(0, 10) && jour[10] === '|'
+    ? jour.slice(11) : String(env?.HEURES_RENFORT || '');
   const out = new Set();
   for (const bloc of brut.split(';').map((x) => x.trim()).filter(Boolean)) {
     const [h, provs] = bloc.split(':');
@@ -3500,12 +3511,12 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
       if (m < depart) continue;
       const u = Math.floor(m / 60);
       if (u > CRON_DERNIERE_HEURE_UTC) break;
-      if (m % 30 && !CRON_HEURES_10_MIN_UTC.has(u)) continue;   // pas de passage à cette minute
+      if (m % 30 && !heuresDixMin(at, env).has(u)) continue;   // pas de passage à cette minute
       const d = new Date(at); d.setUTCHours(u, m % 60, 0, 0);
       // Une heure de RENFORT sert désormais des provinces : elle compte dans le partage,
       // sinon les passages d'avant se répartiraient le plafond comme si elle n'existait pas
       // et le renfort n'hériterait que du reliquat.
-      if (zonesAt10h(d).size || renfortA(u, env).size) n++;
+      if (zonesAt10h(d).size || renfortA(u, env, d).size) n++;
     }
     return Math.max(1, n);
   })();
@@ -3602,7 +3613,10 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
   // ⚠️ LE COMPTE MONTE À LA MISE EN FILE, pas à l'acceptation : l'envoi étant différé,
   // compter à l'acceptation laisserait une seule exécution empiler les 26 avant que le
   // premier lot ne parte.
-  const MAX_PAR_DOMAINE = Number(env.MAX_PAR_DOMAINE || 5);
+  // `MAX_PAR_DOMAINE_DU_JOUR = "AAAA-MM-JJ:50"` : dérogation datée, inerte le lendemain (30 sept. 2026).
+  const domJour = String(env.MAX_PAR_DOMAINE_DU_JOUR || '');
+  const MAX_PAR_DOMAINE = domJour.slice(0, 10) === dayKey && domJour[10] === ':'
+    ? Number(domJour.slice(11)) : Number(env.MAX_PAR_DOMAINE || 5);
   const domaineDe = (email) => String(email || '').split('@')[1]?.toLowerCase() || '?';
   /* ── LES MESSAGERIES GRAND PUBLIC NE SONT PAS DES FIRMES (28 sept. 2026, demande proprio) ──
      Le plafond de 5 existe pour les bannières : 26 adresses d'un même cabinet sur UN serveur
@@ -3798,7 +3812,7 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
   // l'audience du mois entier, pas la seule tranche de 10 h en cours.
   // 10 h locales + provinces de RENFORT de cette heure-ci (voir `renfortA`). Le renfort
   // s'AJOUTE, il ne remplace rien : une province déjà à 10 h reste servie normalement.
-  const renfort = renfortA(at.getUTCHours(), env);
+  const renfort = renfortA(at.getUTCHours(), env, at);
   const zones = new Set([...zonesAt10h(at), ...renfort]);
   if (renfort.size && !dryRun) console.log(`[bulletin] renfort ${at.getUTCHours()} h UTC : ${[...renfort].join(' ')}`);
   report.zones = [...zones];
@@ -3874,7 +3888,7 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
      14 h serait devenu invisible dès que celui de 14 h 30 se terminait — exactement la
      panne silencieuse que ce témoin existe pour rendre visible. */
   const temoin = `run:${dayKey}:${String(at.getUTCHours()).padStart(2, '0')}`
-    + (creneauCron(at) ? String(creneauCron(at)).padStart(2, '0') : '');   // 18, 1810, 1830…
+    + (creneauCron(at, env) ? String(creneauCron(at, env)).padStart(2, '0') : '');   // 18, 1810, 1830…
   if (!dryRun && env.SUBSCRIBERS) {
     const morts = [];
     for (const h of await kvKeys(env.SUBSCRIBERS, `run:${dayKey}:`)) {
@@ -6658,7 +6672,7 @@ const WORKER_MAIN = {
     // Le déclencheur tourne aux 10 minutes ; hors des heures CRON_HEURES_10_MIN_UTC, seuls
     // :00 et :30 travaillent — les autres minutes repartent avant toute lecture KV.
     const instant = new Date(event.scheduledTime ?? Date.now());
-    if (!passageCronActif(instant)) {
+    if (!passageCronActif(instant, env)) {
       // Créneau inactif : il ne sert qu'à faire avancer la reprise de septembre, s'il en reste.
       const cycleInstant = instant.toISOString().slice(0, 7);
       if (cycleInstant === '2026-09') {
