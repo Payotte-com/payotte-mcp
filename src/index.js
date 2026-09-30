@@ -4322,7 +4322,7 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
             report.skipped.push(`${rec.email} (provincial : aucun chiffre de marché pour ${provSlug})`);
             continue;
           }
-          report.prospects++; report.recipients.push({ to: rec.email, kind: 'prospect', city: rec.city, variante: v.variante, zone: v.zone });
+          report.prospects++; report.recipients.push({ to: rec.email, kind: 'prospect', city: rec.city, variante: v.variante, zone: v.zone, prov: PROV_TO_CODE[provSlug]?.toUpperCase(), cat: 'sansSecteur' });
           report.provincial = report.provincial || { banlieue: 0, provincial: 0 };
           report.provincial[v.variante]++;
           report.attempts++;
@@ -4337,7 +4337,7 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
         }
         const { subject, html } = renderPulse({ segment: 'prospect', city, lang: rec.lang, unsubUrl, macro, metier: rec.metier , postale,
           villeCouverte: couvertes ? couvertes.has(normVille(city.slug ?? key.slice(0, sep))) : null });
-        report.prospects++; report.recipients.push({ to: rec.email, kind: 'prospect', city: rec.city });
+        report.prospects++; report.recipients.push({ to: rec.email, kind: 'prospect', city: rec.city, prov: city?.province, cat: 'secteur' });
         report.attempts++;
         done.add(idReel);                // servi pour ce cycle dès la mise en file
         // FLUX (2026-08-19) : `source: 'form-ville'` = l'abonné a rempli le formulaire du
@@ -4501,7 +4501,8 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
       // marquée `prov-done:` et son feed ne serait plus rapatrié avant le mois prochain.
       if (!await prendreCreneauDomaine(contact.email)) { restants++; report.pending++; continue; }
       report.experts[stage] = (report.experts[stage] || 0) + 1;
-      report.recipients.push({ to: contact.email, kind: `expert:${stage}`, slug: e.slug });
+      report.recipients.push({ to: contact.email, kind: `expert:${stage}`, slug: e.slug, prov: city?.province,
+        cat: (stage === 'reco' || stage === 'partner') ? 'expertVerifie' : 'expert' });
       // Le dry-run tient la même comptabilité (sans écrire en KV), sinon il annoncerait une
       // audience gonflée des doublons d'adresse que l'envoi réel, lui, écarte.
       if (dryRun) { done.add(e.slug); mailsDone.add(contact.email.toLowerCase()); continue; }
@@ -4607,7 +4608,11 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
      sortis plus haut) et la fin de cycle, quand tout le monde a reçu — pending vaut 0. */
   const aDireQuelqueChose = report.attempts || report.failed || report.pending
     || (report.passagesMorts?.length ?? 0);
-  if (!dryRun && aDireQuelqueChose) await sendRunReport(env, report);
+  // Fin de semaine sans aucun envoi : pas de rapport (demande de Grégory, 30 sept. 2026).
+  const finDeSemaineVide = FIN_DE_SEMAINE(at) && !report.attempts && !report.failed
+    && !(report.passagesMorts?.length ?? 0);
+  report.at = at.toISOString();
+  if (!dryRun && aDireQuelqueChose && !finDeSemaineVide) await sendRunReport(env, report);
   return report;
 }
 
@@ -4657,71 +4662,64 @@ async function envoyerRapportSequence(env, r) {
 
 async function sendRunReport(env, report) {
   if (!env.RESEND_API_KEY) return;
-  // `pending` ne compte que les candidats VUS après épuisement du budget : les provinces
-  // qu'on n'a même pas rapatriées faute de sous-requêtes n'y figurent pas. On annonce donc
-  // « au moins », jamais un chiffre définitif qu'on n'a pas les moyens de calculer.
-  const provAttendues = report.skipped.filter((s) => s.endsWith('(budget épuisé)')).length;
-  const partiel = report.pending > 0 || provAttendues > 0;
-  const reste = partiel ? `au moins ${report.pending}` : '0';
-  const jour = (report.dayUsedBefore ?? 0) + report.attempts;
-  // Tableau par province (demande proprio du 2026-08-17) : ce qui est parti ce coup-ci est
-  // sur la 1re ligne ; ici c'est le CUMUL DU CYCLE et ce qu'il reste pour finir le tour.
-  // Trié par reste décroissant : ce qui bloque la fin du mois se lit en premier.
+  /* ── RAPPORT DE PASSAGE, VERSION COURTE (30 sept. 2026, demande de Grégory) ────────
+     Par province : l'heure locale du passage, ce qui est parti selon quatre catégories
+     (experts vérifiés = étapes reco/partner, fiche confirmée ; experts = les autres
+     étapes ; prospects d'une ville du site ; prospects sans secteur = bulletin
+     provincial), puis le cumul du cycle et ce qui reste. Le cumul et le reste ne
+     comptent que les PROSPECTS : le carnet des experts n'est pas recensable sans payer
+     une sous-requête par province. Rien d'autre, sauf les alertes (passage mort,
+     ratés), qui n'apparaissent que lorsqu'elles existent. */
+  const at = report.at ? new Date(report.at) : new Date();
+  const heureLocale = (code) => {
+    const tz = PROV_TZ[code];
+    if (!tz) return '—';
+    const [h, m] = new Intl.DateTimeFormat('fr-CA', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false })
+      .format(at).split(/\D+/).filter(Boolean);
+    return `${Number(h)} h ${m}`;
+  };
+  const CATS = [['expertVerifie', 'experts vérifiés'], ['expert', 'experts'],
+                ['secteur', 'prospects secteur'], ['sansSecteur', 'prospects sans secteur']];
+  const passe = {};
+  for (const r of report.recipients || []) {
+    const code = r.prov || '?';
+    const p = (passe[code] ||= { total: 0, expertVerifie: 0, expert: 0, secteur: 0, sansSecteur: 0 });
+    p.total++;
+    if (r.cat) p[r.cat]++;
+  }
   const pp = report.parProvince || {};
-  const rangs = Object.entries(pp)
-    .map(([code, v]) => ({ code, ...v, reste: v.total - v.servis }))
-    .sort((a, b) => b.reste - a.reste || b.total - a.total);
-  const larg = Math.max(0, ...rangs.map((r) => String(r.total).length));
-  const blocProvinces = rangs.length ? [
-    ``,
-    `INFOLETTRE PAR PROVINCE — cycle ${report.cycle} (cumul, cet envoi compris)`,
-    ...rangs.map((r) =>
-      `  ${r.code.padEnd(3)} envoyés ${String(r.servis).padStart(larg)}/${String(r.total).padEnd(larg)}`
-      + ` · reste ${String(r.reste).padStart(larg)}`
-      + (r.reste === 0 ? '  ✓ tour terminé' : '')),
-    `  ${'—'.repeat(3)} TOTAL   ${rangs.reduce((n, r) => n + r.servis, 0)}/${rangs.reduce((n, r) => n + r.total, 0)}`
-      + ` · reste ${rangs.reduce((n, r) => n + r.reste, 0)}`,
-    report.prospectsSansMarche
-      ? `  (+ ${report.prospectsSansMarche} abonné(s) dans une ville sans chiffres de marché : jamais servis, le bulletin n'aurait rien à leur dire)`
-      : '',
-    report.provincesTerminees?.length
-      ? `  Côté EXPERTS, provinces bouclées ce cycle : ${report.provincesTerminees.join(', ')}.`
-        + ` Les autres ne sont pas recensables sans payer une sous-requête par province.`
-      : `  Côté EXPERTS, aucune province encore bouclée ce cycle.`,
-  ].filter(Boolean) : [];
-
-  // Un passage précédent de la journée a posé son témoin « debut » et n'a jamais posé
-  // « fin » : il a été tué (limite de 30 s du Cron Trigger, le plus souvent). C'est la
-  // ligne la plus importante du rapport quand elle apparaît — elle passe donc en tête.
-  const morts = report.passagesMorts?.length
-    ? [`⚠️ PASSAGE(S) MORT(S) AUJOURD'HUI : ${report.passagesMorts.join(', ')} — commencés, jamais terminés.`,
-       `   Rien n'est parti à ces heures-là. Cause habituelle : les 30 s du Cron Trigger.`, ``]
-    : [];
+  const codes = [...new Set([...Object.keys(passe), ...(report.zones || [])])]
+    .sort((a, b) => (passe[b]?.total ?? 0) - (passe[a]?.total ?? 0) || a.localeCompare(b));
+  const nf = (n) => Number(n || 0).toLocaleString('fr-CA');
+  const blocs = codes.map((code) => {
+    const p = passe[code] || { total: 0 };
+    const c = pp[code];
+    return [
+      `${code} · ${heureLocale(code)} — ${nf(p.total)} envoyé(s)`,
+      p.total ? `   ${CATS.map(([k, lib]) => `${lib} ${nf(p[k])}`).join(' · ')}` : '',
+      c ? `   cycle : ${nf(c.servis)} envoyés · reste ${nf(c.total - c.servis)}` : '',
+    ].filter(Boolean).join('\n');
+  });
+  const alertes = [
+    report.passagesMorts?.length ? `⚠️ Passage(s) mort(s) aujourd'hui : ${report.passagesMorts.join(', ')}` : '',
+    report.sante?.stopOutreach ? `⚠️ Prospection arrêtée : ${report.sante.stopOutreach}` : '',
+    report.failed ? `⚠️ ${report.failed} raté(s), ils repasseront :\n${report.errors.slice(0, 20).join('\n')}` : '',
+  ].filter(Boolean);
   const L = [
-    ...morts,
-    `Cycle ${report.cycle} — CET ENVOI : ${report.sent} parti(s) · ${report.failed} raté(s) · reste ${reste} dans ce passage`,
-    `Passage de 10 h : ${report.zones?.join(', ') || '—'} · ${report.activeCities} ville(s) dans la tranche`,
-    `Rythme du jour (toutes tranches) : ${jour}/${report.capJourEffectif ?? report.dayCap ?? dailySendCap()}`
-      + `${report.capJourEffectif != null && report.capJourEffectif !== report.dayCap ? ` (plafond global ${report.dayCap}, bridé par la rampe outreach)` : ''}`
-      + ` · part de ce passage ${report.attempts}/${report.partPassage ?? '—'}`
-      + ` (${report.passagesRestants ?? '?'} passage(s) à fuseau restant(s) aujourd'hui)`,
-    `Sous-requêtes : ${report.budgetUsed}/${SUBREQUEST_BUDGET}${provAttendues ? ` · provinces non ouvertes : ${provAttendues}` : ''}`,
-    `Opérations KV : ${report.kvUsed}/${KV_BUDGET}${report.kvEpuise ? ` · ⚠ ${report.kvEpuise} prospects non regardés faute de budget` : ''}`,
-    `Étapes : ${Object.entries(report.experts).filter(([, n]) => n).map(([k, n]) => `${k} ${n}`).join(' · ') || '—'}${report.prospects ? ` · prospects ${report.prospects}` : ''}`,
-    ...blocProvinces,
-    partiel
-      ? `\nIl reste du monde dans ce ou ces fuseaux : ils seront servis demain, à 10 h chez eux.`
-      : `\nCe fuseau est à jour pour le mois. Les autres sont servis à leur propre 10 h.`,
-    report.errors.length ? `\nÉCHECS (${report.errors.length}) — ils repasseront demain :\n${report.errors.slice(0, 40).join('\n')}` : '',
-  ];
+    ...alertes, alertes.length ? '' : null,
+    `Ce passage : ${nf(report.sent)} envoyé(s)`,
+    '',
+    blocs.join('\n\n'),
+  ].filter((x) => x !== null);
+  const resumeSujet = codes.filter((c) => passe[c]?.total).map((c) => `${c} ${passe[c].total}`).join(' · ');
   await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       from: env.MAIL_FROM_BULLETIN || 'Payotte <bulletin@payotte.com>',
       to: [REPORT_TO],
-      subject: `Bulletin ${report.cycle} ${report.zones?.join('/') || ''} — ${report.sent} envoyés${report.failed ? `, ${report.failed} ratés` : ''}${partiel ? ', vague en cours' : ', fuseau à jour'}`,
-      text: L.filter(Boolean).join('\n'),
+      subject: `Bulletin — ${report.sent} envoyés${resumeSujet ? ` (${resumeSujet})` : ''}${report.failed ? `, ${report.failed} ratés` : ''}`,
+      text: L.join('\n'),
     }),
   }).catch(() => { /* le récap n'est jamais bloquant */ });
 }
