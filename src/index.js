@@ -3221,7 +3221,7 @@ function zonesAt10h(at = new Date()) {
    1 h 30. Un pas = ~12 s de lecture de `GET /emails` (≈ 20 pages), état en KV.
    La clé d'envoi (`RESEND_API_KEY`) est « Sending access » : Resend répond 401 à la
    lecture, d'où la clé « Full access » à part, `RESEND_LECTURE_KEY`. */
-async function pasRepriseResend(env, cycle, { maxSubs = 40 } = {}) {
+async function pasRepriseResend(env, cycle, { maxSubs = 40, dureeMs = 12000, pauseMs = 520 } = {}) {
   const cleLecture = env.RESEND_LECTURE_KEY || env.RESEND_API_KEY;
   if (!env.SUBSCRIBERS || !cleLecture) return { actif: false };
   const CLE_REPRISE = `reprise-resend:${cycle}`;
@@ -3236,7 +3236,7 @@ async function pasRepriseResend(env, cycle, { maxSubs = 40 } = {}) {
     const t0 = Date.now();
     let finLecture = false;
     // ~2 appels/s chez Resend, et le passage doit rester loin des 30 s.
-    while (!finLecture && Date.now() - t0 < 12000 && subsUtilisees < maxSubs) {
+    while (!finLecture && Date.now() - t0 < dureeMs && subsUtilisees < maxSubs) {
       const q = new URLSearchParams({ limit: '100' });
       if (etat.apres) q.set('after', etat.apres);
       subsUtilisees++;
@@ -3254,7 +3254,7 @@ async function pasRepriseResend(env, cycle, { maxSubs = 40 } = {}) {
       etat.pages++;
       if (lignes.length) etat.apres = lignes[lignes.length - 1].id;
       if (!j?.has_more || !lignes.length) finLecture = true;
-      await new Promise((ok) => setTimeout(ok, 520));
+      await new Promise((ok) => setTimeout(ok, pauseMs));
     }
     etat.emails = [...vus];
     if (finLecture && !etat.erreur) {
@@ -6607,7 +6607,9 @@ const WORKER_MAIN = {
       const cycleInstant = instant.toISOString().slice(0, 7);
       if (cycleInstant === '2026-09') {
         try {
-          const e = await pasRepriseResend(env, cycleInstant);
+          // Créneau vide : rien d'autre ne tourne, le pas peut prendre 22 s au lieu de 12
+          // (14 pages par pas mesurées le 30 sept. : ~250 pages = 3 h de prospects bloqués).
+          const e = await pasRepriseResend(env, cycleInstant, { maxSubs: 45, dureeMs: 22000, pauseMs: 300 });
           if (e.actif) console.log(`[reprise-resend] ${e.pages} pages, ${e.emails.length} adresses${e.fini ? `, FINI (${e.marques} marques)` : ''}${e.erreur ? ` — ${e.erreur}` : ''}`);
         } catch (err) { console.log(`[reprise-resend] ERREUR : ${err?.message ?? err}`); }
       }
