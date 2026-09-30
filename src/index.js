@@ -3214,6 +3214,66 @@ function zonesAt10h(at = new Date()) {
 // OPT-OUT : plus de `sub:` à poser à la main. Seule une clé `unsub:{slug}` exclut quelqu'un.
 // dryRun=true → aucun envoi, rapport d'audience seulement (et TOUS les fuseaux, sinon le
 // rapport ne montrerait que la tranche horaire du moment).
+/* ── REPRISE DES MARQUES PERDUES — UN PAS (29-30 sept. 2026) ─────────────────────────
+   Voir le commentaire dans `runBulletin`. Sortie de `runBulletin` le 30 sept. pour que
+   les créneaux de 10 min HORS des heures actives (qui repartent sans rien envoyer)
+   fassent avancer la lecture : à :00/:30 seulement, elle aurait pris 5 h 30 au lieu de
+   1 h 30. Un pas = ~12 s de lecture de `GET /emails` (≈ 20 pages), état en KV.
+   La clé d'envoi (`RESEND_API_KEY`) est « Sending access » : Resend répond 401 à la
+   lecture, d'où la clé « Full access » à part, `RESEND_LECTURE_KEY`. */
+async function pasRepriseResend(env, cycle, { maxSubs = 40 } = {}) {
+  const cleLecture = env.RESEND_LECTURE_KEY || env.RESEND_API_KEY;
+  if (!env.SUBSCRIBERS || !cleLecture) return { actif: false };
+  const CLE_REPRISE = `reprise-resend:${cycle}`;
+  let kvUtilisees = 1, subsUtilisees = 0;
+  let etat = null;
+  try { etat = JSON.parse((await env.SUBSCRIBERS.get(CLE_REPRISE)) || 'null'); } catch { etat = null; }
+  etat = etat || { apres: null, emails: [], pages: 0, fini: false };
+  if (!etat.fini) {
+    delete etat.erreur;          // on retente à chaque pas : une clé corrigée doit suffire
+    const vus = new Set(etat.emails);
+    const debutCycle = `${cycle}-01`;
+    const t0 = Date.now();
+    let finLecture = false;
+    // ~2 appels/s chez Resend, et le passage doit rester loin des 30 s.
+    while (!finLecture && Date.now() - t0 < 12000 && subsUtilisees < maxSubs) {
+      const q = new URLSearchParams({ limit: '100' });
+      if (etat.apres) q.set('after', etat.apres);
+      subsUtilisees++;
+      const r = await fetch(`https://api.resend.com/emails?${q}`, {
+        headers: { Authorization: `Bearer ${cleLecture}` },
+      });
+      if (r.status === 429) { await new Promise((ok) => setTimeout(ok, 1100)); continue; }
+      if (!r.ok) { etat.erreur = `Resend GET /emails HTTP ${r.status}`; break; }
+      const j = await r.json();
+      const lignes = Array.isArray(j?.data) ? j.data : [];
+      for (const m of lignes) {
+        if (String(m.created_at || '').slice(0, 10) < debutCycle) { finLecture = true; continue; }
+        for (const to of [].concat(m.to || [])) vus.add(String(to).trim().toLowerCase());
+      }
+      etat.pages++;
+      if (lignes.length) etat.apres = lignes[lignes.length - 1].id;
+      if (!j?.has_more || !lignes.length) finLecture = true;
+      await new Promise((ok) => setTimeout(ok, 520));
+    }
+    etat.emails = [...vus];
+    if (finLecture && !etat.erreur) {
+      const carnet = await kvKeys(env.SUBSCRIBERS, 's:');
+      kvUtilisees += Math.max(1, Math.ceil(carnet.length / 1000));
+      const ids = carnet.filter((k) => vus.has(k.slice(k.lastIndexOf(':') + 1).toLowerCase()))
+        .map((k) => `prospect:${k}`);
+      kvUtilisees++;
+      await env.SUBSCRIBERS.put(`servi:${cycle}:reprise-resend`, JSON.stringify(ids), { expirationTtl: CYCLE_TTL });
+      etat.fini = true;
+      etat.marques = ids.length;
+    }
+    etat.maj = new Date().toISOString();
+    kvUtilisees++;
+    await env.SUBSCRIBERS.put(CLE_REPRISE, JSON.stringify(etat), { expirationTtl: CYCLE_TTL });
+  }
+  return { ...etat, actif: true, kvUtilisees, subsUtilisees };
+}
+
 async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
   const origin = WORKER_ORIGIN;
   const cycle = at.toISOString().slice(0, 7);      // AAAA-MM
@@ -3807,56 +3867,14 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
      `servi:{cycle}:reprise-resend` = toutes les clés du carnet dont l'adresse a déjà reçu
      un courriel. Tant que ce n'est pas fini, aucun prospect ne part (`repriseBloque`).
      Rien ne sort de Cloudflare ni de Resend. Inerte à partir d'octobre (cycle neuf). */
-  // La clé d'envoi (`RESEND_API_KEY`) est « Sending access » : Resend répond 401 à la lecture.
-  // La lecture passe par une clé « Full access » à part, `RESEND_LECTURE_KEY`.
-  const cleLecture = env.RESEND_LECTURE_KEY || env.RESEND_API_KEY;
-  if (env.SUBSCRIBERS && cleLecture && cycle === '2026-09' && !dryRun) {
-    const CLE_REPRISE = `reprise-resend:${cycle}`;
-    let etat = null;
-    try { ctr.kv++; etat = JSON.parse((await env.SUBSCRIBERS.get(CLE_REPRISE)) || 'null'); } catch { etat = null; }
-    etat = etat || { apres: null, emails: [], pages: 0, fini: false };
-    if (!etat.fini) {
-      delete etat.erreur;          // on retente à chaque passage : une clé corrigée doit suffire
-      const vus = new Set(etat.emails);
-      const debutCycle = `${cycle}-01`;
-      const t0 = Date.now();
-      let finLecture = false;
-      // ~2 appels/s chez Resend, et le passage doit rester loin des 30 s.
-      while (!finLecture && Date.now() - t0 < 12000 && left() > 10) {
-        const q = new URLSearchParams({ limit: '100' });
-        if (etat.apres) q.set('after', etat.apres);
-        ctr.subs++;
-        const r = await fetch(`https://api.resend.com/emails?${q}`, {
-          headers: { Authorization: `Bearer ${cleLecture}` },
-        });
-        if (r.status === 429) { await new Promise((ok) => setTimeout(ok, 1100)); continue; }
-        if (!r.ok) { etat.erreur = `Resend GET /emails HTTP ${r.status}`; break; }
-        const j = await r.json();
-        const lignes = Array.isArray(j?.data) ? j.data : [];
-        for (const m of lignes) {
-          if (String(m.created_at || '').slice(0, 10) < debutCycle) { finLecture = true; continue; }
-          for (const to of [].concat(m.to || [])) vus.add(String(to).trim().toLowerCase());
-        }
-        etat.pages++;
-        if (lignes.length) etat.apres = lignes[lignes.length - 1].id;
-        if (!j?.has_more || !lignes.length) finLecture = true;
-        await new Promise((ok) => setTimeout(ok, 520));
-      }
-      etat.emails = [...vus];
-      if (finLecture && !etat.erreur) {
-        const carnet = await kvListe('s:');
-        const ids = carnet.filter((k) => vus.has(k.slice(k.lastIndexOf(':') + 1).toLowerCase()))
-          .map((k) => `prospect:${k}`);
-        ctr.kv++;
-        await env.SUBSCRIBERS.put(`servi:${cycle}:reprise-resend`, JSON.stringify(ids), { expirationTtl: CYCLE_TTL });
-        etat.fini = true;
-        etat.marques = ids.length;
-      }
-      ctr.kv++;
-      await env.SUBSCRIBERS.put(CLE_REPRISE, JSON.stringify(etat), { expirationTtl: CYCLE_TTL });
+  if (env.SUBSCRIBERS && cycle === '2026-09' && !dryRun) {
+    const etat = await pasRepriseResend(env, cycle, { maxSubs: Math.max(0, left() - 10) });
+    ctr.subs += etat.subsUtilisees || 0;
+    ctr.kv += etat.kvUtilisees || 0;
+    if (etat.actif) {
+      repriseBloque = !etat.fini;
+      report.reprise = { pages: etat.pages, adresses: etat.emails.length, fini: etat.fini, marques: etat.marques ?? null, erreur: etat.erreur ?? null };
     }
-    repriseBloque = !etat.fini;
-    report.reprise = { pages: etat.pages, adresses: etat.emails.length, fini: etat.fini, marques: etat.marques ?? null, erreur: etat.erreur ?? null };
   }
   const done = new Set(env.SUBSCRIBERS ? await kvListe(`sent:${cycle}:`) : []);
   /* ── LE CUMUL : UNE LECTURE AU LIEU D'UNE PAR LOT (28 sept. 2026) ─────────────────
@@ -6583,7 +6601,18 @@ const WORKER_MAIN = {
     if (!env.RESEND_API_KEY) return;   // sans clé : aucun envoi (le dry-run reste dispo par route)
     // Le déclencheur tourne aux 10 minutes ; hors des heures CRON_HEURES_10_MIN_UTC, seuls
     // :00 et :30 travaillent — les autres minutes repartent avant toute lecture KV.
-    if (!passageCronActif(new Date(event.scheduledTime ?? Date.now()))) return;
+    const instant = new Date(event.scheduledTime ?? Date.now());
+    if (!passageCronActif(instant)) {
+      // Créneau inactif : il ne sert qu'à faire avancer la reprise de septembre, s'il en reste.
+      const cycleInstant = instant.toISOString().slice(0, 7);
+      if (cycleInstant === '2026-09') {
+        try {
+          const e = await pasRepriseResend(env, cycleInstant);
+          if (e.actif) console.log(`[reprise-resend] ${e.pages} pages, ${e.emails.length} adresses${e.fini ? `, FINI (${e.marques} marques)` : ''}${e.erreur ? ` — ${e.erreur}` : ''}`);
+        } catch (err) { console.log(`[reprise-resend] ERREUR : ${err?.message ?? err}`); }
+      }
+      return;
+    }
     // L'ALERTE TAUX passe avant tout le reste : c'est le seul envoi daté par un ÉVÉNEMENT
     // (la Banque du Canada a bougé) et non par un calendrier qu'on choisit. Un bulletin
     // décalé d'une heure ne coûte rien ; une alerte de taux décalée n'est plus une alerte.
