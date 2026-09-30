@@ -3357,7 +3357,12 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
   // Ce que les exécutions PRÉCÉDENTES du jour ont déjà consommé (les 7 passages horaires se
   // partagent un seul plafond quotidien).
   const daySoFar = Number((env.SUBSCRIBERS ? await env.SUBSCRIBERS.get(`day:${dayKey}`) : 0) || 0);
-  let dayCap = Math.min(dailySendCap(at), RESEND_DAY_CAP);
+  // `PLAFOND_DU_JOUR = "AAAA-MM-JJ:8000"` : remplace RESEND_DAY_CAP pour ce jour-là seulement,
+  // inerte le lendemain (30 sept. 2026, Grégory : finir le cycle de septembre dans la journée).
+  const plafondJour = String(env.PLAFOND_DU_JOUR || '');
+  const capResend = plafondJour.slice(0, 10) === dayKey && plafondJour[10] === ':'
+    ? Number(plafondJour.slice(11)) : RESEND_DAY_CAP;
+  let dayCap = Math.min(dailySendCap(at), capResend);
 
   // ── COUPE-CIRCUIT ET SEUILS (2026-08-19) ─────────────────────────────────────────
   // Deux mécanismes, et ils ne se confondent pas :
@@ -3580,7 +3585,11 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
   // Ce n'est PAS un gaspillage quand il n'y a pas d'expert à servir : la réserve non
   // utilisée n'est pas consommée, donc `daySoFar` ne monte pas, et l'auto-correcteur
   // décrit plus haut (reste plus gros ÷ diviseur plus petit) la rend au passage suivant.
-  const EXPERTS_SHARE = Number(env.EXPERTS_SHARE ?? 0.30);
+  // `EXPERTS_SHARE_DU_JOUR = "AAAA-MM-JJ:0"` : dérogation datée, inerte le lendemain (30 sept. 2026 :
+  // experts tous servis, la réserve de 30 % bridait chaque passage à 195 prospects sur 279).
+  const partJour = String(env.EXPERTS_SHARE_DU_JOUR || '');
+  const EXPERTS_SHARE = partJour.slice(0, 10) === dayKey && partJour[10] === ':'
+    ? Number(partJour.slice(11)) : Number(env.EXPERTS_SHARE ?? 0.30);
   const partProspects = Math.max(1, Math.floor(partPassage * (1 - EXPERTS_SHARE)));
 
   // `kind` vaut 'expert' ou 'prospect'. Défaut 'expert' : un appel non qualifié garde le
