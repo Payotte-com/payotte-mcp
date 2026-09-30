@@ -3538,7 +3538,12 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
   // aux adresses récoltées ; le jour où le bulletin redevient le gros du volume, il lui
   // faudra sa propre part, pas ce raccourci.
   const capJourEffectif = Math.min(dayCap, rampeOutreach());
-  const partPassage = Math.max(1, Math.floor((capJourEffectif - daySoFar) / passagesRestants));
+  // `PART_PASSAGE_DU_JOUR = "AAAA-MM-JJ:500"` : PLANCHER daté de la part d'un passage, toujours borné
+  // par ce qui reste du plafond du jour ; inerte le lendemain (30 sept. 2026, demande de Grégory).
+  const partMinJour = String(env.PART_PASSAGE_DU_JOUR || '');
+  const partMin = partMinJour.slice(0, 10) === dayKey && partMinJour[10] === ':' ? Number(partMinJour.slice(11)) : 0;
+  const partPassage = Math.max(1, Math.min(capJourEffectif - daySoFar,
+    Math.max(partMin, Math.floor((capJourEffectif - daySoFar) / passagesRestants))));
 
   // En dry-run rien n'est consommé : l'audience complète du mois doit apparaître au rapport.
   // File d'envoi (2026-08-10) : on n'appelle plus Resend courriel par courriel, on EMPILE
