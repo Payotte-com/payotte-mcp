@@ -3893,6 +3893,39 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
         { expirationTtl: CYCLE_TTL });
     }
   }
+  /* ── JAMAIS SERVIS D'ABORD (décision de Grégory, 30 sept. 2026) ────────────────────
+     Au 1er du mois tout le carnet redevient éligible. Ceux qui n'ont RIEN reçu le mois
+     précédent passent devant ; les autres suivent dans le même passage, pour ne pas
+     laisser dormir la capacité quand les gros domaines ont fait leurs 20 du jour.
+     L'ensemble du mois précédent (cumul + lots `servi:` + anciennes marques `sent:`,
+     tous gardés CYCLE_TTL = 100 j) est fondu UNE fois dans `servis-avant:{cycle}` :
+     les passages suivants paient une seule lecture. */
+  let servisAvant = null;
+  if (env.SUBSCRIBERS && !dryRun) {
+    const [a, m] = cycle.split('-').map(Number);
+    const precedent = m === 1 ? `${a - 1}-12` : `${a}-${String(m - 1).padStart(2, '0')}`;
+    const CLE_AVANT = `servis-avant:${cycle}`;
+    try {
+      ctr.kv++;
+      const brut = await env.SUBSCRIBERS.get(CLE_AVANT);
+      if (brut) servisAvant = new Set(JSON.parse(brut));
+    } catch { servisAvant = null; }
+    if (!servisAvant && kvLeft() > 400) {
+      const ens = new Set(await kvListe(`sent:${precedent}:`));
+      try { const c = JSON.parse((await kvLot([`servi-cumul:${precedent}`]))[0] || 'null'); for (const id of c?.ids || []) ens.add(id); } catch { /* cumul absent */ }
+      const lotsPrec = await kvListe(`servi:${precedent}:`);
+      for (let i = 0; i < lotsPrec.length && kvLeft() > 150; i += 50) {
+        const blobs = await kvLot(lotsPrec.slice(i, i + 50).map((k) => `servi:${precedent}:${k}`));
+        for (const b of blobs) { try { for (const id of JSON.parse(b || '[]')) ens.add(id); } catch { /* lot illisible */ } }
+      }
+      servisAvant = ens;
+      if (ens.size) {
+        ctr.kv++;
+        await env.SUBSCRIBERS.put(CLE_AVANT, JSON.stringify([...ens]), { expirationTtl: 40 * 24 * 3600 });
+      }
+    }
+    report.servisMoisPrecedent = servisAvant?.size ?? null;
+  }
   const unsub = new Set(env.SUBSCRIBERS ? await kvListe('unsub:') : []);
   const intro = new Set(env.SUBSCRIBERS ? await kvListe('intro:') : []);
   /* ── LES REBONDS DURS EN UNE LISTE (14 sept. 2026) ───────────────────────────────
@@ -4088,6 +4121,15 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
         continue;
       }
       candidats.push(provSlug ? { key, sep, city, id, provSlug } : { key, sep, city, id });
+    }
+
+    // Jamais servis le mois précédent d'abord ; l'ordre de rotation est gardé dans chaque groupe.
+    if (servisAvant?.size) {
+      const jamais = candidats.filter((c) => !servisAvant.has(c.id));
+      const deja = candidats.filter((c) => servisAvant.has(c.id));
+      candidats.length = 0;
+      candidats.push(...jamais, ...deja);
+      report.candidatsJamaisServis = jamais.length;
     }
 
     /* Si la boucle va jusqu'au bout sans s'arrêter, le carnet entier a été examiné :
