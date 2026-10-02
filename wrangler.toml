@@ -137,7 +137,8 @@ PROVINCIAL_ACTIF = "1"
 # avant. ⚠ Plus d'adresses d'un même serveur d'entreprise le même jour = plus de risque
 # qu'une plainte fasse bloquer le domaine entier. Revenir à 5 en retirant la ligne.
 # 29 sept. 2026 : 10 → 20 (Grégory : « monte un peu », 13 000 envois à finir cette semaine, rebonds bas).
-MAX_PAR_DOMAINE = "20"
+# 2 oct. 2026 : 20 → 50 (Grégory, en vue du 10 oct. : ~27 000 adresses sur 4 domaines de franchise).
+MAX_PAR_DOMAINE = "50"
 
 # ── JOURNÉE DU 30 SEPT. 2026 SEULEMENT (Grégory : « le rythme est beaucoup trop lent ») ──
 # Les trois réglages sont datés et deviennent inertes le 1er octobre, sans rien retirer.

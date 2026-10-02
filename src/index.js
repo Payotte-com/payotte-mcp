@@ -3434,8 +3434,13 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
      isolé pèse 0,5 % à 200 envois, très loin de déclencher. Monter ce plancher-là à 1 000
      aurait aveuglé le seul garde-fou qui voit une liste pourrie — il n'existe AUCUN
      compte brut de secours pour les rebonds, contrairement aux plaintes. */
-  const PLANCHER_PLAINTES = 1000;   // = 3 / 0,003, le point où les deux garde-fous se rejoignent
-  const PLANCHER_REBONDS = 200;     // seuil à 4 % : un plancher bas ne produit pas de faux positif
+  /* SEUILS DU 2 OCT. 2026 (décision de Grégory) : Resend tolère 4 % de rebonds et 0,08 % de
+     plaintes ; on s'arrête AVANT, à 3 % et 0,05 %. Le plancher des plaintes se recalcule
+     selon la règle ci-dessus : 3 ÷ 0,0005 = 6 000 envois sur 24 h. */
+  const SEUIL_PLAINTES = 0.0005;
+  const SEUIL_REBONDS = 0.03;
+  const PLANCHER_PLAINTES = Math.round(3 / SEUIL_PLAINTES);   // 6 000
+  const PLANCHER_REBONDS = 200;     // seuil à 3 % : un plancher bas ne produit pas de faux positif
   const tauxP = envoyes24 >= PLANCHER_PLAINTES ? plaintes / envoyes24 : 0;
   const tauxR = envoyes24 >= PLANCHER_REBONDS ? rebonds / envoyes24 : 0;
   let stopOutreach = env.SUBSCRIBERS ? await env.SUBSCRIBERS.get('stop:outreach') : null;
@@ -3445,17 +3450,17 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
      un taux EXCELLENT, et le programme s'arrêterait quand même. On aurait remplacé
      l'accident du 11 septembre par le même accident un cran plus haut dans la rampe.
      Il ne sert donc que là où le pourcentage ne peut rien dire : sous le plancher. */
-  if (!stopOutreach && !dryRun && (tauxP >= 0.003
+  if (!stopOutreach && !dryRun && (tauxP >= SEUIL_PLAINTES
                                    || (envoyes24 < PLANCHER_PLAINTES && plaintes >= 3)
-                                   || tauxR >= 0.04)) {
-    const motif = plaintes >= 3 && tauxP < 0.003
+                                   || tauxR >= SEUIL_REBONDS)) {
+    const motif = plaintes >= 3 && tauxP < SEUIL_PLAINTES
       ? `${plaintes} plaintes en 24 h`
-      : tauxR >= 0.04 ? `rebonds durs ${(tauxR * 100).toFixed(1)} %`
+      : tauxR >= SEUIL_REBONDS ? `rebonds durs ${(tauxR * 100).toFixed(1)} %`
         : `plaintes ${(tauxP * 100).toFixed(2)} %`;
     await env.SUBSCRIBERS?.put('stop:outreach', `auto ${dayKey} — ${motif}`);
     stopOutreach = `auto ${dayKey} — ${motif}`;
     console.log(`[bulletin] ARRÊT AUTOMATIQUE de la prospection : ${motif}`);
-  } else if (!stopOutreach && (tauxP >= 0.001 || tauxR >= 0.02)) {
+  } else if (!stopOutreach && (tauxP >= SEUIL_PLAINTES * 0.6 || tauxR >= SEUIL_REBONDS * 0.66)) {   // alerte : 0,03 % / 2 %
     // Palier d'alerte : on ralentit de moitié au lieu d'arrêter. Le but est de laisser le
     // temps de regarder, pas de tout figer sur un frisson.
     dayCap = Math.max(1, Math.floor(dayCap / 2));
