@@ -127,6 +127,10 @@ HEURES_RENFORT = "12:QC,ON;18:QC,ON;19:QC,ON"
 # d'écritures du webhook et de /unsubscribe, et un quota crevé fait échouer les
 # désabonnements (LCAP art. 11). Ouvrir APRÈS le passage au palier payant, en retirant
 # le « # » de la ligne ci-dessous, puis `npx wrangler deploy`.
+# ── MOIS DE MARCHÉ MINIMUM (5 oct. 2026, Grégory) ─────────────────────────────────
+# Seules les villes dont le dernier mois publié est >= ce mois sont servies (prospects ET
+# experts) ; les autres attendent la collecte. Avancer d'un mois à chaque tournée.
+MOIS_MARCHE_MIN = "2026-09"
 PROVINCIAL_ACTIF = "1" # rouvert le 5 oct. 2026 : banlieue et provincial passent au gabarit Test IA
 
 # ── PLAFOND PAR DOMAINE : 5 → 10 (28 sept. 2026, demande proprio) ────────────────
@@ -170,7 +174,7 @@ OUTREACH_RAMPE = "2026-09-09:75,2026-09-10:150,2026-09-11:300,2026-09-14:600,202
 # variable est inerte et le filtre par fuseau reprend sans intervention. NE PAS la
 # remplacer par une liste sans date : un forçage permanent finirait par expédier à
 # 6 h du matin sur la côte Ouest.
-PROVINCES_DU_JOUR = "2026-10-05:AB,BC"
+PROVINCES_DU_JOUR = "2026-10-05:AB,BC,SK,MB,ON,QC"
 
 # ── ADRESSE POSTALE LCAP — EN SECRET, PAS ICI (2026-08-25) ───────────────────────
 # Le Règlement de la LCAP (art. 2(2)) impose l'adresse postale de l'expéditeur dans TOUT

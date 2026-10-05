@@ -3928,7 +3928,14 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
   report.renfort = [...renfort];
 
   const market = await F('/api/market.json').catch(() => ({ cities: [] }));
-  const allActive = (market.cities || []).filter(hasMarketStats);
+  /* MOIS_MARCHE_MIN (5 oct. 2026, Grégory : « envoie seulement ceux qui sont à jour pour
+     septembre ») : une ville dont le dernier mois publié est plus ancien n'est PAS servie.
+     Ses prospects et ses experts restent en attente, rien n'est marqué : ils partiront le
+     jour où la collecte des villes aura versé le mois. Un trimestre (« 2026-T2 ») ne passe pas.
+     Vide = pas de filtre. */
+  const moisMin = String(env.MOIS_MARCHE_MIN || '');
+  const moisOK = (m) => !moisMin || (/^\d{4}-\d{2}$/.test(m ?? '') && m >= moisMin);
+  const allActive = (market.cities || []).filter((c) => hasMarketStats(c) && moisOK(c.referenceMonth));
   // Le filtre par fuseau s'applique ICI, sur les villes : tout le reste (prospects comme
   // experts) passe par `cityBySlug`, donc personne hors tranche ne peut être servi.
   /* ⚠ DÉROGATION DATÉE À LA RÈGLE DES 10 H LOCALES (8 sept. 2026, demande proprio).
@@ -4269,7 +4276,8 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
       } catch { provMarket = []; }
       const parSlug = new Map((villesCouvertes || []).map((v) => [v.slug, v]));
       ctxProvincial = {
-        cities: market.cities || [], macro, provMarket,
+        cities: (market.cities || []).filter((c) => moisOK(c.referenceMonth)), macro,
+        provMarket: provMarket.filter((x) => moisOK(x.reference_month)),
         // Décomptes de fiches PUBLIÉES (même filtre que le site : `professional`, score non rouge).
         // Flux absent → null, et la phrase « N professionnels vérifiés » disparaît simplement.
         publiesVille: (slug) => (villesCouvertes ? (parSlug.get(normVille(slug))?.fiches ?? 0) : null),
