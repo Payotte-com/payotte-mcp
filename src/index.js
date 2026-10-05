@@ -6415,6 +6415,30 @@ const WORKER_MAIN = {
     }
     if ((request.method === 'GET' || request.method === 'POST') && url.pathname === '/vi/desabonnement') return handleDesabonnement(url, env, { hmacHex });
     if (request.method === 'GET' && url.pathname === '/vi/stats') return handleStats(url, env, { json });
+    // Modèle du courriel mensuel « Test IA », envoyé à GRÉGORY SEUL (REPORT_TO, codé en dur) pour voir le
+    // vrai rendu dans Gmail : un brouillon ne le montre pas, la fenêtre de rédaction retire styles et images.
+    // C'est Grégory qui déclenche l'envoi (consigne : je ne lui envoie jamais de courriel moi-même).
+    // 5 par jour au plus. Ex. : /vi/modele?city=calgary&couverte=0&segment=prospect&lang=fr
+    if (request.method === 'GET' && url.pathname === '/vi/modele') {
+      if (!env.RESEND_API_KEY) return json({ ok: false, erreur: 'pas de clé Resend' }, 503);
+      if ((await bumpCounter(env, `vi:modele:${new Date().toISOString().slice(0, 10)}`, 2 * 86400)) > 5) return json({ ok: false, erreur: 'limite de 5 modèles par jour' }, 429);
+      const q = url.searchParams;
+      const lang = q.get('lang') === 'en' ? 'en' : 'fr';
+      const segment = q.get('segment') === 'expert' ? 'expert' : 'prospect';
+      const market = await feed('/api/market.json').catch(() => ({ cities: [] }));
+      const cs = strip(q.get('city') || 'calgary');
+      const city = market.cities.find((c) => strip(c.slug) === cs);
+      if (!city) return json({ ok: false, erreur: 'ville inconnue' }, 404);
+      let expert = null;
+      if (segment === 'expert') { try { const all = await allExperts(); expert = all.find((e) => strip(e.city) === cs) || null; } catch {} }
+      const cv = q.get('couverte'); const villeCouverte = cv === '1' ? true : cv === '0' ? false : null;
+      const { subject, html } = renderPulse({ segment, stage: q.get('stage') || 'green', city, expert, lang, unsubUrl: `${SITE}/contact`, postale: adressePostale(env), villeCouverte });
+      const r = await fetch('https://api.resend.com/emails', {
+        method: 'POST', headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from: env.MAIL_FROM_OUTREACH || env.MAIL_FROM || 'Payotte <relais@payotte.com>', to: [REPORT_TO], subject: `[MODÈLE] ${subject}`, html }),
+      }).catch(() => null);
+      return json({ ok: !!(r && r.ok), envoyeA: REPORT_TO, sujet: `[MODÈLE] ${subject}` }, r && r.ok ? 200 : 502);
+    }
     // Service Visibilité IA : formulaire d'inscription (src/visibiliteIa.js), 5 oct. 2026.
     if (request.method === 'POST' && url.pathname === '/vi/inscription') {
       return handleInscription(request, env, { SITE, REPORT_TO, EMAIL_RE, domainExists, bumpCounter, hmacHex });
