@@ -2333,15 +2333,17 @@ function corpsTestIA2({ segment, stage, lieu, cityPouls = null, compteCle = '', 
   const chiffre = (n, l) => `<td width="33%" align="center" style="padding:12px 8px;border-left:1px solid #f1ecec;"><div style="font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#211c1e;line-height:1.1;">${n}</div><div style="font-size:11.5px;color:#8a8284;margin-top:3px;line-height:1.3;">${l}</div></td>`;
   const preuves = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #f1ecec;border-radius:10px;margin:4px 0 16px 0;"><tr>${chiffre(nb(cit), fr ? `citations par Copilot en ${citMois}` : `Copilot citations in ${citMois}`).replace('border-left:1px solid #f1ecec;', '')}${chiffre(nb(PLATEFORME.experts), fr ? 'experts vérifiés sur la plateforme' : 'verified experts on the platform')}${chiffre(nb(PLATEFORME.villes), fr ? 'villes canadiennes couvertes' : 'Canadian cities covered')}</tr></table>`;
   // Ajout 1 : ce que l'IA a répondu pour SA ville et SON métier, sans nommer personne.
-  const m = METIER_UN[metier]?.[fr ? 0 : 1];
+  const METIER_PLUR = { 'real-estate-broker': ['courtiers immobiliers', 'real estate brokers'], 'mortgage-broker': ['courtiers hypothécaires', 'mortgage brokers'],
+    appraiser: ['évaluateurs agréés', 'appraisers'], 'home-inspector': ['inspecteurs en bâtiment', 'home inspectors'], 'notary-lawyer': ['notaires', 'real estate lawyers'] };
+  const m = METIER_PLUR[metier]?.[fr ? 0 : 1];
   const n = compteCle && COMPTE_IA[compteCle] ? COMPTE_IA[compteCle].n : null;
   let resultat = '';
   if (m && n != null) {
     resultat = n === 0
-      ? (fr ? `Nous avons demandé à l’IA qui elle recommande comme ${m} à ${lieu}&nbsp;: <b>elle n’a nommé personne de précis</b>. La place est à prendre.`
-            : `We asked AI who it recommends as a ${m} in ${lieu}: <b>it named no one specific</b>. The spot is open.`)
-      : (fr ? `Nous avons demandé à l’IA qui elle recommande comme ${m} à ${lieu}&nbsp;: <b>elle a nommé ${n === 1 ? 'un seul professionnel' : `${n} professionnels`}</b>. Le vôtre en fait-il partie&nbsp;?`
-            : `We asked AI who it recommends as a ${m} in ${lieu}: <b>it named ${n === 1 ? 'a single professional' : `${n} professionals`}</b>. Are you one of them?`);
+      ? (fr ? `Nous avons posé à l’IA trois questions que vos clients posent sur les ${m} à ${lieu}&nbsp;: <b>elle n’a nommé personne de précis</b>. La place est à prendre.`
+            : `We asked AI three questions your clients ask about ${m} in ${lieu}: <b>it named no one specific</b>. The spot is open.`)
+      : (fr ? `Nous avons posé à l’IA trois questions que vos clients posent sur les ${m} à ${lieu}&nbsp;: <b>elle a nommé ${n === 1 ? 'un seul professionnel' : `${n} professionnels`}</b>. Le vôtre en fait-il partie&nbsp;?`
+            : `We asked AI three questions your clients ask about ${m} in ${lieu}: <b>it named ${n === 1 ? 'a single professional' : `${n} professionals`}</b>. Are you one of them?`);
   }
   const P = (t, extra = '') => `<p style="margin:0 0 14px 0;font-size:15px;line-height:1.55;color:#443e40;${extra}">${t}</p>`;
   const coches = (fr
@@ -2362,8 +2364,8 @@ function corpsTestIA2({ segment, stage, lieu, cityPouls = null, compteCle = '', 
     + `<div style="margin-top:10px;font-size:13px;line-height:1.5;color:#443e40;">${apres}</div></td></tr></table>`;
   const corps = `<tr><td style="padding:26px 32px 6px 32px;">`
     + `<div style="font-family:Georgia,'Times New Roman',serif;font-size:24px;line-height:1.25;color:#211c1e;margin-bottom:12px;">${fr ? 'Vos clients demandent déjà à l’IA qui engager. Que répond-elle sur vous&nbsp;?' : 'Your clients already ask AI who to hire. What does it say about you?'}</div>`
-    + P(fr ? 'ChatGPT, Copilot, Gemini et Perplexity ne donnent qu’<b style="color:#211c1e;">un ou deux noms</b> par réponse. Les professionnels qu’elles nomment, elles les trouvent sur les sites qu’elles citent. Et en immobilier au Canada, elles citent <b style="color:#211c1e;">Payotte</b>.'
-           : 'ChatGPT, Copilot, Gemini and Perplexity give only <b style="color:#211c1e;">one or two names</b> per answer. They find those professionals on the sites they cite. In Canadian real estate, they cite <b style="color:#211c1e;">Payotte</b>.')
+    + P(fr ? 'ChatGPT, Copilot, Gemini et Perplexity ne donnent qu’<b style="color:#211c1e;">une poignée de noms</b> par réponse. Les professionnels qu’elles nomment, elles les trouvent sur les sites qu’elles citent. Et en immobilier au Canada, elles citent <b style="color:#211c1e;">Payotte</b>.'
+           : 'ChatGPT, Copilot, Gemini and Perplexity give only <b style="color:#211c1e;">a handful of names</b> per answer. They find those professionals on the sites they cite. In Canadian real estate, they cite <b style="color:#211c1e;">Payotte</b>.')
     + preuves + (resultat ? P(resultat) : '') + offre + `</td></tr>`;
   // Ajout 3 : une vraie personne au bout (l'attrape-tout ImprovMX remet la réponse à Grégory).
   const repondre = `<tr><td style="padding:16px 32px 0 32px;font-size:13.5px;line-height:1.55;color:#443e40;">${fr ? 'Une question&nbsp;? Répondez simplement à ce courriel, je lis tout.<br>Grégory, Payotte' : 'Any question? Just reply to this email, I read every one.<br>Grégory, Payotte'}</td></tr>`;
