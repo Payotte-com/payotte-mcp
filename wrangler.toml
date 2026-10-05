@@ -159,7 +159,7 @@ EXPERTS_SHARE_DU_JOUR = "2026-09-30:0"
 PLAFOND_DU_JOUR = "2026-10-05:12000"
 PART_PASSAGE_DU_JOUR = "2026-10-05:1000"
 DIX_MIN_DU_JOUR = "2026-10-05:17,18,19,20,21"
-RENFORT_DU_JOUR = "2026-10-05|17:AB,BC;18:AB,BC;19:AB,BC;20:AB,BC;21:AB,BC"
+RENFORT_DU_JOUR = ""
 
 OUTREACH_RAMPE = "2026-09-09:75,2026-09-10:150,2026-09-11:300,2026-09-14:600,2026-09-15:1200,2026-09-16:2400,2026-09-17:4800,2026-09-29:6000,2026-09-30:8000,2026-10-01:6000,2026-10-05:12000"
 
@@ -174,7 +174,7 @@ OUTREACH_RAMPE = "2026-09-09:75,2026-09-10:150,2026-09-11:300,2026-09-14:600,202
 # variable est inerte et le filtre par fuseau reprend sans intervention. NE PAS la
 # remplacer par une liste sans date : un forçage permanent finirait par expédier à
 # 6 h du matin sur la côte Ouest.
-PROVINCES_DU_JOUR = "2026-10-05:AB,BC,SK,MB,ON,QC"
+PROVINCES_DU_JOUR = "2026-10-05:AB,BC,QC"
 
 # ── ADRESSE POSTALE LCAP — EN SECRET, PAS ICI (2026-08-25) ───────────────────────
 # Le Règlement de la LCAP (art. 2(2)) impose l'adresse postale de l'expéditeur dans TOUT
