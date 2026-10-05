@@ -226,6 +226,26 @@ function lirePresence(res, nom) {
   }));
 }
 
+/* PRÉCALCUL (6 oct. 2026, ajout 1 du gabarit v2) : pose les questions à Gemini pour une ville
+ * et un métier, et range le NOMBRE de noms distincts dans `vi:compte-ia` (une clé, lue une fois
+ * par passage du bulletin). Jamais les noms eux-mêmes : le courriel ne nomme personne.
+ * GET /vi/precalcul?t=PRECALC_TOKEN&ville={slug}&lieu={nom}&metier={slug}&lang=fr|en
+ * Un diagnostic par appel (3 recherches), même cache et même plafond quotidien que l'outil. */
+export async function handlePrecalcul(request, env, url, h) {
+  if (!env.PRECALC_TOKEN || url.searchParams.get('t') !== env.PRECALC_TOKEN) return h.json({ error: 'forbidden' }, 403);
+  const ville = url.searchParams.get('ville') || '', metier = url.searchParams.get('metier') || '';
+  const lieu = nettoyerLieu(url.searchParams.get('lieu')), fr = url.searchParams.get('lang') !== 'en';
+  if (!/^[a-z0-9-]{2,80}$/.test(ville) || !QUESTIONS_IA[metier] || lieu.length < 2) return h.json({ ok: false, erreur: 'parametres' }, 400);
+  const o = await obtenirPresence(env, metier, ville, lieu, fr);
+  if (o.erreur) return h.json({ ok: false, erreur: o.erreur, detail: o.detail ?? null }, o.statut);
+  const vus = new Set();
+  for (const r of o.res.reponses) for (const n of r.noms || []) { const k = sansAccents(n).replace(/[^a-z0-9]+/g, ''); if (k.length >= 3 && !/payotte/.test(k)) vus.add(k); }
+  const carte = JSON.parse((await env.COUNTERS.get('vi:compte-ia')) || '{}');
+  carte[`${ville}:${metier}:${fr ? 'fr' : 'en'}`] = { n: vus.size, date: o.res.date };
+  await env.COUNTERS.put('vi:compte-ia', JSON.stringify(carte));
+  return h.json({ ok: true, cle: `${ville}:${metier}:${fr ? 'fr' : 'en'}`, n: vus.size, date: o.res.date });
+}
+
 export async function handlePresence(request, env, url, h) {
   const { json, bumpCounter } = h;
   const fr = url.searchParams.get('lang') !== 'en';

@@ -20,7 +20,7 @@
  * Licence des données : CC BY 4.0 — chaque réponse porte l'attribution.
  */
 
-import { handleInscription, handlePresence, handleSuivi, handleDesabonnement, handleStats, handleVisite, passerSuivi } from './visibiliteIa.js';
+import { handleInscription, handlePresence, handleSuivi, handleDesabonnement, handleStats, handleVisite, handlePrecalcul, passerSuivi } from './visibiliteIa.js';
 import { handleDossierRevision } from './dossierRevision.js';
 import { efAdresse, efMunis, efFilet, efFiletMunis } from './efAdresse.js';
 import RISQUES_EPOQUE from './data/risques-par-epoque.json';
@@ -2294,28 +2294,100 @@ const teteTestIA = (lieu, fr) => `<tr><td style="padding:26px 32px 22px 32px;bor
 // La municipalité n'a pas de page : aucune promesse de place libre, seulement l'offre et la preuve.
 const finTestIA = (lieu, fr) => offreTestIA({ segment: 'prospect', stage: null, city: { name: lieu }, expert: null, fr, villeCouverte: null }) + blocCitationsIA(fr);
 
+/* ═══ GABARIT « CE QUE LES IA DISENT DE VOUS » (v2, 6 oct. 2026) ═══════════════════════════
+ * Maquette approuvée : https://claude.ai/artifact/JTtAZskZ8KjFxWKyGokVjo (v2). Après 6 543 envois
+ * du 5 oct. sans inscription, Grégory : « un message qui met Payotte en vitrine ». Ordre : question,
+ * paragraphe, trois chiffres vérifiables, le résultat de l'IA pour sa ville et son métier (ajout 1,
+ * précalculé par /vi/precalcul), l'offre et son bouton, la place unique, le pouls en UNE ligne et
+ * SEULEMENT s'il est à jour (MOIS_MARCHE_MIN), l'invitation à répondre (ajout 3), le pied légal.
+ * ⚠️ PLATEFORME : chiffres affichés sur la page Visibilité IA le 5 oct. ; à relever chaque mois. */
+const PLATEFORME = { experts: 692, villes: 76 };
+const SRC_COURRIEL_V2 = 'courriel-oct2';
+let COMPTE_IA = {};   // `vi:compte-ia` (COUNTERS), relu au début de chaque passage et de chaque aperçu
+async function chargerCompteIA(env) {
+  try { COMPTE_IA = JSON.parse((await env.COUNTERS?.get('vi:compte-ia')) || '{}') || {}; } catch { COMPTE_IA = {}; }
+}
+let MOIS_MIN_POULS = '';   // MOIS_MARCHE_MIN, posé au début du passage
+const poulsAJour = (c) => !!c && /^\d{4}-\d{2}$/.test(c.referenceMonth ?? '') && (!MOIS_MIN_POULS || c.referenceMonth >= MOIS_MIN_POULS);
+
+function lignePouls(c, fr) {
+  if (!poulsAJour(c)) return '';
+  const r = refOf(c);
+  const nb = (v) => Number(v).toLocaleString(fr ? 'fr-CA' : 'en-CA');
+  const morceaux = [];
+  if (r.valeur != null) morceaux.push(`${r.genre === 'median' ? (fr ? 'médiane' : 'median') : r.genre === 'average' ? (fr ? 'prix moyen' : 'average') : (fr ? 'prix repère' : 'benchmark')} <b>${fmtMoney(r.valeur, fr)}</b>`);
+  if (c.sales != null) morceaux.push(`<b>${nb(c.sales)}</b> ${fr ? 'ventes' : 'sales'}${c.salesYoyPct != null ? ` (${fmtPct(c.salesYoyPct, fr)})` : ''}`);
+  if (c.avgDaysOnMarket != null) morceaux.push(`<b>${c.avgDaysOnMarket}</b> ${fr ? 'jours pour vendre' : 'days to sell'}`);
+  if (!morceaux.length) return '';
+  const nom = nomVilleBulletin(c, fr);
+  return `<tr><td style="padding:18px 32px 0 32px;"><div style="border-top:1px solid #f1ecec;padding-top:14px;font-size:13px;line-height:1.55;color:#6f6769;">${fr ? `Le pouls de ${nom} en ${moisLisible(c.referenceMonth, fr)}` : `${nom} in ${moisLisible(c.referenceMonth, fr)}`}&nbsp;: ${morceaux.join(' &middot; ')}. ${fr ? 'Source' : 'Source'}&nbsp;: ${chambreCourte(c)}.</div></td></tr>`;
+}
+
+function corpsTestIA2({ segment, stage, lieu, cityPouls = null, compteCle = '', expert = null, fr, villeCouverte = null, metier = '', why, unsubUrl, postale = '' }) {
+  const nb = (v) => Number(v).toLocaleString(fr ? 'fr-CA' : 'en-CA');
+  const moisTete = poulsAJour(cityPouls) ? ` &middot; ${moisLisible(cityPouls.referenceMonth, fr)}` : '';
+  const tete = `<tr><td style="padding:26px 32px 22px 32px;border-bottom:1px solid #f1ecec;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td valign="middle"><a href="${SITE}"><img src="${LOGO}" width="140" height="29" alt="Payotte" style="display:block;border:0;"></a></td><td align="right" valign="middle" style="font-size:11px;letter-spacing:.5px;color:#9a9294;line-height:1.5;">${fr ? 'Plateforme IA pour l’immobilier' : 'AI platform for real estate'}<br><span style="color:#c8102e;letter-spacing:1px;">${lieu}${moisTete}</span></td></tr></table></td></tr>`;
+  const preheader = `<div style="display:none;max-height:0;overflow:hidden;font-size:1px;line-height:1px;color:#ffffff;opacity:0;">${fr ? `Gratuit, sans courriel, 30 secondes. La plateforme IA de ${nb(PLATEFORME.experts)} experts vérifiés.` : `Free, no email, 30 seconds. The AI platform of ${nb(PLATEFORME.experts)} verified experts.`}</div>`;
+  const cit = CITATIONS_MOIS[CITATIONS_MOIS.length - 1][2];
+  const citMois = fr ? ({ 'sept.': 'septembre' }[CITATIONS_MOIS[CITATIONS_MOIS.length - 1][0]] || CITATIONS_MOIS[CITATIONS_MOIS.length - 1][0]) : 'September';
+  const chiffre = (n, l) => `<td width="33%" align="center" style="padding:12px 8px;border-left:1px solid #f1ecec;"><div style="font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#211c1e;line-height:1.1;">${n}</div><div style="font-size:11.5px;color:#8a8284;margin-top:3px;line-height:1.3;">${l}</div></td>`;
+  const preuves = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #f1ecec;border-radius:10px;margin:4px 0 16px 0;"><tr>${chiffre(nb(cit), fr ? `citations par Copilot en ${citMois}` : `Copilot citations in ${citMois}`).replace('border-left:1px solid #f1ecec;', '')}${chiffre(nb(PLATEFORME.experts), fr ? 'experts vérifiés sur la plateforme' : 'verified experts on the platform')}${chiffre(nb(PLATEFORME.villes), fr ? 'villes canadiennes couvertes' : 'Canadian cities covered')}</tr></table>`;
+  // Ajout 1 : ce que l'IA a répondu pour SA ville et SON métier, sans nommer personne.
+  const m = METIER_UN[metier]?.[fr ? 0 : 1];
+  const n = compteCle && COMPTE_IA[compteCle] ? COMPTE_IA[compteCle].n : null;
+  let resultat = '';
+  if (m && n != null) {
+    resultat = n === 0
+      ? (fr ? `Nous avons demandé à l’IA qui elle recommande comme ${m} à ${lieu}&nbsp;: <b>elle n’a nommé personne de précis</b>. La place est à prendre.`
+            : `We asked AI who it recommends as a ${m} in ${lieu}: <b>it named no one specific</b>. The spot is open.`)
+      : (fr ? `Nous avons demandé à l’IA qui elle recommande comme ${m} à ${lieu}&nbsp;: <b>elle a nommé ${n === 1 ? 'un seul professionnel' : `${n} professionnels`}</b>. Le vôtre en fait-il partie&nbsp;?`
+            : `We asked AI who it recommends as a ${m} in ${lieu}: <b>it named ${n === 1 ? 'a single professional' : `${n} professionals`}</b>. Are you one of them?`);
+  }
+  const P = (t, extra = '') => `<p style="margin:0 0 14px 0;font-size:15px;line-height:1.55;color:#443e40;${extra}">${t}</p>`;
+  const coches = (fr
+    ? ['Les noms que l’IA recommande dans votre secteur, et si le vôtre en fait partie.', 'Gratuit, sans courriel, sans inscription.', 'Le résultat en 30 secondes.']
+    : ['The names AI recommends in your area, and whether yours is one of them.', 'Free, no email, no sign-up.', 'Your result in 30 seconds.'])
+    .map((c) => `<tr><td valign="top" style="padding:3px 8px 3px 0;color:#1a7f4b;font-weight:bold;font-size:14px;">&#10003;</td><td style="padding:3px 0;font-size:14px;line-height:1.45;color:#211c1e;">${c}</td></tr>`).join('');
+  const lien = (href, t) => `<a href="${href}" style="color:#c8102e;text-decoration:underline;">${t}</a>`;
+  const page = PAGE_VI[fr ? 'fr' : 'en'];
+  let apres = fr ? 'Sur Payotte, <b>une seule place par métier et par secteur</b>. Quand elle est prise, c’est ce nom que l’IA trouve.'
+                 : 'On Payotte, <b>one seat per profession and area</b>. Once it is taken, that is the name AI finds.';
+  if (segment === 'prospect' && villeCouverte === false) apres += fr ? ` À ${lieu}, la place de votre métier est encore libre.` : ` In ${lieu}, your profession’s seat is still open.`;
+  else if (segment !== 'prospect' && stage === 'reco' && expert?.slug) apres = fr ? `Vous êtes l’expert recommandé de votre secteur&nbsp;: ${lien(`${SITE}/badge/${expert.slug}`, 'posez votre badge')} pour que les IA relient votre site à votre fiche.` : `You are the recommended expert in your area: ${lien(`${SITE}/badge/${expert.slug}`, 'put up your badge')} so AI tools connect your website to your profile.`;
+  else if (segment !== 'prospect') apres = fr ? `Votre fiche est déjà sur Payotte. Pour vous faire citer davantage&nbsp;: ${lien(`${page}?src=${SRC_COURRIEL_V2}#forfaits`, 'voir les forfaits')}.` : `Your profile is already on Payotte. To get cited more: ${lien(`${page}?src=${SRC_COURRIEL_V2}#forfaits`, 'see the plans')}.`;
+  const offre = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fbf3f4;border:1px solid #f1d5da;border-radius:10px;"><tr><td style="padding:16px;">`
+    + `<div style="font-size:15px;font-weight:bold;color:#211c1e;margin-bottom:8px;">${fr ? 'Vérifiez ce que les IA disent de vous' : 'Check what AI says about you'}</div>`
+    + `<table role="presentation" cellpadding="0" cellspacing="0" border="0">${coches}</table><div style="height:12px;font-size:0;line-height:0;">&nbsp;</div>`
+    + BTN(`${page}?src=${SRC_COURRIEL_V2}#ia`, fr ? 'Vérifier ce que les IA disent de moi &rarr;' : 'Check what AI says about me &rarr;')
+    + `<div style="margin-top:10px;font-size:13px;line-height:1.5;color:#443e40;">${apres}</div></td></tr></table>`;
+  const corps = `<tr><td style="padding:26px 32px 6px 32px;">`
+    + `<div style="font-family:Georgia,'Times New Roman',serif;font-size:24px;line-height:1.25;color:#211c1e;margin-bottom:12px;">${fr ? 'Vos clients demandent déjà à l’IA qui engager. Que répond-elle sur vous&nbsp;?' : 'Your clients already ask AI who to hire. What does it say about you?'}</div>`
+    + P(fr ? 'ChatGPT, Copilot, Gemini et Perplexity ne donnent qu’<b style="color:#211c1e;">un ou deux noms</b> par réponse. Les professionnels qu’elles nomment, elles les trouvent sur les sites qu’elles citent. Et en immobilier au Canada, elles citent <b style="color:#211c1e;">Payotte</b>.'
+           : 'ChatGPT, Copilot, Gemini and Perplexity give only <b style="color:#211c1e;">one or two names</b> per answer. They find those professionals on the sites they cite. In Canadian real estate, they cite <b style="color:#211c1e;">Payotte</b>.')
+    + preuves + (resultat ? P(resultat) : '') + offre + `</td></tr>`;
+  // Ajout 3 : une vraie personne au bout (l'attrape-tout ImprovMX remet la réponse à Grégory).
+  const repondre = `<tr><td style="padding:16px 32px 0 32px;font-size:13.5px;line-height:1.55;color:#443e40;">${fr ? 'Une question&nbsp;? Répondez simplement à ce courriel, je lis tout.<br>Grégory, Payotte' : 'Any question? Just reply to this email, I read every one.<br>Grégory, Payotte'}</td></tr>`;
+  const foot = FOOT(why, unsubUrl, fr ? 'Ne plus recevoir' : 'Unsubscribe', postale, fr);
+  return `${preheader}<div style="background:#f5f3f2;margin:0;padding:28px 12px;font-family:Arial,Helvetica,sans-serif;"><table role="presentation" width="580" cellpadding="0" cellspacing="0" border="0" align="center" style="max-width:580px;width:100%;background:#ffffff;border:1px solid #eae5e5;border-radius:8px;">${tete}${corps}${lignePouls(cityPouls, fr)}${repondre}${foot}</table></div>`;
+}
+
+function sujetTestIA2(segment, expert, fr) {
+  if (segment === 'prospect') return fr ? 'Vérifiez ce que les IA disent de vous' : 'Check what AI says about you';
+  const nom = String(expert?.name || '').trim();
+  const prenom = expert?.isTeam || !/^[A-ZÀ-Ý][a-zà-ÿ'’-]+ [A-ZÀ-Ý]/.test(nom) ? '' : nom.split(' ')[0];
+  return fr ? `${prenom ? `${prenom}, vérifiez` : 'Vérifiez'} ce que les IA disent de vous` : `${prenom ? `${prenom}, check` : 'Check'} what AI says about you`;
+}
+
 function renderTestIA({ segment, stage, city, expert, lang, unsubUrl, postale = '', villeCouverte = null, metier = '' }) {
   const fr = lang !== 'en';
-  city = { ...city, name: nomVilleBulletin(city, fr) };   // « Montréal », pas « Montreal », en français
-  const eyebrow = `${fr ? 'Plateforme IA pour l’immobilier' : 'AI platform for real estate'}<br><span style="color:#c8102e;letter-spacing:1px;">${city.name}${city.referenceMonth ? ' &middot; ' + moisLisible(city.referenceMonth, fr) : ''}</span>`;
-  // Objet (Grégory, 5 oct. : « remets l'ancien, il va mieux convertir ») : la question, pas l'offre.
-  let subject;
-  if (segment === 'prospect') {
-    subject = sujetTestIA(city.name, metier, fr);
-  } else {
-    // Le prénom seulement s'il ressemble à un prénom (une fiche d'équipe ou de cabinet n'en a pas).
-    const nom = String(expert?.name || '').trim();
-    const prenom = expert?.isTeam || !/^[A-ZÀ-Ý][a-zà-ÿ'’-]+ [A-ZÀ-Ý]/.test(nom) ? '' : nom.split(' ')[0];
-    subject = fr ? `${prenom ? `${prenom}, l’IA` : 'L’IA'} recommande-t-elle votre nom à vos clients ?`
-                 : `${prenom ? `${prenom}, does AI` : 'Does AI'} recommend your name to your clients?`;
-  }
+  const lieu = nomVilleBulletin(city, fr);
   const metierPhrase = (expert?.professionLabel ?? '').replace(/^./, (c) => c.toLowerCase());
   const why = segment === 'prospect'
-    ? (fr ? `Vous recevez ce courriel parce que vous exercez à ${city.name}.` : `You are receiving this email because you practise in ${city.name}.`)
-    : (fr ? `Vous recevez ce courriel parce que vous êtes l'expert vérifié en ${metierPhrase} pour ${city.name} sur Payotte.` : `You're receiving this because you are the verified ${metierPhrase} for ${city.name} on Payotte.`);
-  const foot = FOOT(why, unsubUrl, fr ? 'Ne plus recevoir' : 'Unsubscribe', postale, fr);
-  const html = `<div style="background:#f5f3f2;margin:0;padding:28px 12px;font-family:Arial,Helvetica,sans-serif;"><table role="presentation" width="580" cellpadding="0" cellspacing="0" border="0" align="center" style="max-width:580px;width:100%;background:#ffffff;border:1px solid #eae5e5;border-radius:8px;">${marketCore(city, fr, eyebrow)}${offreTestIA({ segment, stage, city, expert, fr, villeCouverte })}${blocCitationsIA(fr)}${foot}</table></div>`;
-  return { subject, html };
+    ? (fr ? `Vous recevez ce courriel parce que vous exercez à ${lieu}.` : `You are receiving this email because you practise in ${lieu}.`)
+    : (fr ? `Vous recevez ce courriel parce que vous êtes l'expert vérifié en ${metierPhrase} pour ${lieu} sur Payotte.` : `You're receiving this because you are the verified ${metierPhrase} for ${lieu} on Payotte.`);
+  const met = segment === 'prospect' ? metier : (expert?.profession || metier);
+  return { subject: sujetTestIA2(segment, expert, fr),
+    html: corpsTestIA2({ segment, stage, lieu, cityPouls: city, compteCle: `${city.slug}:${met}:${fr ? 'fr' : 'en'}`, expert, fr, villeCouverte, metier: met, why, unsubUrl, postale }) };
 }
 
 function renderPulse({ segment, stage, city, expert, lang, unsubUrl, macro = null, metier = '', postale = '', villeCouverte = null }) {
@@ -2597,6 +2669,11 @@ const rowBulletinProv = (g, d, sous = '') => `<tr><td style="padding:10px 0;bord
 function renderBanlieue({ citySlug, villeReelle, metier, lang, unsubUrl, postale = '' }, ctx) {
   const fr = lang !== 'en';
   const c = (ctx.cities || []).find((x) => x.slug === citySlug);
+  if (GABARIT_IA) {
+    // v2 : le courriel part même sans chiffres frais ; le pouls de la zone n'apparaît que s'il est à jour.
+    const why = fr ? `Vous recevez ce courriel parce que vous exercez à ${villeReelle}.` : `You are receiving this email because you practise in ${villeReelle}.`;
+    return { subject: sujetTestIA2('prospect', null, fr), html: corpsTestIA2({ segment: 'prospect', lieu: villeReelle, cityPouls: c && PORTEE_RMR[citySlug] ? c : null, fr, metier, why, unsubUrl, postale }) };
+  }
   if (!c || refOf(c).valeur == null || !PORTEE_RMR[citySlug]) return null;
   const macro = ctx.macro;
   const nomRmr = nomVilleBulletin(c, fr);
@@ -2631,6 +2708,11 @@ function renderProvincial({ provSlug, villeReelle, metier, lang, unsubUrl, posta
   const nom = PROV_NOMS[provSlug]?.[fr ? 0 : 1];
   const code = PROV_TO_CODE[provSlug]?.toUpperCase();
   if (!nom || !code) return null;
+  if (GABARIT_IA) {
+    const lieuV = villeReelle || nom;
+    const why = fr ? `Vous recevez ce courriel parce que vous exercez à ${lieuV}.` : `You are receiving this email because you practise in ${lieuV}.`;
+    return { subject: sujetTestIA2('prospect', null, fr), html: corpsTestIA2({ segment: 'prospect', lieu: lieuV, fr, metier, why, unsubUrl, postale }) };
+  }
   const macro = ctx.macro;
   const nb = (v) => Number(v).toLocaleString(fr ? 'fr-CA' : 'en-CA');
   const pct = (v) => pctBulletinProv(v, fr);
@@ -2988,7 +3070,8 @@ async function sendPulseBatch(env, envois, { from: fromDemande } = {}) {
       method: 'POST',
       headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(valides.map(({ e }) => ({
-        from, to: [e.to], reply_to: REPLY_TO,
+        // 6 oct. 2026 : la prospection invite à répondre ; l'attrape-tout ImprovMX renvoie gregory@ à la boîte du proprio.
+        from, to: [e.to], reply_to: /outreach@/.test(from) && env.REPLY_TO_OUTREACH ? env.REPLY_TO_OUTREACH : REPLY_TO,
         subject: e.subject, html: e.html,
         // ── L'ÉTIQUETTE (2026-08-19) ───────────────────────────────────────────────
         // Sans elle, le webhook apprend qu'« un courriel a été ouvert » sans savoir
@@ -3940,7 +4023,12 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
      Vide = pas de filtre. */
   const moisMin = String(env.MOIS_MARCHE_MIN || '');
   const moisOK = (m) => !moisMin || (/^\d{4}-\d{2}$/.test(m ?? '') && m >= moisMin);
-  const allActive = (market.cities || []).filter((c) => hasMarketStats(c) && moisOK(c.referenceMonth));
+  /* 6 oct. 2026 (gabarit v2) : le pouls n'est plus qu'une ligne. Une ville sans mois à jour PART
+     quand même, sans pouls (règle de Grégory du 5 oct. pour les trimestrielles, élargie le 6 aux
+     Maritimes). Le filtre ne décide plus qui reçoit : il décide si le pouls s'affiche. */
+  MOIS_MIN_POULS = moisMin;
+  await chargerCompteIA(env);
+  const allActive = (market.cities || []).filter((c) => hasMarketStats(c) || GABARIT_IA);
   // Le filtre par fuseau s'applique ICI, sur les villes : tout le reste (prospects comme
   // experts) passe par `cityBySlug`, donc personne hors tranche ne peut être servi.
   /* ⚠ DÉROGATION DATÉE À LA RÈGLE DES 10 H LOCALES (8 sept. 2026, demande proprio).
@@ -4307,7 +4395,7 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
         /* 5 oct. 2026 : avec MOIS_MARCHE_MIN, une province sans AUCUNE ville à jour n'a rien à
            montrer — ses clés `prov-` étaient lues une à une pour être jetées (643 lectures,
            0 envoi, budget KV épuisé à chaque passage). On les écarte ici, sans lecture. */
-        if (moisMin && !allActive.some((c) => c.province === code)) continue;
+
       } else if (!city) continue;                    // hors du fuseau servi à cette heure
       const id = `prospect:${key}`;
       if (done.has(id)) continue;                    // déjà servi ce cycle
@@ -6073,6 +6161,7 @@ const WORKER_MAIN = {
     // Ex. /preview?segment=expert&stage=yellow&city=laval&lang=fr
     if (request.method === 'GET' && url.pathname === '/preview') {
       const q = url.searchParams;
+      await chargerCompteIA(env); MOIS_MIN_POULS = String(env.MOIS_MARCHE_MIN || '');
       const segment = q.get('segment') || 'prospect';
       const stage = q.get('stage') || 'intro';
       const citySlug = strip(q.get('city') || 'laval');
@@ -6472,11 +6561,13 @@ const WORKER_MAIN = {
     if ((request.method === 'GET' || request.method === 'POST') && url.pathname === '/vi/desabonnement') return handleDesabonnement(url, env, { hmacHex });
     if (request.method === 'GET' && url.pathname === '/vi/stats') return handleStats(url, env, { json });
     if (request.method === 'GET' && url.pathname === '/vi/visite') return handleVisite(request, env, url, { bumpCounter });
+    if (request.method === 'GET' && url.pathname === '/vi/precalcul') return handlePrecalcul(request, env, url, { json });
     // Modèle du courriel mensuel « Test IA », envoyé à GRÉGORY SEUL (REPORT_TO, codé en dur) pour voir le
     // vrai rendu dans Gmail : un brouillon ne le montre pas, la fenêtre de rédaction retire styles et images.
     // C'est Grégory qui déclenche l'envoi (consigne : je ne lui envoie jamais de courriel moi-même).
     // 5 par jour au plus. Ex. : /vi/modele?city=calgary&couverte=0&segment=prospect&lang=fr
     if (request.method === 'GET' && url.pathname === '/vi/modele') {
+      await chargerCompteIA(env); MOIS_MIN_POULS = String(env.MOIS_MARCHE_MIN || '');
       if (!env.RESEND_API_KEY) return json({ ok: false, erreur: 'pas de clé Resend' }, 503);
       if ((await bumpCounter(env, `vi:modele:${new Date().toISOString().slice(0, 10)}`, 2 * 86400)) > 5) return json({ ok: false, erreur: 'limite de 5 modèles par jour' }, 429);
       const q = url.searchParams;
