@@ -1,23 +1,63 @@
 {
-  "_note": "Gabarits de questions types posées aux IA, par métier (correctif 4, ronde 2). {lieu} = « Secteur, Ville » ou la ville. Sert au vérificateur de la page Visibilité IA et, plus tard, à l'outil de présence dans les IA.",
+  "_note": "Gabarits de questions types posées aux IA, par métier (correctif 4, ronde 2). {lieu} = « Secteur, Ville » ou la ville. Les 3 sont posées par l'outil de présence (5 oct. 2026). Sert au vérificateur de la page Visibilité IA et, plus tard, à l'outil de présence dans les IA.",
   "real-estate-broker": {
-    "fr": ["Quel est le meilleur courtier immobilier à {lieu} ?", "Quel courtier immobilier me recommandes-tu pour vendre ma maison à {lieu} ?"],
-    "en": ["Who is the best real estate broker in {lieu}?", "Which real estate agent would you recommend to sell my house in {lieu}?"]
+    "fr": [
+      "Quel est le meilleur courtier immobilier à {lieu} ?",
+      "Quel courtier immobilier me recommandes-tu pour vendre ma maison à {lieu} ?",
+      "Quel courtier immobilier me conseilles-tu pour acheter une première maison à {lieu} ?"
+    ],
+    "en": [
+      "Who is the best real estate broker in {lieu}?",
+      "Which real estate agent would you recommend to sell my house in {lieu}?",
+      "Which real estate agent would you recommend to buy a first home in {lieu}?"
+    ]
   },
   "mortgage-broker": {
-    "fr": ["Quel est le meilleur courtier hypothécaire à {lieu} ?", "Quel courtier hypothécaire me recommandes-tu pour un premier achat à {lieu} ?"],
-    "en": ["Who is the best mortgage broker in {lieu}?", "Which mortgage broker would you recommend for a first home in {lieu}?"]
+    "fr": [
+      "Quel est le meilleur courtier hypothécaire à {lieu} ?",
+      "Quel courtier hypothécaire me recommandes-tu pour un premier achat à {lieu} ?",
+      "Quel courtier hypothécaire me conseilles-tu pour renouveler mon hypothèque à {lieu} ?"
+    ],
+    "en": [
+      "Who is the best mortgage broker in {lieu}?",
+      "Which mortgage broker would you recommend for a first home in {lieu}?",
+      "Which mortgage broker would you recommend to renew my mortgage in {lieu}?"
+    ]
   },
   "home-inspector": {
-    "fr": ["Quel est le meilleur inspecteur en bâtiment à {lieu} ?", "Quel inspecteur en bâtiment me recommandes-tu avant d'acheter à {lieu} ?"],
-    "en": ["Who is the best home inspector in {lieu}?", "Which home inspector would you recommend before buying in {lieu}?"]
+    "fr": [
+      "Quel est le meilleur inspecteur en bâtiment à {lieu} ?",
+      "Quel inspecteur en bâtiment me recommandes-tu avant d'acheter à {lieu} ?",
+      "Quel inspecteur en bâtiment me conseilles-tu pour une maison ancienne à {lieu} ?"
+    ],
+    "en": [
+      "Who is the best home inspector in {lieu}?",
+      "Which home inspector would you recommend before buying in {lieu}?",
+      "Which home inspector would you recommend for an older house in {lieu}?"
+    ]
   },
   "notary-lawyer": {
-    "fr": ["Quel notaire me recommandes-tu pour un achat immobilier à {lieu} ?", "Quel est le meilleur notaire en immobilier à {lieu} ?"],
-    "en": ["Which real estate lawyer would you recommend for a home purchase in {lieu}?", "Who is the best real estate lawyer in {lieu}?"]
+    "fr": [
+      "Quel notaire me recommandes-tu pour un achat immobilier à {lieu} ?",
+      "Quel est le meilleur notaire en immobilier à {lieu} ?",
+      "Quel notaire me conseilles-tu pour la vente de ma maison à {lieu} ?"
+    ],
+    "en": [
+      "Which real estate lawyer would you recommend for a home purchase in {lieu}?",
+      "Who is the best real estate lawyer in {lieu}?",
+      "Which real estate lawyer would you recommend for selling my house in {lieu}?"
+    ]
   },
   "appraiser": {
-    "fr": ["Quel est le meilleur évaluateur agréé à {lieu} ?", "Quel évaluateur agréé me recommandes-tu pour faire évaluer ma maison à {lieu} ?"],
-    "en": ["Who is the best certified appraiser in {lieu}?", "Which appraiser would you recommend to value my home in {lieu}?"]
+    "fr": [
+      "Quel est le meilleur évaluateur agréé à {lieu} ?",
+      "Quel évaluateur agréé me recommandes-tu pour faire évaluer ma maison à {lieu} ?",
+      "Quel évaluateur agréé me conseilles-tu pour une évaluation de succession à {lieu} ?"
+    ],
+    "en": [
+      "Who is the best certified appraiser in {lieu}?",
+      "Which appraiser would you recommend to value my home in {lieu}?",
+      "Which appraiser would you recommend for an estate valuation in {lieu}?"
+    ]
   }
 }

@@ -122,9 +122,9 @@ export async function handleInscription(request, env, h) {
  *     - Coût : la recherche Google est comprise dans la franchise de l'API (5 000 requêtes/MOIS pour
  *       les modèles Gemini 3.x, facturation activée ; gemini-2.5-flash répond 404 depuis oct. 2026) ;
  *       seuls les jetons coûtent, des fractions de cent. Modèle : GEMINI_MODEL, sinon gemini-3.5-flash-lite.
- *     - Économie : 2 questions par diagnostic, réponses MISES EN CACHE 7 jours par métier × secteur ×
+ *     - Économie : 3 questions par diagnostic, réponses MISES EN CACHE 7 jours par métier × secteur ×
  *       langue. Le nom du pro est cherché dans la réponse en cache : aucun appel de plus.
- *     - Garde-fous : 20 diagnostics par jour et par IP, 150 appels Gemini par jour au total (≈ 4 500/mois).
+ *     - Garde-fous : 20 diagnostics par jour et par IP, 160 RECHERCHES par jour au total (≈ 4 800/mois).
  *   MODÈLE PAYANT (rapport mensuel des abonnés, à venir) : plusieurs IA. Les fournisseurs sont listés
  *     dans FOURNISSEURS ; seul Gemini est branché. Les autres ne s'activent qu'avec leur clé ET
  *     niveau=payant + jeton CONTACTS_TOKEN (jamais depuis la page publique).
@@ -178,11 +178,15 @@ export async function handlePresence(request, env, url, h) {
   const ip = request.headers.get('cf-connecting-ip') || 'x';
   if ((await bumpCounter(env, `vip:ip:${ip}:${jour}`, 2 * 86400)) > 20) return json({ ok: false, erreur: 'limite' }, 429);
 
-  const cle = `vip:cache:${metier}:${secteur}:${fr ? 'fr' : 'en'}:${sansAccents(lieu).replace(/[^a-z0-9]+/g, '-')}`;
+  const cle = `vip:cache3:${metier}:${secteur}:${fr ? 'fr' : 'en'}:${sansAccents(lieu).replace(/[^a-z0-9]+/g, '-')}`;
   let res = env.COUNTERS ? JSON.parse((await env.COUNTERS.get(cle)) || 'null') : null;
   if (!res) {
-    if ((await bumpCounter(env, `vip:appels:${jour}`, 2 * 86400)) > 150) return json({ ok: false, erreur: 'quota' }, 429);
-    const gabarits = QUESTIONS_IA[metier][fr ? 'fr' : 'en'].slice(0, 2);
+    // Plafond compté en RECHERCHES (3 par diagnostic) : 160/jour ≈ 4 800/mois, sous la franchise de 5 000.
+    const gabarits = QUESTIONS_IA[metier][fr ? 'fr' : 'en'].slice(0, 3);
+    const cleAppels = `vip:recherches:${jour}`;
+    const deja = env.COUNTERS ? parseInt((await env.COUNTERS.get(cleAppels)) || '0', 10) : 0;
+    if (deja + gabarits.length > 160) return json({ ok: false, erreur: 'quota' }, 429);
+    if (env.COUNTERS) await env.COUNTERS.put(cleAppels, String(deja + gabarits.length), { expirationTtl: 2 * 86400 });
     const reponses = [];
     for (const g of gabarits) {
       const question = g.replace('{lieu}', lieu);
