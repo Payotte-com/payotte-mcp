@@ -4311,7 +4311,13 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
       const jamais = candidats.filter((c) => !servisAvant.has(c.id));
       const deja = candidats.filter((c) => servisAvant.has(c.id));
       candidats.length = 0;
-      candidats.push(...jamais, ...deja);
+      /* 5 oct. 2026 (Grégory : « mettre 1/4 de clean avec la balance ») : les neufs ne passent
+         plus TOUS devant. Trois jamais servis, puis un déjà servi en septembre (ses rebonds
+         sont déjà retirés) : le taux de rebonds du jour se dilue au lieu de se concentrer. */
+      for (let i = 0, j = 0; i < jamais.length || j < deja.length;) {
+        for (let n = 0; n < 3 && i < jamais.length; n++) candidats.push(jamais[i++]);
+        if (j < deja.length) candidats.push(deja[j++]);
+      }
       report.candidatsJamaisServis = jamais.length;
     }
 
