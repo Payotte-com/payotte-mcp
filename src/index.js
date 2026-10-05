@@ -2233,7 +2233,8 @@ function ligneIA(metier, fr) {
  * Même ordre pour tous : en-tête « Plateforme IA pour l'immobilier » + pouls de la ville, l'offre
  * « Testez gratuitement votre présence dans les IA » et son bouton vers le test (page #ia), la
  * courbe des citations Copilot, le pied légal. Objet : « Testez votre présence IA à {ville} :
- * gratuit, 30 s ». Pas de bloc provincial ni national : Grégory veut des courriels LÉGERS.
+ * gratuit, 30 s » puis, le 5 oct. au soir, retour à la question : « {ville} : qui l'IA recommande-t-elle comme
+ * {métier} ? » (prospects) et « {prénom}, l'IA recommande-t-elle votre nom à vos clients ? » (experts). Pas de bloc provincial ni national : Grégory veut des courriels LÉGERS.
  * Une ligne de plus selon le public : place libre (ville sans personne), experts listés (forfaits),
  * recommandés sans badge (badge). Pour revenir à l'ancien pouls : GABARIT_IA = false.
  * ⚠️ CITATIONS_MOIS : chiffres Bing Webmaster Tools, à relever chaque mois (chroniques.ts). */
@@ -2278,10 +2279,24 @@ function offreTestIA({ segment, stage, city, expert, fr, villeCouverte }) {
   return `<tr><td style="padding:16px 32px 0 32px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fbf3f4;border:1px solid #f1d5da;border-radius:10px;"><tr><td style="padding:14px 16px;">${inner}</td></tr></table></td></tr>`;
 }
 
-function renderTestIA({ segment, stage, city, expert, lang, unsubUrl, postale = '', villeCouverte = null }) {
+function renderTestIA({ segment, stage, city, expert, lang, unsubUrl, postale = '', villeCouverte = null, metier = '' }) {
   const fr = lang !== 'en';
   const eyebrow = `${fr ? 'Plateforme IA pour l’immobilier' : 'AI platform for real estate'}<br><span style="color:#c8102e;letter-spacing:1px;">${city.name}${city.referenceMonth ? ' &middot; ' + moisLisible(city.referenceMonth, fr) : ''}</span>`;
-  const subject = fr ? `Testez votre présence IA à ${city.name} : gratuit, 30 s` : `Test your AI presence in ${city.name}: free, 30 sec`;
+  // Objet (Grégory, 5 oct. : « remets l'ancien, il va mieux convertir ») : la question, pas l'offre.
+  const METIER_UN = { 'real-estate-broker': ['courtier immobilier', 'real estate broker'], 'mortgage-broker': ['courtier hypothécaire', 'mortgage broker'],
+    appraiser: ['évaluateur agréé', 'appraiser'], 'home-inspector': ['inspecteur en bâtiment', 'home inspector'], 'notary-lawyer': ['notaire', 'real estate lawyer'] };
+  let subject;
+  if (segment === 'prospect') {
+    const m = METIER_UN[metier]?.[fr ? 0 : 1];
+    subject = fr ? (m ? `${city.name} : qui l’IA recommande-t-elle comme ${m} ?` : `${city.name} : qui l’IA recommande-t-elle à vos clients ?`)
+                 : (m ? `${city.name}: who does AI recommend as a ${m}?` : `${city.name}: who does AI recommend to your clients?`);
+  } else {
+    // Le prénom seulement s'il ressemble à un prénom (une fiche d'équipe ou de cabinet n'en a pas).
+    const nom = String(expert?.name || '').trim();
+    const prenom = expert?.isTeam || !/^[A-ZÀ-Ý][a-zà-ÿ'’-]+ [A-ZÀ-Ý]/.test(nom) ? '' : nom.split(' ')[0];
+    subject = fr ? `${prenom ? `${prenom}, l’IA` : 'L’IA'} recommande-t-elle votre nom à vos clients ?`
+                 : `${prenom ? `${prenom}, does AI` : 'Does AI'} recommend your name to your clients?`;
+  }
   const metierPhrase = (expert?.professionLabel ?? '').replace(/^./, (c) => c.toLowerCase());
   const why = segment === 'prospect'
     ? (fr ? `Vous recevez ce courriel parce que vous exercez à ${city.name}.` : `You are receiving this email because you practise in ${city.name}.`)
@@ -2293,7 +2308,7 @@ function renderTestIA({ segment, stage, city, expert, lang, unsubUrl, postale = 
 
 function renderPulse({ segment, stage, city, expert, lang, unsubUrl, macro = null, metier = '', postale = '', villeCouverte = null }) {
   const fr = lang !== 'en';
-  if (GABARIT_IA) return renderTestIA({ segment, stage, city, expert, lang, unsubUrl, postale, villeCouverte });
+  if (GABARIT_IA) return renderTestIA({ segment, stage, city, expert, lang, unsubUrl, postale, villeCouverte, metier });
   const url = expert?.url || `${SITE}`;
   const eyebrow = `${fr ? 'Le pouls du marché' : 'Market pulse'}<br><span style="color:#c8102e;letter-spacing:1px;">${city.name}${city.referenceMonth ? ' &middot; ' + moisLisible(city.referenceMonth, fr) : ''}</span>`;
   let subject, close, foot;
@@ -6432,7 +6447,7 @@ const WORKER_MAIN = {
       let expert = null;
       if (segment === 'expert') { try { const all = await allExperts(); expert = all.find((e) => strip(e.city) === cs) || null; } catch {} }
       const cv = q.get('couverte'); const villeCouverte = cv === '1' ? true : cv === '0' ? false : null;
-      const { subject, html } = renderPulse({ segment, stage: q.get('stage') || 'green', city, expert, lang, unsubUrl: `${SITE}/contact`, postale: adressePostale(env), villeCouverte });
+      const { subject, html } = renderPulse({ segment, stage: q.get('stage') || 'green', city, expert, lang, unsubUrl: `${SITE}/contact`, postale: adressePostale(env), villeCouverte, metier: q.get('metier') || 'appraiser' });
       const r = await fetch('https://api.resend.com/emails', {
         method: 'POST', headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ from: env.MAIL_FROM_OUTREACH || env.MAIL_FROM || 'Payotte <relais@payotte.com>', to: [REPORT_TO], subject: `[MODÈLE] ${subject}`, html }),
