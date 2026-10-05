@@ -20,7 +20,7 @@
  * Licence des données : CC BY 4.0 — chaque réponse porte l'attribution.
  */
 
-import { handleInscription, handlePresence } from './visibiliteIa.js';
+import { handleInscription, handlePresence, handleSuivi, handleDesabonnement, handleStats, passerSuivi } from './visibiliteIa.js';
 import { handleDossierRevision } from './dossierRevision.js';
 import { efAdresse, efMunis, efFilet, efFiletMunis } from './efAdresse.js';
 import RISQUES_EPOQUE from './data/risques-par-epoque.json';
@@ -6344,6 +6344,13 @@ const WORKER_MAIN = {
       r.headers.set('Access-Control-Allow-Origin', '*');
       return r;
     }
+    if (request.method === 'POST' && url.pathname === '/vi/suivi') {
+      const r = await handleSuivi(request, env, { json, bumpCounter, hmacHex, EMAIL_RE, domainExists, WORKER_ORIGIN, REPORT_TO });
+      r.headers.set('Access-Control-Allow-Origin', '*');
+      return r;
+    }
+    if ((request.method === 'GET' || request.method === 'POST') && url.pathname === '/vi/desabonnement') return handleDesabonnement(url, env, { hmacHex });
+    if (request.method === 'GET' && url.pathname === '/vi/stats') return handleStats(url, env, { json });
     // Service Visibilité IA : formulaire d'inscription (src/visibiliteIa.js), 5 oct. 2026.
     if (request.method === 'POST' && url.pathname === '/vi/inscription') {
       return handleInscription(request, env, { SITE, REPORT_TO, EMAIL_RE, domainExists, bumpCounter, hmacHex });
@@ -6731,6 +6738,12 @@ const WORKER_MAIN = {
     } catch (err) {
       console.log(`[alerte-taux] ERREUR : ${err?.message ?? err}`);
     }
+
+    // Suivi mensuel Visibilité IA (src/visibiliteIa.js) : budget court, try isolé, respecte stop:all.
+    try {
+      const vs = await passerSuivi(env, { hmacHex, bumpCounter, WORKER_ORIGIN, REPORT_TO }, { budgetMs: 8000 });
+      if (vs.envoyes || vs.arrete || vs.quota) console.log(`[vi-suivi] ${vs.envoyes} envoyé(s)${vs.arrete ? ` — ARRÊTÉ (${vs.arrete})` : ''}${vs.quota ? ' — quota Gemini atteint' : ''}`);
+    } catch (err) { console.log(`[vi-suivi] ERREUR : ${err?.message ?? err}`); }
 
     // La séquence AVANT le bulletin : elle porte une date promise (mardi 10 h locale),
     // le bulletin s'étale sur le mois. À budget contraint, la date passe devant.
