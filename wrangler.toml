@@ -140,6 +140,9 @@ PROVINCIAL_ACTIF = "1"
 # 2 oct. 2026 : 20 → 50 (Grégory, en vue du 10 oct. : ~27 000 adresses sur 4 domaines de franchise).
 MAX_PAR_DOMAINE = "50"
 
+# ── 5 OCT. 2026 (Grégory : « on commence aujourd'hui dans l'Ouest, le temps de tester la machine ») :
+#   AB et C.-B. seulement (PROVINCES_DU_JOUR), passages aux 10 min de 17 h à 21 h 50 UTC
+#   (11 h-15 h 50 en Alberta, 10 h-14 h 50 en C.-B.), 500 par passage, plafond 8 000. Inerte le 6.
 # ── JOURNÉE DU 30 SEPT. 2026 SEULEMENT (Grégory : « le rythme est beaucoup trop lent ») ──
 # Les trois réglages sont datés et deviennent inertes le 1er octobre, sans rien retirer.
 # Heures en UTC ; Montréal = UTC − 4.
@@ -149,12 +152,12 @@ MAX_PAR_DOMAINE = "50"
 #     AB et C.-B. jusqu'à 21 h 30 UTC (17 h 30 à Montréal ; 15 h 30 AB, 14 h 30 C.-B.).
 MAX_PAR_DOMAINE_DU_JOUR = "2026-09-30:50"
 EXPERTS_SHARE_DU_JOUR = "2026-09-30:0"
-PLAFOND_DU_JOUR = "2026-09-30:8000"
-PART_PASSAGE_DU_JOUR = "2026-09-30:500"
-DIX_MIN_DU_JOUR = "2026-09-30:17,18,19,20,21"
-RENFORT_DU_JOUR = "2026-09-30|17:QC,ON,NS,NB,PE,NL,AB,BC;18:QC,ON,NS,NB,PE,NL,AB,BC;19:QC,ON,AB,BC;20:AB,BC;21:AB,BC"
+PLAFOND_DU_JOUR = "2026-10-05:8000"
+PART_PASSAGE_DU_JOUR = "2026-10-05:500"
+DIX_MIN_DU_JOUR = "2026-10-05:17,18,19,20,21"
+RENFORT_DU_JOUR = "2026-10-05|17:AB,BC;18:AB,BC;19:AB,BC;20:AB,BC;21:AB,BC"
 
-OUTREACH_RAMPE = "2026-09-09:75,2026-09-10:150,2026-09-11:300,2026-09-14:600,2026-09-15:1200,2026-09-16:2400,2026-09-17:4800,2026-09-29:6000,2026-09-30:8000,2026-10-01:6000"
+OUTREACH_RAMPE = "2026-09-09:75,2026-09-10:150,2026-09-11:300,2026-09-14:600,2026-09-15:1200,2026-09-16:2400,2026-09-17:4800,2026-09-29:6000,2026-09-30:8000,2026-10-01:6000,2026-10-05:8000"
 
 # ── FORÇAGE DE PROVINCES POUR UNE JOURNÉE (14 sept. 2026, demande proprio) ───────
 # QC et ON sont normalement servis au passage de 14 h UTC (10 h locale). Celui du
@@ -167,7 +170,7 @@ OUTREACH_RAMPE = "2026-09-09:75,2026-09-10:150,2026-09-11:300,2026-09-14:600,202
 # variable est inerte et le filtre par fuseau reprend sans intervention. NE PAS la
 # remplacer par une liste sans date : un forçage permanent finirait par expédier à
 # 6 h du matin sur la côte Ouest.
-PROVINCES_DU_JOUR = "2026-09-14:QC,ON"
+PROVINCES_DU_JOUR = "2026-10-05:AB,BC"
 
 # ── ADRESSE POSTALE LCAP — EN SECRET, PAS ICI (2026-08-25) ───────────────────────
 # Le Règlement de la LCAP (art. 2(2)) impose l'adresse postale de l'expéditeur dans TOUT
