@@ -3553,7 +3553,9 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
     await env.SUBSCRIBERS?.put('stop:outreach', `auto ${dayKey} — ${motif}`);
     stopOutreach = `auto ${dayKey} — ${motif}`;
     console.log(`[bulletin] ARRÊT AUTOMATIQUE de la prospection : ${motif}`);
-  } else if (!stopOutreach && (tauxP >= SEUIL_PLAINTES * 0.6 || tauxR >= SEUIL_REBONDS * 0.66)) {   // alerte : 0,03 % / 2 %
+  // 5 oct. 2026 (Grégory : « remonte le plafond à 0,05 ») : le ralenti des PLAINTES ne part plus à 0,03 %.
+  // À 0,05 % c'est l'arrêt automatique ci-dessus qui tranche ; le ralenti ne reste que pour les rebonds (2,3 %).
+  } else if (!stopOutreach && (tauxP >= SEUIL_PLAINTES || tauxR >= SEUIL_REBONDS * 0.66)) {
     // Palier d'alerte : on ralentit de moitié au lieu d'arrêter. Le but est de laisser le
     // temps de regarder, pas de tout figer sur un frisson.
     dayCap = Math.max(1, Math.floor(dayCap / 2));
