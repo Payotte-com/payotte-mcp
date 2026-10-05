@@ -150,7 +150,10 @@ async function interrogerGemini(env, question, fr) {
     headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
     body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: consigne }] }], tools: [{ google_search: {} }], generationConfig: { temperature: 0.2, maxOutputTokens: 700 } }),
   }).catch(() => null);
-  if (!r || !r.ok) return { erreur: r ? `http ${r.status}` : 'reseau' };
+  if (!r || !r.ok) {
+    const msg = r ? ((await r.json().catch(() => null))?.error?.message || '').slice(0, 220) : '';
+    return { erreur: r ? `http ${r.status}${msg ? ` : ${msg}` : ''}` : 'reseau' };
+  }
   const j = await r.json().catch(() => null);
   const cand = j?.candidates?.[0];
   const texte = (cand?.content?.parts || []).map((p) => p.text || '').join('').trim();
