@@ -1,3 +1,4 @@
+import QUESTIONS_IA from './data/questionsIa.json';
 /**
  * visibiliteIa.js — service « Visibilité IA » (page /visibilite-ia-professionnels-immobilier).
  *
@@ -109,4 +110,92 @@ export async function handleInscription(request, env, h) {
   }
   await bumpCounter(env, `vi:insc:${forfait}:${new Date().toISOString().slice(0, 7)}`, 400 * 86400);
   return Response.redirect(`${SITE}${merci}${forfait === 'aucun' ? '' : `?forfait=${forfait}`}`, 303);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────────────────────
+ * GET /vi/presence — « Qui les IA nomment-elles ici ? » (outil de présence dans les IA, 5 oct. 2026)
+ *
+ *   Paramètres : metier (slug), secteur (slug), lieu (« Secteur, Ville », tel qu'affiché par la page),
+ *   lang (fr|en), nom (facultatif : le nom du pro, pour dire s'il est nommé).
+ *
+ *   MODÈLE GRATUIT (la page publique) : UNE seule IA, Gemini avec recherche Google.
+ *     - Coût : la recherche Google est comprise dans la franchise de l'API (1 500 requêtes/jour sur
+ *       gemini-2.5-flash, facturation activée) ; seuls les jetons coûtent, des fractions de cent.
+ *     - Économie : 2 questions par diagnostic, réponses MISES EN CACHE 7 jours par métier × secteur ×
+ *       langue. Le nom du pro est cherché dans la réponse en cache : aucun appel de plus.
+ *     - Garde-fous : 20 diagnostics par jour et par IP, 300 appels Gemini par jour au total.
+ *   MODÈLE PAYANT (rapport mensuel des abonnés, à venir) : plusieurs IA. Les fournisseurs sont listés
+ *     dans FOURNISSEURS ; seul Gemini est branché. Les autres ne s'activent qu'avec leur clé ET
+ *     niveau=payant + jeton CONTACTS_TOKEN (jamais depuis la page publique).
+ * ───────────────────────────────────────────────────────────────────────────────────────────── */
+
+const FOURNISSEURS = {
+  gemini: { nom: 'Gemini', cle: 'GEMINI_API_KEY', gratuit: true, interroger: interrogerGemini },
+  // À brancher pour le modèle payant (non appelés aujourd'hui) :
+  // chatgpt:    { nom: 'ChatGPT',    cle: 'OPENAI_API_KEY',     gratuit: false, interroger: … },  // Responses API + outil web_search
+  // perplexity: { nom: 'Perplexity', cle: 'PERPLEXITY_API_KEY', gratuit: false, interroger: … },  // sonar
+  // claude:     { nom: 'Claude',     cle: 'ANTHROPIC_API_KEY',  gratuit: false, interroger: … },  // Messages API + outil web_search
+};
+
+const sansAccents = (x) => String(x || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+async function interrogerGemini(env, question, fr) {
+  const modele = env.GEMINI_MODEL || 'gemini-2.5-flash';
+  const consigne = fr
+    ? `${question}\nRéponds comme à un client : nomme de 3 à 5 professionnels ou cabinets précis, un par ligne, au format « Nom — raison courte ». N'invente aucun nom : seulement ceux que tu trouves dans tes recherches.`
+    : `${question}\nAnswer as you would to a client: name 3 to 5 specific professionals or firms, one per line, in the format "Name — short reason". Do not invent names: only those found in your search.`;
+  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modele}:generateContent`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
+    body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: consigne }] }], tools: [{ google_search: {} }], generationConfig: { temperature: 0.2, maxOutputTokens: 700 } }),
+  }).catch(() => null);
+  if (!r || !r.ok) return { erreur: r ? `http ${r.status}` : 'reseau' };
+  const j = await r.json().catch(() => null);
+  const cand = j?.candidates?.[0];
+  const texte = (cand?.content?.parts || []).map((p) => p.text || '').join('').trim();
+  const sources = [...new Set((cand?.groundingMetadata?.groundingChunks || []).map((c) => c.web?.title || '').filter(Boolean))].slice(0, 8);
+  const noms = texte.split('\n').map((l) => l.replace(/^[\s*\-•\d.)]+/, '').replace(/\*\*/g, '').trim())
+    .filter((l) => l.includes('—') || l.includes(' - ')).map((l) => l.split(/ — | - /)[0].trim()).filter((n) => n && n.length <= 90).slice(0, 5);
+  return { noms, sources, extrait: texte.slice(0, 900) };
+}
+
+export async function handlePresence(request, env, url, h) {
+  const { json, bumpCounter } = h;
+  const fr = url.searchParams.get('lang') !== 'en';
+  const metier = url.searchParams.get('metier') || '';
+  const secteur = (url.searchParams.get('secteur') || '').slice(0, 80);
+  const lieu = (url.searchParams.get('lieu') || '').replace(/[^\p{L}\p{N} ,.'’\-]/gu, '').slice(0, 80).trim();
+  const nom = (url.searchParams.get('nom') || '').replace(/[^\p{L} .'’\-&]/gu, '').slice(0, 80).trim();
+  if (!QUESTIONS_IA[metier] || !/^[a-z0-9-]{2,80}$/.test(secteur) || lieu.length < 2) return json({ ok: false, erreur: 'parametres' }, 400);
+  const f = FOURNISSEURS.gemini;
+  if (!env[f.cle]) return json({ ok: false, erreur: 'non-configure' }, 503);
+
+  const jour = new Date().toISOString().slice(0, 10);
+  const ip = request.headers.get('cf-connecting-ip') || 'x';
+  if ((await bumpCounter(env, `vip:ip:${ip}:${jour}`, 2 * 86400)) > 20) return json({ ok: false, erreur: 'limite' }, 429);
+
+  const cle = `vip:cache:${metier}:${secteur}:${fr ? 'fr' : 'en'}:${sansAccents(lieu).replace(/[^a-z0-9]+/g, '-')}`;
+  let res = env.COUNTERS ? JSON.parse((await env.COUNTERS.get(cle)) || 'null') : null;
+  if (!res) {
+    if ((await bumpCounter(env, `vip:appels:${jour}`, 2 * 86400)) > 300) return json({ ok: false, erreur: 'quota' }, 429);
+    const gabarits = QUESTIONS_IA[metier][fr ? 'fr' : 'en'].slice(0, 2);
+    const reponses = [];
+    for (const g of gabarits) {
+      const question = g.replace('{lieu}', lieu);
+      const r = await f.interroger(env, question, fr);
+      if (r.erreur) return json({ ok: false, erreur: 'ia', detail: r.erreur }, 502);
+      reponses.push({ question, ...r });
+    }
+    res = { ia: f.nom, date: jour, reponses };
+    if (env.COUNTERS) await env.COUNTERS.put(cle, JSON.stringify(res), { expirationTtl: 7 * 86400 });
+  }
+  // Le nom du pro, cherché dans la réponse en cache (aucun appel de plus).
+  const cible = sansAccents(nom);
+  const reponses = res.reponses.map((r) => ({
+    question: r.question, noms: r.noms, sources: r.sources,
+    payotte: r.sources.some((s) => /payotte/i.test(s)) || /payotte/i.test(r.extrait || ''),
+    vous: cible.length >= 3 ? sansAccents(r.extrait).includes(cible) : null,
+  }));
+  await bumpCounter(env, `vip:diag:${new Date().toISOString().slice(0, 7)}`, 400 * 86400);
+  return json({ ok: true, ia: res.ia, date: res.date, reponses });
 }
