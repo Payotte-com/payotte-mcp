@@ -127,7 +127,7 @@ HEURES_RENFORT = "12:QC,ON;18:QC,ON;19:QC,ON"
 # d'écritures du webhook et de /unsubscribe, et un quota crevé fait échouer les
 # désabonnements (LCAP art. 11). Ouvrir APRÈS le passage au palier payant, en retirant
 # le « # » de la ligne ci-dessous, puis `npx wrangler deploy`.
-PROVINCIAL_ACTIF = "1"
+PROVINCIAL_ACTIF = "0" # 5 oct. 2026 : coupé tant que renderProvincial n’a pas le gabarit Test IA
 
 # ── PLAFOND PAR DOMAINE : 5 → 10 (28 sept. 2026, demande proprio) ────────────────
 # Pour finir la tournée de septembre, dominée par remax-quebec.com (1 637 adresses) et
