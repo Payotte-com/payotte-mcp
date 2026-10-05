@@ -27,6 +27,23 @@ const FORFAITS = {
   pro: { fr: 'Premium Pro', en: 'Premium Pro' },
 };
 
+/* PROVENANCE (5 oct. 2026) : `?src=courriel-oct` sur les liens du courriel. Compteurs par jour,
+ * `vip:src:{src}:{etape}:{jour}` dans COUNTERS (400 j) — visites, tests, suivis, inscriptions. */
+export const srcDe = (v) => (/^[a-z0-9-]{2,40}$/.test(String(v || '')) ? String(v) : '');
+async function compterSrc(env, bumpCounter, src, etape) {
+  if (!src || !env.COUNTERS) return;
+  await bumpCounter(env, `vip:src:${src}:${etape}:${new Date().toISOString().slice(0, 10)}`, 400 * 86400);
+}
+// GET /vi/visite?src=… : la page appelle ceci une fois à l'arrivée (une visite par IP et par jour).
+export async function handleVisite(request, env, url, h) {
+  const src = srcDe(url.searchParams.get('src'));
+  if (src && env.COUNTERS) {
+    const ip = request.headers.get('cf-connecting-ip') || 'x';
+    if ((await h.bumpCounter(env, `vip:vu:${src}:${ip}:${new Date().toISOString().slice(0, 10)}`, 2 * 86400)) === 1) await compterSrc(env, h.bumpCounter, src, 'visites');
+  }
+  return new Response(null, { status: 204, headers: { 'Access-Control-Allow-Origin': '*' } });
+}
+
 export async function handleInscription(request, env, h) {
   const { SITE, REPORT_TO, EMAIL_RE, domainExists, bumpCounter, hmacHex } = h;
   const ct = request.headers.get('content-type') || '';
@@ -60,9 +77,11 @@ export async function handleInscription(request, env, h) {
   }
 
   const tel = propre(b.tel, 40), site = propre(b.site_web, 160), permis = propre(b.permis, 60), note = propre(b.note, 600);
+  const src = srcDe(b.src);
+  await compterSrc(env, bumpCounter, src, 'inscriptions');
   const fiche = {
     recu: new Date().toISOString(), lang: fr ? 'fr' : 'en', nom, courriel, tel, metier, secteur, secteurLibre,
-    site, permis, forfait, formule: forfait === 'aucun' ? null : formule, note,
+    site, permis, forfait, formule: forfait === 'aucun' ? null : formule, note, ...(src ? { src } : {}),
   };
   // Trace durable de la demande (la boîte de courriel n'est pas un registre) : 400 jours.
   if (env.COUNTERS) await env.COUNTERS.put(`vi:inscription:${fiche.recu}:${(await hmacHex(env, courriel)).slice(0, 8)}`, JSON.stringify(fiche), { expirationTtl: 400 * 86400 });
@@ -222,6 +241,7 @@ export async function handlePresence(request, env, url, h) {
   const o = await obtenirPresence(env, metier, secteur, lieu, fr);
   if (o.erreur) return json({ ok: false, erreur: o.erreur, ...(o.detail ? { detail: o.detail } : {}) }, o.statut);
   await bumpCounter(env, `vip:diag:${MOIS_RECH()}`, 400 * 86400);
+  await compterSrc(env, bumpCounter, srcDe(url.searchParams.get('src')), 'tests');
   return json({ ok: true, ia: o.res.ia, date: o.res.date, reponses: lirePresence(o.res, nom) });
 }
 
@@ -288,7 +308,9 @@ export async function handleSuivi(request, env, h) {
   const jour = new Date().toISOString().slice(0, 10);
   if ((await bumpCounter(env, `vis:${(await hmacHex(env, courriel)).slice(0, 16)}:${jour}`, 2 * 86400)) > 3) return json({ ok: false, erreur: 'limite' }, 429);
   if ((await bumpCounter(env, `vis:total:${jour}`, 2 * 86400)) > 300) return json({ ok: false, erreur: 'limite' }, 429);
-  const a = { courriel, metier, secteur, lieu, nom, lang: fr ? 'fr' : 'en', depuis: new Date().toISOString() };
+  const src = srcDe(b.src);
+  await compterSrc(env, bumpCounter, src, 'suivis');
+  const a = { courriel, metier, secteur, lieu, nom, lang: fr ? 'fr' : 'en', depuis: new Date().toISOString(), ...(src ? { src } : {}) };
   const cle = `vi:suivi:${(await hmacHex(env, courriel)).slice(0, 20)}`;
   await bumpCounter(env, `vis:inscrits:${MOIS_RECH()}`, 400 * 86400);
   // Bienvenue : le résultat du jour, tout de suite (en cache, puisque le visiteur vient de le voir).
@@ -349,6 +371,7 @@ export async function handleStats(url, env, h) {
     mois: m, rechercheGeminiMois: await lire(`vip:recherches-mois:${m}`), franchiseMois: 5000,
     rechercheAujourdhui: await lire(`vip:recherches:${new Date().toISOString().slice(0, 10)}`), plafondJour: 160,
     diagnosticsMois: await lire(`vip:diag:${m}`), suivisInscritsMois: await lire(`vis:inscrits:${m}`), suivisEnvoisMois: await lire(`vis:envois:${m}`), abonnesSuivi: abonnes,
+    provenance: await (async () => { const o = {}; let c; do { const p = await env.COUNTERS.list({ prefix: 'vip:src:', cursor: c, limit: 1000 }); for (const k of p.keys) o[k.name.slice(8)] = await lire(k.name); c = p.list_complete ? undefined : p.cursor; } while (c); return o; })(),
     inscriptionsFormulaire: { aucun: await lire(`vi:insc:aucun:${m}`), fiche: await lire(`vi:insc:fiche:${m}`), premium: await lire(`vi:insc:premium:${m}`), pro: await lire(`vi:insc:pro:${m}`) },
   });
 }

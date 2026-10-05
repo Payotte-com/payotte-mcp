@@ -20,7 +20,7 @@
  * Licence des données : CC BY 4.0 — chaque réponse porte l'attribution.
  */
 
-import { handleInscription, handlePresence, handleSuivi, handleDesabonnement, handleStats, passerSuivi } from './visibiliteIa.js';
+import { handleInscription, handlePresence, handleSuivi, handleDesabonnement, handleStats, handleVisite, passerSuivi } from './visibiliteIa.js';
 import { handleDossierRevision } from './dossierRevision.js';
 import { efAdresse, efMunis, efFilet, efFiletMunis } from './efAdresse.js';
 import RISQUES_EPOQUE from './data/risques-par-epoque.json';
@@ -2240,6 +2240,8 @@ function ligneIA(metier, fr) {
  * ⚠️ CITATIONS_MOIS : chiffres Bing Webmaster Tools, à relever chaque mois (chroniques.ts). */
 const GABARIT_IA = true;
 const PAGE_VI = { fr: `${SITE}/visibilite-ia-professionnels-immobilier`, en: `${SITE}/en/ai-visibility-real-estate-professionals` };
+// Provenance des clics du courriel (5 oct. 2026) : compteurs `vip:src:*` du worker, lus par /vi/stats.
+const SRC_COURRIEL = 'courriel-oct';
 const CITATIONS_MOIS = [['juin', 'Jun', 15], ['juil.', 'Jul', 84], ['août', 'Aug', 2451], ['sept.', 'Sep', 5358]];
 
 function blocCitationsIA(fr) {
@@ -2269,13 +2271,13 @@ function offreTestIA({ segment, stage, city, expert, fr, villeCouverte }) {
     apres = fr ? `Vous êtes l’expert recommandé de votre secteur&nbsp;: ${lien(`${SITE}/badge/${expert.slug}`, 'posez votre badge')} pour que les IA relient votre site à votre fiche.`
                : `You are the recommended expert in your sector: ${lien(`${SITE}/badge/${expert.slug}`, 'put up your badge')} so AI tools connect your website to your profile.`;
   } else if (segment !== 'prospect') {
-    apres = fr ? `Votre fiche est déjà sur Payotte. Pour vous faire citer davantage&nbsp;: ${lien(`${PAGE_VI.fr}#forfaits`, 'voir les forfaits')}.`
-               : `Your profile is already on Payotte. To get cited more: ${lien(`${PAGE_VI.en}#forfaits`, 'see the plans')}.`;
+    apres = fr ? `Votre fiche est déjà sur Payotte. Pour vous faire citer davantage&nbsp;: ${lien(`${PAGE_VI.fr}?src=${SRC_COURRIEL}#forfaits`, 'voir les forfaits')}.`
+               : `Your profile is already on Payotte. To get cited more: ${lien(`${PAGE_VI.en}?src=${SRC_COURRIEL}#forfaits`, 'see the plans')}.`;
   }
   const inner = `<div style="font-size:15px;font-weight:bold;color:#211c1e;margin-bottom:6px;">${fr ? 'Testez gratuitement votre présence dans les IA' : 'Test your AI presence for free'}</div>`
     + `<table role="presentation" cellpadding="0" cellspacing="0" border="0">${coches}</table>`
     + (apres ? `<div style="margin-top:8px;font-size:13px;line-height:1.5;color:#443e40;">${apres}</div>` : '')
-    + `<div style="height:12px;font-size:0;line-height:0;">&nbsp;</div>${BTN(`${PAGE_VI[fr ? 'fr' : 'en']}#ia`, fr ? 'Faire le test IA gratuit &rarr;' : 'Take the free AI test &rarr;')}`;
+    + `<div style="height:12px;font-size:0;line-height:0;">&nbsp;</div>${BTN(`${PAGE_VI[fr ? 'fr' : 'en']}?src=${SRC_COURRIEL}#ia`, fr ? 'Faire le test IA gratuit &rarr;' : 'Take the free AI test &rarr;')}`;
   return `<tr><td style="padding:16px 32px 0 32px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fbf3f4;border:1px solid #f1d5da;border-radius:10px;"><tr><td style="padding:14px 16px;">${inner}</td></tr></table></td></tr>`;
 }
 
@@ -6463,6 +6465,7 @@ const WORKER_MAIN = {
     }
     if ((request.method === 'GET' || request.method === 'POST') && url.pathname === '/vi/desabonnement') return handleDesabonnement(url, env, { hmacHex });
     if (request.method === 'GET' && url.pathname === '/vi/stats') return handleStats(url, env, { json });
+    if (request.method === 'GET' && url.pathname === '/vi/visite') return handleVisite(request, env, url, { bumpCounter });
     // Modèle du courriel mensuel « Test IA », envoyé à GRÉGORY SEUL (REPORT_TO, codé en dur) pour voir le
     // vrai rendu dans Gmail : un brouillon ne le montre pas, la fenêtre de rédaction retire styles et images.
     // C'est Grégory qui déclenche l'envoi (consigne : je ne lui envoie jamais de courriel moi-même).
