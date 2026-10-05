@@ -4302,6 +4302,10 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
         provSlug = key.slice(5, sep);
         const code = PROV_TO_CODE[provSlug]?.toUpperCase();
         if (!code || !provinceServie(code)) continue;   // hors du fuseau servi à cette heure
+        /* 5 oct. 2026 : avec MOIS_MARCHE_MIN, une province sans AUCUNE ville à jour n'a rien à
+           montrer — ses clés `prov-` étaient lues une à une pour être jetées (643 lectures,
+           0 envoi, budget KV épuisé à chaque passage). On les écarte ici, sans lecture. */
+        if (moisMin && !allActive.some((c) => c.province === code)) continue;
       } else if (!city) continue;                    // hors du fuseau servi à cette heure
       const id = `prospect:${key}`;
       if (done.has(id)) continue;                    // déjà servi ce cycle
