@@ -119,11 +119,12 @@ export async function handleInscription(request, env, h) {
  *   lang (fr|en), nom (facultatif : le nom du pro, pour dire s'il est nommé).
  *
  *   MODÈLE GRATUIT (la page publique) : UNE seule IA, Gemini avec recherche Google.
- *     - Coût : la recherche Google est comprise dans la franchise de l'API (1 500 requêtes/jour sur
- *       gemini-2.5-flash, facturation activée) ; seuls les jetons coûtent, des fractions de cent.
+ *     - Coût : la recherche Google est comprise dans la franchise de l'API (5 000 requêtes/MOIS pour
+ *       les modèles Gemini 3.x, facturation activée ; gemini-2.5-flash répond 404 depuis oct. 2026) ;
+ *       seuls les jetons coûtent, des fractions de cent. Modèle : GEMINI_MODEL, sinon gemini-3.5-flash-lite.
  *     - Économie : 2 questions par diagnostic, réponses MISES EN CACHE 7 jours par métier × secteur ×
  *       langue. Le nom du pro est cherché dans la réponse en cache : aucun appel de plus.
- *     - Garde-fous : 20 diagnostics par jour et par IP, 300 appels Gemini par jour au total.
+ *     - Garde-fous : 20 diagnostics par jour et par IP, 150 appels Gemini par jour au total (≈ 4 500/mois).
  *   MODÈLE PAYANT (rapport mensuel des abonnés, à venir) : plusieurs IA. Les fournisseurs sont listés
  *     dans FOURNISSEURS ; seul Gemini est branché. Les autres ne s'activent qu'avec leur clé ET
  *     niveau=payant + jeton CONTACTS_TOKEN (jamais depuis la page publique).
@@ -140,7 +141,7 @@ const FOURNISSEURS = {
 const sansAccents = (x) => String(x || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
 async function interrogerGemini(env, question, fr) {
-  const modele = env.GEMINI_MODEL || 'gemini-2.5-flash';
+  const modele = env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
   const consigne = fr
     ? `${question}\nRéponds comme à un client : nomme de 3 à 5 professionnels ou cabinets précis, un par ligne, au format « Nom — raison courte ». N'invente aucun nom : seulement ceux que tu trouves dans tes recherches.`
     : `${question}\nAnswer as you would to a client: name 3 to 5 specific professionals or firms, one per line, in the format "Name — short reason". Do not invent names: only those found in your search.`;
@@ -177,7 +178,7 @@ export async function handlePresence(request, env, url, h) {
   const cle = `vip:cache:${metier}:${secteur}:${fr ? 'fr' : 'en'}:${sansAccents(lieu).replace(/[^a-z0-9]+/g, '-')}`;
   let res = env.COUNTERS ? JSON.parse((await env.COUNTERS.get(cle)) || 'null') : null;
   if (!res) {
-    if ((await bumpCounter(env, `vip:appels:${jour}`, 2 * 86400)) > 300) return json({ ok: false, erreur: 'quota' }, 429);
+    if ((await bumpCounter(env, `vip:appels:${jour}`, 2 * 86400)) > 150) return json({ ok: false, erreur: 'quota' }, 429);
     const gabarits = QUESTIONS_IA[metier][fr ? 'fr' : 'en'].slice(0, 2);
     const reponses = [];
     for (const g of gabarits) {
