@@ -2294,6 +2294,7 @@ const finTestIA = (lieu, fr) => offreTestIA({ segment: 'prospect', stage: null, 
 
 function renderTestIA({ segment, stage, city, expert, lang, unsubUrl, postale = '', villeCouverte = null, metier = '' }) {
   const fr = lang !== 'en';
+  city = { ...city, name: nomVilleBulletin(city, fr) };   // « Montréal », pas « Montreal », en français
   const eyebrow = `${fr ? 'Plateforme IA pour l’immobilier' : 'AI platform for real estate'}<br><span style="color:#c8102e;letter-spacing:1px;">${city.name}${city.referenceMonth ? ' &middot; ' + moisLisible(city.referenceMonth, fr) : ''}</span>`;
   // Objet (Grégory, 5 oct. : « remets l'ancien, il va mieux convertir ») : la question, pas l'offre.
   let subject;
