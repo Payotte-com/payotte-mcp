@@ -2279,17 +2279,26 @@ function offreTestIA({ segment, stage, city, expert, fr, villeCouverte }) {
   return `<tr><td style="padding:16px 32px 0 32px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fbf3f4;border:1px solid #f1d5da;border-radius:10px;"><tr><td style="padding:14px 16px;">${inner}</td></tr></table></td></tr>`;
 }
 
+const METIER_UN = { 'real-estate-broker': ['courtier immobilier', 'real estate broker'], 'mortgage-broker': ['courtier hypothécaire', 'mortgage broker'],
+  appraiser: ['évaluateur agréé', 'appraiser'], 'home-inspector': ['inspecteur en bâtiment', 'home inspector'], 'notary-lawyer': ['notaire', 'real estate lawyer'] };
+// Objet des prospects, partagé par la ville, la banlieue et le provincial (5 oct. 2026).
+function sujetTestIA(lieu, metier, fr) {
+  const m = METIER_UN[metier]?.[fr ? 0 : 1];
+  return fr ? (m ? `${lieu} : qui l’IA recommande-t-elle comme ${m} ?` : `${lieu} : qui l’IA recommande-t-elle à vos clients ?`)
+            : (m ? `${lieu}: who does AI recommend as a ${m}?` : `${lieu}: who does AI recommend to your clients?`);
+}
+// En-tête « Plateforme IA » des variantes banlieue et provinciale, qui n'ont pas de marketCore.
+const teteTestIA = (lieu, fr) => `<tr><td style="padding:26px 32px 22px 32px;border-bottom:1px solid #f1ecec;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td valign="middle"><a href="${SITE}"><img src="${LOGO}" width="140" height="29" alt="Payotte" style="display:block;border:0;"></a></td><td align="right" valign="middle" style="font-size:11px;letter-spacing:.5px;color:#9a9294;line-height:1.5;">${fr ? 'Plateforme IA pour l’immobilier' : 'AI platform for real estate'}<br><span style="color:#c8102e;letter-spacing:1px;">${lieu}</span></td></tr></table></td></tr>`;
+// La municipalité n'a pas de page : aucune promesse de place libre, seulement l'offre et la preuve.
+const finTestIA = (lieu, fr) => offreTestIA({ segment: 'prospect', stage: null, city: { name: lieu }, expert: null, fr, villeCouverte: null }) + blocCitationsIA(fr);
+
 function renderTestIA({ segment, stage, city, expert, lang, unsubUrl, postale = '', villeCouverte = null, metier = '' }) {
   const fr = lang !== 'en';
   const eyebrow = `${fr ? 'Plateforme IA pour l’immobilier' : 'AI platform for real estate'}<br><span style="color:#c8102e;letter-spacing:1px;">${city.name}${city.referenceMonth ? ' &middot; ' + moisLisible(city.referenceMonth, fr) : ''}</span>`;
   // Objet (Grégory, 5 oct. : « remets l'ancien, il va mieux convertir ») : la question, pas l'offre.
-  const METIER_UN = { 'real-estate-broker': ['courtier immobilier', 'real estate broker'], 'mortgage-broker': ['courtier hypothécaire', 'mortgage broker'],
-    appraiser: ['évaluateur agréé', 'appraiser'], 'home-inspector': ['inspecteur en bâtiment', 'home inspector'], 'notary-lawyer': ['notaire', 'real estate lawyer'] };
   let subject;
   if (segment === 'prospect') {
-    const m = METIER_UN[metier]?.[fr ? 0 : 1];
-    subject = fr ? (m ? `${city.name} : qui l’IA recommande-t-elle comme ${m} ?` : `${city.name} : qui l’IA recommande-t-elle à vos clients ?`)
-                 : (m ? `${city.name}: who does AI recommend as a ${m}?` : `${city.name}: who does AI recommend to your clients?`);
+    subject = sujetTestIA(city.name, metier, fr);
   } else {
     // Le prénom seulement s'il ressemble à un prénom (une fiche d'équipe ou de cabinet n'en a pas).
     const nom = String(expert?.name || '').trim();
@@ -2599,10 +2608,10 @@ function renderBanlieue({ citySlug, villeReelle, metier, lang, unsubUrl, postale
   if (rt.mortgage5yrFixed?.percent != null) lignes += row(fr ? 'Taux fixe 5 ans (moyenne)' : '5-yr fixed (average)', `${rt.mortgage5yrFixed.percent.toLocaleString(fr ? 'fr-CA' : 'en-CA')} %`, `${fr ? 'Banque du Canada' : 'Bank of Canada'} · ${moisDeDate(rt.mortgage5yrFixed.observed, fr)}`);
   const zone = PORTEE_RMR[citySlug][fr ? 0 : 1];
   const portee = fr ? `Chiffres de ${zone}, qui englobe ${villeReelle}.` : `Figures for ${zone}, which includes ${villeReelle}.`;
-  const subject = fr ? `${villeReelle} : votre marché, ce mois-ci` : `${villeReelle}: your market, this month`;
-  const tete = `<tr><td style="padding:24px 32px 18px 32px;border-bottom:1px solid #f1ecec;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td><a href="${SITE}"><img src="${LOGO}" width="140" height="29" alt="Payotte" style="display:block;border:0;"></a></td><td align="right" style="font-size:11px;letter-spacing:.5px;color:#c8102e;">${villeReelle}</td></tr></table></td></tr>`;
+  const subject = GABARIT_IA ? sujetTestIA(villeReelle, metier, fr) : fr ? `${villeReelle} : votre marché, ce mois-ci` : `${villeReelle}: your market, this month`;
+  const tete = GABARIT_IA ? teteTestIA(villeReelle, fr) : `<tr><td style="padding:24px 32px 18px 32px;border-bottom:1px solid #f1ecec;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td><a href="${SITE}"><img src="${LOGO}" width="140" height="29" alt="Payotte" style="display:block;border:0;"></a></td><td align="right" style="font-size:11px;letter-spacing:.5px;color:#c8102e;">${villeReelle}</td></tr></table></td></tr>`;
   const corps = `<tr><td style="padding:24px 32px 4px 32px;"><div style="font-family:Georgia,'Times New Roman',serif;font-size:21px;color:#211c1e;margin-bottom:6px;">${fr ? 'Le pouls du marché' : 'The market pulse'} — ${villeReelle}</div><div style="font-size:12.5px;color:#6f6769;margin-bottom:12px;">${portee}</div><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid #f1ecec;">${lignes}</table></td></tr>`;
-  const close = finProposer({ villeReelle, metier, fr, voisins: ctx.publiesVille(citySlug), ancre: fr ? `À ${nomRmr}` : `In ${nomRmr}` });
+  const close = GABARIT_IA ? finTestIA(villeReelle, fr) : finProposer({ villeReelle, metier, fr, voisins: ctx.publiesVille(citySlug), ancre: fr ? `À ${nomRmr}` : `In ${nomRmr}` });
   const foot = FOOT(fr ? `Pouls de ${zone}, une fois par mois.` : `${zone} pulse, once a month.`, unsubUrl, fr ? 'Se désabonner' : 'Unsubscribe', postale, fr);
   return { subject, html: `<div style="background:#f5f3f2;margin:0;padding:28px 12px;font-family:Arial,Helvetica,sans-serif;"><table role="presentation" width="580" cellpadding="0" cellspacing="0" border="0" align="center" style="max-width:580px;width:100%;background:#ffffff;border:1px solid #eae5e5;border-radius:8px;">${tete}${corps}${close}${foot}</table></div>` };
 }
@@ -2640,10 +2649,11 @@ function renderProvincial({ provSlug, villeReelle, metier, lang, unsubUrl, posta
   const r = macro?.rates ?? {};
   if (r.mortgage5yrFixed?.percent != null) lignes += row(fr ? 'Taux fixe 5 ans (moyenne)' : '5-yr fixed (average)', `${r.mortgage5yrFixed.percent.toLocaleString(fr ? 'fr-CA' : 'en-CA')} %`, `${fr ? 'Banque du Canada' : 'Bank of Canada'} · ${moisDeDate(r.mortgage5yrFixed.observed, fr)}`);
 
-  const subject = fr ? `Le marché ${PROV_PREP[provSlug]}, ce mois-ci` : `${nom}’s market, this month`;
-  const tete = `<tr><td style="padding:24px 32px 18px 32px;border-bottom:1px solid #f1ecec;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td><a href="${SITE}"><img src="${LOGO}" width="140" height="29" alt="Payotte" style="display:block;border:0;"></a></td><td align="right" style="font-size:11px;letter-spacing:.5px;color:#c8102e;">${nom}</td></tr></table></td></tr>`;
+  const lieu = villeReelle || nom;
+  const subject = GABARIT_IA ? sujetTestIA(lieu, metier, fr) : fr ? `Le marché ${PROV_PREP[provSlug]}, ce mois-ci` : `${nom}’s market, this month`;
+  const tete = GABARIT_IA ? teteTestIA(lieu, fr) : `<tr><td style="padding:24px 32px 18px 32px;border-bottom:1px solid #f1ecec;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td><a href="${SITE}"><img src="${LOGO}" width="140" height="29" alt="Payotte" style="display:block;border:0;"></a></td><td align="right" style="font-size:11px;letter-spacing:.5px;color:#c8102e;">${nom}</td></tr></table></td></tr>`;
   const corps = `<tr><td style="padding:24px 32px 4px 32px;"><div style="font-family:Georgia,'Times New Roman',serif;font-size:21px;color:#211c1e;margin-bottom:12px;">${fr ? 'Le pouls du marché' : 'The market pulse'} — ${nom}</div><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid #f1ecec;">${lignes}</table></td></tr>`;
-  const close = finProposer({ villeReelle, metier, fr,
+  const close = GABARIT_IA ? finTestIA(lieu, fr) : finProposer({ villeReelle, metier, fr,
     voisins: ctx.publiesProvince(provSlug),
     ancre: fr ? `Ailleurs ${PROV_PREP[provSlug]}` : `Elsewhere in ${nom}` });
   const foot = FOOT(fr ? `Pouls ${PROV_DU[provSlug]}, une fois par mois.` : `${nom}'s pulse, once a month.`, unsubUrl, fr ? 'Se désabonner' : 'Unsubscribe', postale, fr);
@@ -6045,6 +6055,14 @@ const WORKER_MAIN = {
       const citySlug = strip(q.get('city') || 'laval');
       const lang = q.get('lang') || 'fr';
       const market = await feed('/api/market.json').catch(() => ({ cities: [] }));
+      // Variante provinciale ou banlieue : ?prov=alberta&ville=Okotoks&metier=appraiser
+      if (q.get('prov')) {
+        const pmj = await feed('/api/province-market.json').catch(() => null);
+        const v = renderBulletinProvincial({ provSlug: q.get('prov'), villeReelle: q.get('ville') || '', metier: q.get('metier') || '', lang, unsubUrl: '#preview' },
+          { cities: market.cities || [], macro: null, provMarket: Array.isArray(pmj?.provinces) ? pmj.provinces : [], publiesVille: () => null, publiesProvince: () => null });
+        if (!v) return json({ error: 'rien à envoyer pour cette province' }, 404);
+        return new Response(`<!--${v.subject} [${v.variante}${v.zone ? ' ' + v.zone : ''}]-->\n${v.html}`, { headers: { 'content-type': 'text/html; charset=utf-8' } });
+      }
       const city = market.cities.find((c) => strip(c.slug) === citySlug) || market.cities.find((c) => strip(c.name) === citySlug);
       if (!city) return json({ error: `Ville inconnue : ${citySlug}`, villes: (market.cities || []).map((c) => c.slug) }, 404);
       // Pour un expert : on prend un expert réel de la ville si possible, sinon un gabarit.
