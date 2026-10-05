@@ -2228,8 +2228,72 @@ function ligneIA(metier, fr) {
 }
 
 // Rendu complet d'un courriel : {subject, html}. segment='prospect'|'expert' ; stage pour les experts.
+/* ═══ GABARIT « TEST IA » (5 oct. 2026, envoi du 10 oct.) ═══════════════════════════════════
+ * Maquette approuvée : https://claude.ai/artifact/17Dw1HUXeXFD6NDDgwVRBs (v17).
+ * Même ordre pour tous : en-tête « Plateforme IA pour l'immobilier » + pouls de la ville, l'offre
+ * « Testez gratuitement votre présence dans les IA » et son bouton vers le test (page #ia), la
+ * courbe des citations Copilot, le pied légal. Objet : « Testez votre présence IA à {ville} :
+ * gratuit, 30 s ». Pas de bloc provincial ni national : Grégory veut des courriels LÉGERS.
+ * Une ligne de plus selon le public : place libre (ville sans personne), experts listés (forfaits),
+ * recommandés sans badge (badge). Pour revenir à l'ancien pouls : GABARIT_IA = false.
+ * ⚠️ CITATIONS_MOIS : chiffres Bing Webmaster Tools, à relever chaque mois (chroniques.ts). */
+const GABARIT_IA = true;
+const PAGE_VI = { fr: `${SITE}/visibilite-ia-professionnels-immobilier`, en: `${SITE}/en/ai-visibility-real-estate-professionals` };
+const CITATIONS_MOIS = [['juin', 'Jun', 15], ['juil.', 'Jul', 84], ['août', 'Aug', 2451], ['sept.', 'Sep', 5358]];
+
+function blocCitationsIA(fr) {
+  const max = Math.max(...CITATIONS_MOIS.map((m) => m[2]));
+  const barres = CITATIONS_MOIS.map(([mf, me, v], i) => {
+    const h = Math.max(2, Math.round((v / max) * 40));
+    return `<td valign="bottom" align="center" style="padding:0 3px;"><div style="width:18px;height:${h}px;background:${i === CITATIONS_MOIS.length - 1 ? '#c8102e' : '#eab4bd'};border-radius:2px 2px 0 0;font-size:0;line-height:0;">&nbsp;</div><div style="font-size:9px;color:#8a8284;padding-top:2px;">${fr ? mf : me}</div></td>`;
+  }).join('');
+  const der = CITATIONS_MOIS[CITATIONS_MOIS.length - 1][2];
+  const mois = fr ? { 'sept.': 'septembre' }[CITATIONS_MOIS[CITATIONS_MOIS.length - 1][0]] || CITATIONS_MOIS[CITATIONS_MOIS.length - 1][0] : 'September';
+  const texte = fr
+    ? `<b>${der.toLocaleString('fr-CA')} citations par Copilot</b> en ${mois}. Quand vos clients leur posent une question, ChatGPT, Copilot, Perplexity, Claude et Gemini ne citent qu’un ou deux noms.`
+    : `<b>${der.toLocaleString('en-CA')} Copilot citations</b> in ${mois}. When your clients ask them a question, ChatGPT, Copilot, Perplexity, Claude and Gemini cite only one or two names.`;
+  return `<tr><td style="padding:18px 32px 0 32px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td valign="bottom"><div style="font-size:15px;font-weight:bold;color:#211c1e;margin-bottom:3px;">${fr ? 'Les IA citent Payotte de plus en plus' : 'AI tools cite Payotte more and more'}</div><div style="font-size:13.5px;line-height:1.5;color:#443e40;">${texte}</div></td><td width="110" valign="bottom" style="padding-left:10px;"><table role="presentation" cellpadding="0" cellspacing="0" border="0" align="right"><tr>${barres}</tr></table></td></tr></table></td></tr>`;
+}
+
+function offreTestIA({ segment, stage, city, expert, fr, villeCouverte }) {
+  const coches = (fr
+    ? ['Voyez qui l’IA recommande à vos clients dans votre secteur.', 'Et si c’est vous.', 'Gratuit, sans inscription&nbsp;: 30 secondes.']
+    : ['See who the AI recommends to your clients in your sector.', 'And whether it is you.', 'Free, no sign-up: 30 seconds.'])
+    .map((c) => `<tr><td valign="top" style="padding:3px 8px 3px 0;color:#1a7f4b;font-weight:bold;font-size:14px;">&#10003;</td><td style="padding:3px 0;font-size:14px;line-height:1.45;color:#211c1e;">${c}</td></tr>`).join('');
+  const lien = (href, t) => `<a href="${href}" style="color:#c8102e;text-decoration:underline;">${t}</a>`;
+  let apres = '';
+  if (segment === 'prospect' && villeCouverte === false) {
+    apres = fr ? `Bonne nouvelle&nbsp;: la place de votre métier est libre à ${city.name} sur Payotte.` : `Good news: your profession’s spot is open in ${city.name} on Payotte.`;
+  } else if (segment !== 'prospect' && stage === 'reco' && expert?.slug) {
+    apres = fr ? `Vous êtes l’expert recommandé de votre secteur&nbsp;: ${lien(`${SITE}/badge/${expert.slug}`, 'posez votre badge')} pour que les IA relient votre site à votre fiche.`
+               : `You are the recommended expert in your sector: ${lien(`${SITE}/badge/${expert.slug}`, 'put up your badge')} so AI tools connect your website to your profile.`;
+  } else if (segment !== 'prospect') {
+    apres = fr ? `Votre fiche est déjà sur Payotte. Pour vous faire citer davantage&nbsp;: ${lien(`${PAGE_VI.fr}#forfaits`, 'voir les forfaits')}.`
+               : `Your profile is already on Payotte. To get cited more: ${lien(`${PAGE_VI.en}#forfaits`, 'see the plans')}.`;
+  }
+  const inner = `<div style="font-size:15px;font-weight:bold;color:#211c1e;margin-bottom:6px;">${fr ? 'Testez gratuitement votre présence dans les IA' : 'Test your AI presence for free'}</div>`
+    + `<table role="presentation" cellpadding="0" cellspacing="0" border="0">${coches}</table>`
+    + (apres ? `<div style="margin-top:8px;font-size:13px;line-height:1.5;color:#443e40;">${apres}</div>` : '')
+    + `<div style="height:12px;font-size:0;line-height:0;">&nbsp;</div>${BTN(`${PAGE_VI[fr ? 'fr' : 'en']}#ia`, fr ? 'Faire le test IA gratuit &rarr;' : 'Take the free AI test &rarr;')}`;
+  return `<tr><td style="padding:16px 32px 0 32px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fbf3f4;border:1px solid #f1d5da;border-radius:10px;"><tr><td style="padding:14px 16px;">${inner}</td></tr></table></td></tr>`;
+}
+
+function renderTestIA({ segment, stage, city, expert, lang, unsubUrl, postale = '', villeCouverte = null }) {
+  const fr = lang !== 'en';
+  const eyebrow = `${fr ? 'Plateforme IA pour l’immobilier' : 'AI platform for real estate'}<br><span style="color:#c8102e;letter-spacing:1px;">${city.name}${city.referenceMonth ? ' &middot; ' + moisLisible(city.referenceMonth, fr) : ''}</span>`;
+  const subject = fr ? `Testez votre présence IA à ${city.name} : gratuit, 30 s` : `Test your AI presence in ${city.name}: free, 30 sec`;
+  const metierPhrase = (expert?.professionLabel ?? '').replace(/^./, (c) => c.toLowerCase());
+  const why = segment === 'prospect'
+    ? (fr ? `Vous recevez ce courriel parce que vous exercez à ${city.name}.` : `You are receiving this email because you practise in ${city.name}.`)
+    : (fr ? `Vous recevez ce courriel parce que vous êtes l'expert vérifié en ${metierPhrase} pour ${city.name} sur Payotte.` : `You're receiving this because you are the verified ${metierPhrase} for ${city.name} on Payotte.`);
+  const foot = FOOT(why, unsubUrl, fr ? 'Ne plus recevoir' : 'Unsubscribe', postale, fr);
+  const html = `<div style="background:#f5f3f2;margin:0;padding:28px 12px;font-family:Arial,Helvetica,sans-serif;"><table role="presentation" width="580" cellpadding="0" cellspacing="0" border="0" align="center" style="max-width:580px;width:100%;background:#ffffff;border:1px solid #eae5e5;border-radius:8px;">${marketCore(city, fr, eyebrow)}${offreTestIA({ segment, stage, city, expert, fr, villeCouverte })}${blocCitationsIA(fr)}${foot}</table></div>`;
+  return { subject, html };
+}
+
 function renderPulse({ segment, stage, city, expert, lang, unsubUrl, macro = null, metier = '', postale = '', villeCouverte = null }) {
   const fr = lang !== 'en';
+  if (GABARIT_IA) return renderTestIA({ segment, stage, city, expert, lang, unsubUrl, postale, villeCouverte });
   const url = expert?.url || `${SITE}`;
   const eyebrow = `${fr ? 'Le pouls du marché' : 'Market pulse'}<br><span style="color:#c8102e;letter-spacing:1px;">${city.name}${city.referenceMonth ? ' &middot; ' + moisLisible(city.referenceMonth, fr) : ''}</span>`;
   let subject, close, foot;
