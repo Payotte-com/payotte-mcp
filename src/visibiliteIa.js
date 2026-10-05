@@ -124,7 +124,7 @@ export async function handleInscription(request, env, h) {
  *       seuls les jetons coûtent, des fractions de cent. Modèle : GEMINI_MODEL, sinon gemini-3.5-flash-lite.
  *     - Économie : 3 questions par diagnostic, réponses MISES EN CACHE 7 jours par métier × secteur ×
  *       langue. Le nom du pro est cherché dans la réponse en cache : aucun appel de plus.
- *     - Garde-fous : 20 diagnostics par jour et par IP, 160 RECHERCHES par jour au total (≈ 4 800/mois).
+ *     - Garde-fous : 3 diagnostics par jour et par IP (décision de Grégory, 5 oct.), 160 RECHERCHES par jour au total (≈ 4 800/mois).
  *   MODÈLE PAYANT (rapport mensuel des abonnés, à venir) : plusieurs IA. Les fournisseurs sont listés
  *     dans FOURNISSEURS ; seul Gemini est branché. Les autres ne s'activent qu'avec leur clé ET
  *     niveau=payant + jeton CONTACTS_TOKEN (jamais depuis la page publique).
@@ -176,7 +176,7 @@ export async function handlePresence(request, env, url, h) {
 
   const jour = new Date().toISOString().slice(0, 10);
   const ip = request.headers.get('cf-connecting-ip') || 'x';
-  if ((await bumpCounter(env, `vip:ip:${ip}:${jour}`, 2 * 86400)) > 20) return json({ ok: false, erreur: 'limite' }, 429);
+  if ((await bumpCounter(env, `vip:ip:${ip}:${jour}`, 2 * 86400)) > 3) return json({ ok: false, erreur: 'limite' }, 429);
 
   const cle = `vip:cache3:${metier}:${secteur}:${fr ? 'fr' : 'en'}:${sansAccents(lieu).replace(/[^a-z0-9]+/g, '-')}`;
   let res = env.COUNTERS ? JSON.parse((await env.COUNTERS.get(cle)) || 'null') : null;
