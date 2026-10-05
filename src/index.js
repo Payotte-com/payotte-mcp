@@ -3518,7 +3518,7 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
      plaintes ; on s'arrête AVANT, à 3 % et 0,05 %. Le plancher des plaintes se recalcule
      selon la règle ci-dessus : 3 ÷ 0,0005 = 6 000 envois sur 24 h. */
   const SEUIL_PLAINTES = 0.0005;
-  const SEUIL_REBONDS = 0.03;
+  const SEUIL_REBONDS = 0.035; // 3 % → 3,5 % le 5 oct. 2026 (Grégory), sous les 4 % de Resend
   const PLANCHER_PLAINTES = Math.round(3 / SEUIL_PLAINTES);   // 6 000
   const PLANCHER_REBONDS = 200;     // seuil à 3 % : un plancher bas ne produit pas de faux positif
   const tauxP = envoyes24 >= PLANCHER_PLAINTES ? plaintes / envoyes24 : 0;
