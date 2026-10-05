@@ -290,14 +290,15 @@ export async function handleSuivi(request, env, h) {
   if ((await bumpCounter(env, `vis:total:${jour}`, 2 * 86400)) > 300) return json({ ok: false, erreur: 'limite' }, 429);
   const a = { courriel, metier, secteur, lieu, nom, lang: fr ? 'fr' : 'en', depuis: new Date().toISOString() };
   const cle = `vi:suivi:${(await hmacHex(env, courriel)).slice(0, 20)}`;
-  const prochain = Date.now() + 30 * 86400000;
-  await env.COUNTERS.put(cle, JSON.stringify(a), { metadata: { p: prochain } });
   await bumpCounter(env, `vis:inscrits:${MOIS_RECH()}`, 400 * 86400);
   // Bienvenue : le résultat du jour, tout de suite (en cache, puisque le visiteur vient de le voir).
+  // Si le test est indisponible (quota du jour atteint), le premier envoi part au cron dans ~6 h.
+  let envoye = false;
   if (env.RESEND_API_KEY) {
     const o = await obtenirPresence(env, metier, secteur, lieu, fr);
-    if (o.res) await courrielSuivi(env, h, a, o.res, true);
+    if (o.res) envoye = await courrielSuivi(env, h, a, o.res, true);
   }
+  await env.COUNTERS.put(cle, JSON.stringify(a), { metadata: { p: Date.now() + (envoye ? 30 * 86400000 : 6 * 3600000) } });
   return json({ ok: true });
 }
 
