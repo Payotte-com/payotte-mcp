@@ -20,6 +20,7 @@
  * Licence des données : CC BY 4.0 — chaque réponse porte l'attribution.
  */
 
+import { handleInscription } from './visibiliteIa.js';
 import { handleDossierRevision } from './dossierRevision.js';
 import { efAdresse, efMunis, efFilet, efFiletMunis } from './efAdresse.js';
 import RISQUES_EPOQUE from './data/risques-par-epoque.json';
@@ -6338,6 +6339,10 @@ const WORKER_MAIN = {
     // double confirmation, mêmes plafonds, rien de conservé après 48 h. Trois compteurs à part,
     // par mois et par province : demandes créées (ef:d), confirmées (ef:c, dans confirmRelay)
     // et renvois vers l'ordre là où Payotte n'a personne (ef:o) — c'est la carte du recrutement.
+    // Service Visibilité IA : formulaire d'inscription (src/visibiliteIa.js), 5 oct. 2026.
+    if (request.method === 'POST' && url.pathname === '/vi/inscription') {
+      return handleInscription(request, env, { SITE, REPORT_TO, EMAIL_RE, domainExists, bumpCounter, hmacHex });
+    }
     if (request.method === 'POST' && url.pathname === '/ef/demande') {
       const b = await request.json().catch(() => null);
       if (!b || typeof b !== 'object') return json({ error: 'bad-request' }, 400);
