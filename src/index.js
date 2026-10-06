@@ -6691,6 +6691,38 @@ const WORKER_MAIN = {
     if (request.method === 'GET' && url.pathname === '/vi/stats') return handleStats(url, env, { json });
     if (request.method === 'GET' && url.pathname === '/vi/visite') return handleVisite(request, env, url, { bumpCounter });
     if (request.method === 'GET' && url.pathname === '/vi/compte') return handleCompte(url, env);
+    /* GET /vi/campagnes?t=PRECALC_TOKEN&depuis=AAAA-MM-JJ (6 oct. 2026) : bilan par courriel, lu chez Resend
+       (liste des envois, dernier événement de chacun), classé par l'objet. Lecture seule. */
+    if (request.method === 'GET' && url.pathname === '/vi/campagnes') {
+      if (!env.PRECALC_TOKEN || url.searchParams.get('t') !== env.PRECALC_TOKEN) return json({ error: 'forbidden' }, 403);
+      const cle = env.RESEND_LECTURE_KEY || env.RESEND_API_KEY;
+      const depuis = url.searchParams.get('depuis') || '2026-10-05';
+      const classer = (sub) => {
+        if (/^(Comment être sur ChatGPT|How to be on ChatGPT)/.test(sub)) return '4 · présentation';
+        if (/^(Qui ChatGPT recommande|Who does ChatGPT recommend)/.test(sub)) return '3 · texte';
+        if (/(rifiez ce que les IA disent de vous|heck what AI says about you)/.test(sub)) return '2 · designé v2';
+        if (/(qui l’IA recommande-t-elle|who does AI recommend|recommande-t-elle votre nom|recommend your name)/i.test(sub)) return '1 · Test IA (5 oct.)';
+        return 'autre';
+      };
+      const par = {}; let apres = null, pages = 0, fini = false;
+      while (!fini && pages < 400) {
+        const q = new URLSearchParams({ limit: '100' }); if (apres) q.set('after', apres);
+        const r = await fetch(`https://api.resend.com/emails?${q}`, { headers: { Authorization: `Bearer ${cle}` } });
+        if (r.status === 429) { await new Promise((ok) => setTimeout(ok, 1100)); continue; }
+        if (!r.ok) return json({ error: `Resend HTTP ${r.status}`, pages, par });
+        const j = await r.json(); pages++;
+        const lignes = Array.isArray(j?.data) ? j.data : [];
+        for (const m of lignes) {
+          if (String(m.created_at || '').slice(0, 10) < depuis) { fini = true; continue; }
+          const c = classer(String(m.subject || ''));
+          const e = (par[c] ??= { envoyes: 0, evenements: {} });
+          e.envoyes++; const ev = m.last_event || 'inconnu'; e.evenements[ev] = (e.evenements[ev] || 0) + 1;
+        }
+        if (!j?.has_more || !lignes.length) fini = true; else apres = lignes[lignes.length - 1].id;
+        await new Promise((ok) => setTimeout(ok, 520));
+      }
+      return json({ depuis, pages, par });
+    }
     if (request.method === 'GET' && url.pathname === '/vi/precalcul') return handlePrecalcul(request, env, url, { json });
     // Modèle du courriel mensuel « Test IA », envoyé à GRÉGORY SEUL (REPORT_TO, codé en dur) pour voir le
     // vrai rendu dans Gmail : un brouillon ne le montre pas, la fenêtre de rédaction retire styles et images.
