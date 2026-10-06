@@ -2403,79 +2403,75 @@ let MODE_TEXTE = false;
 let SECTEURS_VILLES = {};   // `secteurs` de /api/villes-couvertes.json, posé avant la boucle prospects
 const SRC_TEXTE = 'courriel-texte';
 const TEXTE_METIER = {
-  'real-estate-broker': { fr: ['vendre ma maison', 'courtier', 'courtiers'], en: ['sell my house', 'real estate agent', 'real estate agents'] },
-  'mortgage-broker': { fr: ['financer ma maison', 'courtier hypothécaire', 'courtiers hypothécaires'], en: ['finance my home', 'mortgage broker', 'mortgage brokers'] },
-  'home-inspector': { fr: ['faire inspecter ma maison', 'inspecteur', 'inspecteurs'], en: ['get my house inspected', 'home inspector', 'home inspectors'] },
-  appraiser: { fr: ['faire évaluer ma maison', 'évaluateur', 'évaluateurs'], en: ['get my house appraised', 'appraiser', 'appraisers'] },
-  'notary-lawyer': { fr: [null, 'notaire', 'notaires'], en: [null, 'real estate lawyer', 'real estate lawyers'] },
+  'real-estate-broker': { fr: ['courtier', 'J’ai besoin d’aide pour vendre ma maison à {v}.'], en: ['a real estate agent', 'I need help selling my house in {v}.', 'real estate agent'] },
+  'mortgage-broker': { fr: ['courtier hypothécaire', 'Quel courtier hypothécaire me conseilles-tu à {v} ?'], en: ['a mortgage broker', 'Which mortgage broker do you recommend in {v}?', 'mortgage broker'] },
+  'home-inspector': { fr: ['inspecteur en bâtiment', 'Je cherche un bon inspecteur en bâtiment à {v}.'], en: ['a home inspector', 'I’m looking for a good home inspector in {v}.', 'home inspector'] },
+  appraiser: { fr: ['évaluateur agréé', 'J’ai besoin d’une évaluation de ma maison à {v}.'], en: ['an appraiser', 'I need my house appraised in {v}.', 'appraiser'] },
+  'notary-lawyer': { fr: ['notaire', 'Quel notaire choisir pour l’achat d’une maison à {v} ?'], en: ['a real estate lawyer', 'Which real estate lawyer should I use to buy a house in {v}?', 'real estate lawyer'] },
 };
 const CODE_TO_PROVSLUG = { QC: 'quebec', ON: 'ontario', AB: 'alberta', BC: 'british-columbia', MB: 'manitoba', SK: 'saskatchewan', NS: 'nova-scotia', NB: 'new-brunswick', PE: 'prince-edward-island', NL: 'newfoundland-and-labrador' };
 const echapper = (x) => String(x ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const cleNom = (x) => String(x || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '');
 
+/* v2 du gabarit texte (6 oct. 2026, correctifs de Grégory, maquette https://claude.ai/artifact/T27jqVJvmYBHyvU3VUmHVE) :
+   objet en question, « Bonjour {prénom} », la phrase du client, le résultat de Gemini en NOMBRE
+   (jamais les noms), Payotte + Copilot 250-325/jour, une ligne sur la place unique, la grille
+   SEULEMENT s'il reste des places libres, UN lien vers le test, désabonnement par payotte.com. */
 function renderTexte({ lieu, citySlug = null, provSlug = null, metier, nom = '', lang, unsubUrl, postale = '' }) {
   const fr = lang !== 'en';
-  const M = (TEXTE_METIER[metier] || TEXTE_METIER['real-estate-broker'])[fr ? 'fr' : 'en'];
   const met = TEXTE_METIER[metier] ? metier : 'real-estate-broker';
-  const citation = M[0]
-    ? (fr ? `J’ai besoin d’aide pour ${M[0]} à ${lieu}` : `I need help to ${M[0]} in ${lieu}`)
-    : (fr ? `J’ai besoin d’un notaire pour l’achat de ma maison à ${lieu}` : `I need a real estate lawyer to buy my house in ${lieu}`);
-  const subject = fr ? `« ${citation} »` : `“${citation}”`;
-  // Le nom du destinataire, seulement s'il ressemble à un nom (la récolte contient parfois une firme).
-  const nomPropre = /^[A-ZÀ-Ý][\p{L}'’-]+( [A-ZÀ-Ý][\p{L}'’-]+){1,2}$/u.test(String(nom || '').trim()) ? String(nom).trim() : '';
-  const place = nomPropre ? `${nomPropre} ?` : (fr ? 'Votre nom ?' : 'Your name?');
-  const placeEn = nomPropre ? `${nomPropre}?` : 'Your name?';
-  const secteurs = (citySlug && SECTEURS_VILLES[citySlug]) || [];
-  const villePage = citySlug && provSlug ? `${SITE}/canada/${provSlug}/${citySlug}` : provSlug ? `${SITE}/canada/${provSlug}` : SITE;
-  const villeAff = villePage.replace(/^https:\/\//, '');
-  const lienProposer = `${SITE}/proposer?m=${met}&v=${encodeURIComponent(lieu)}&src=${SRC_TEXTE}${fr ? '' : '&l=en'}`;
-  const lienVille = `${villePage}?src=${SRC_TEXTE}`;
-
-  // Paragraphes : [html, texte]
+  const M = TEXTE_METIER[met][fr ? 'fr' : 'en'];
+  const subject = fr ? `Qui ChatGPT recommande comme ${M[0]} à ${lieu} ?` : `Who does ChatGPT recommend as ${M[0]} in ${lieu}?`;
+  const nomOk = /^[A-ZÀ-Ý][\p{L}'’-]+( [A-ZÀ-Ý][\p{L}'’-]+){1,2}$/u.test(String(nom || '').trim()) ? String(nom).trim() : '';
+  const prenom = nomOk ? nomOk.split(' ')[0] : '';
+  const metUn = fr ? M[0] : M[2];
   const paras = [];
-  const P = (h, t = h.replace(/<[^>]+>/g, '')) => paras.push([`<p style="margin:0 0 12px 0;">${h}</p>`, t]);
-  P(fr ? 'Bonjour,' : 'Hi,');
-  P(echapper(fr ? `« ${citation}. »` : `“${citation}.”`));
-  P(fr ? `C’est le genre de phrase que vos futurs clients tapent maintenant dans ChatGPT plutôt que dans Google pour trouver leur ${M[1]}.`
-       : `That’s the kind of thing your future clients now type into ChatGPT instead of Google to find their ${M[1]}.`);
-  P(fr ? 'Je m’occupe de Payotte.com, le premier répertoire gratuit dédié aux experts immobiliers du Canada : presque 700 professionnels ajoutés en 4 mois, vérifiés et prêts à être cités par les IA.'
-       : 'I run Payotte.com, the first free directory dedicated to Canada’s real estate experts: almost 700 professionals added in 4 months, verified and ready to be cited by AI.');
-  if (secteurs.length) {
-    const pris = secteurs.filter((x) => x.metiers.includes(met));
-    const libres = secteurs.filter((x) => !x.metiers.includes(met));
-    P(libres.length
-      ? (fr ? `Voici où en est ${echapper(lieu)} pour les ${M[2]} :` : `Here is where ${echapper(lieu)} stands for ${M[2]}:`)
-      : (fr ? `À ${echapper(lieu)}, ${secteurs.length === 1 ? 'le secteur qu’on couvre a déjà son' : `les ${secteurs.length} secteurs qu’on couvre ont déjà leur`} ${M[1]} :` : `In ${echapper(lieu)}, ${secteurs.length === 1 ? 'the area we cover already has its' : `all ${secteurs.length} areas we cover already have their`} ${M[1]}:`));
-    let premierLibre = true;
+  const P = (h, t = h.replace(/<br>/g, '\n').replace(/<[^>]+>/g, '')) => paras.push([`<p style="margin:0 0 12px 0;">${h}</p>`, t]);
+  P(fr ? `Bonjour${prenom ? ` ${echapper(prenom)}` : ''},` : `Hi${prenom ? ` ${echapper(prenom)}` : ''},`);
+  P(echapper(fr ? `« ${M[1].replace('{v}', lieu)} »` : `“${M[1].replace('{v}', lieu)}”`));
+  P(fr ? 'C’est ce que vos futurs clients tapent maintenant dans ChatGPT plutôt que dans Google.' : 'That’s what your future clients now type into ChatGPT instead of Google.');
+  const res = citySlug ? COMPTE_IA[`${citySlug}:${met}:${fr ? 'fr' : 'en'}`] : null;
+  if (res && res.n > 0) {
+    const cite = nomOk && Array.isArray(res.noms) ? res.noms.includes(cleNom(nomOk)) : null;
+    const suite = cite === true ? (fr ? ' Il vous a nommé.' : ' You were one of them.')
+      : cite === false ? (fr ? ' Votre nom n’y était pas.' : ' Your name wasn’t one of them.') : '';
+    P(fr ? `J’ai posé la question à Gemini ce matin pour ${echapper(lieu)}. Il a nommé ${res.n} professionnels.${suite}`
+         : `I asked Gemini this morning for ${echapper(lieu)}. It named ${res.n} professionals.${suite}`);
+  }
+  P(fr ? 'Je m’occupe de Payotte.com, un répertoire indépendant de près de 700 professionnels de l’immobilier vérifiés. Copilot le cite déjà 250 à 325 fois par jour.'
+       : 'I run Payotte.com, an independent directory of nearly 700 verified real estate professionals. Copilot already cites it 250 to 325 times a day.');
+  const secteurs = (citySlug && SECTEURS_VILLES[citySlug]) || [];
+  const libres = secteurs.filter((x) => !x.metiers.includes(met));
+  if (libres.length) {
+    P(fr ? `Chaque secteur n’a qu’un seul ${metUn} recommandé, choisi sur une grille publique de 100 points. À ${echapper(lieu)}, ${libres.length} ${libres.length > 1 ? 'secteurs sont encore libres' : 'secteur est encore libre'} :`
+         : `Each area has one recommended ${metUn} only, chosen on a public 100-point grid. In ${echapper(lieu)}, ${libres.length} ${libres.length > 1 ? 'areas are' : 'area is'} still open:`);
+    let premier = true;
     const lignes = secteurs.map((x) => {
-      const nomS = echapper(fr ? x.fr : x.en);
-      if (x.metiers.includes(met)) return [`<span style="color:#1a7f4b;font-weight:bold;">&#10003;</span> ${nomS}`, `✓ ${fr ? x.fr : x.en}`];
-      const qui = premierLibre ? (fr ? place : placeEn) : (fr ? 'libre' : 'open');
-      const h = `<span style="color:#c8102e;font-weight:bold;">&#9675;</span> ${nomS} — <b style="color:#c8102e;">${echapper(qui)}</b>`;
-      const r = [premierLibre ? `<span style="background:#fbf3f4;">${h}</span>` : h, `○ ${fr ? x.fr : x.en} — ${qui}`];
-      premierLibre = false;
-      return r;
+      const n = echapper(fr ? x.fr : x.en);
+      if (x.metiers.includes(met)) return [`<span style="color:#1a7f4b;font-weight:bold;">&#10003;</span> ${n}`, `✓ ${fr ? x.fr : x.en}`];
+      const qui = premier && nomOk ? `${nomOk} ?`.replace(' ?', fr ? ' ?' : '?') : (fr ? 'libre' : 'open');
+      const h = `<span style="color:#c8102e;font-weight:bold;">&#9675;</span> ${n} — <b style="color:#c8102e;">${echapper(qui)}</b>`;
+      const r = [premier && nomOk ? `<span style="background:#fbf3f4;">${h}</span>` : h, `○ ${fr ? x.fr : x.en} — ${qui}`];
+      premier = false; return r;
     });
-    if (!libres.length) lignes.push([`<span style="background:#fbf3f4;"><span style="color:#c8102e;font-weight:bold;">&#9675;</span> ${fr ? 'Nouveau secteur' : 'New area'} — <b style="color:#c8102e;">${echapper(fr ? place : placeEn)}</b></span>`, `○ ${fr ? 'Nouveau secteur' : 'New area'} — ${fr ? place : placeEn}`]);
-    const resume = libres.length
-      ? (fr ? `${pris.length} pris · ${libres.length} encore ${libres.length > 1 ? 'libres' : 'libre'} · un seul ${M[1]} par secteur` : `${pris.length} taken · ${libres.length} still open · one ${M[1]} per area`)
-      : (fr ? `${secteurs.length} sur ${secteurs.length} pris · les noms sont sur la page de ${lieu}` : `${secteurs.length} of ${secteurs.length} taken · names are on the ${lieu} page`);
+    const resume = fr ? `${secteurs.length - libres.length} pris · ${libres.length} encore ${libres.length > 1 ? 'libres' : 'libre'} · un seul ${metUn} par secteur` : `${secteurs.length - libres.length} taken · ${libres.length} still open · one ${metUn} per area`;
     paras.push([`<div style="border:1px solid #e3e5e8;border-radius:6px;padding:10px 12px;margin:0 0 12px 0;">${lignes.map((l) => `<div>${l[0]}</div>`).join('')}<div style="color:#80868b;font-size:12px;margin-top:4px;">${echapper(resume)}</div></div>`,
       lignes.map((l) => l[1]).join('\n') + `\n(${resume})`]);
-    P(libres.length
-      ? (fr ? `Chaque secteur libre n’aura qu’un seul ${M[1]}. Votre nom pourrait être sur cette liste.` : `Each open area will go to one ${M[1]} only. Your name could be on this list.`)
-      : (fr ? `On ajoute maintenant d’autres secteurs, et chacun n’aura qu’un seul ${M[1]}. Votre nom pourrait être le prochain sur cette liste.` : `We are now adding more areas, and each will have one ${M[1]} only. Your name could be next on this list.`));
   } else {
-    P(fr ? `À ${echapper(lieu)}, Payotte n’a pas encore de secteur. On en ouvre à mesure que des ${M[2]} se proposent, et chacun n’aura qu’un seul ${M[1]}. Votre nom pourrait être le premier.`
-         : `In ${echapper(lieu)}, Payotte has no area yet. We open them as ${M[2]} come forward, and each will have one ${M[1]} only. Your name could be the first.`);
+    P(fr ? `Chaque secteur n’a qu’un seul ${metUn} recommandé, choisi sur une grille publique de 100 points. Nous ouvrons de nouveaux secteurs à ${echapper(lieu)} en ce moment.`
+         : `Each area has one recommended ${metUn} only, chosen on a public 100-point grid. We are opening new areas in ${echapper(lieu)} right now.`);
   }
-  paras.push([`<p style="margin:0 0 12px 0;">${fr ? 'Si ça vous intéresse, vous pouvez proposer votre nom ici' : 'If you’re interested, you can put your name forward here'} : <a href="${lienProposer}" style="color:#1a56c4;">payotte.com/proposer</a><br>${fr ? `Ou jeter un œil à ce qu’on fait à ${echapper(lieu)}` : `Or have a look at what we do in ${echapper(lieu)}`} : <a href="${lienVille}" style="color:#1a56c4;">${villeAff}</a></p>`,
-    `${fr ? 'Si ça vous intéresse, vous pouvez proposer votre nom ici' : 'If you’re interested, you can put your name forward here'} : ${lienProposer}\n${fr ? `Ou jeter un œil à ce qu’on fait à ${lieu}` : `Or have a look at what we do in ${lieu}`} : ${lienVille}`]);
-  P(fr ? 'Bonne journée,<br>Grégory' : 'Have a good day,<br>Grégory', fr ? 'Bonne journée,\nGrégory' : 'Have a good day,\nGrégory');
-  const why = fr ? `Vous recevez ce courriel parce que vous exercez à ${lieu}.` : `You are receiving this email because you practise in ${lieu}.`;
-  const legal = `<div style="margin-top:18px;padding-top:10px;border-top:1px solid #e3e5e8;font-size:11.5px;line-height:1.5;color:#80868b;">${echapper(why)} <a href="${unsubUrl}" style="color:#80868b;">${fr ? 'Ne plus recevoir' : 'Unsubscribe'}</a> &middot; payotte.com${postale ? ` &middot; ${postale}` : ''}</div>`;
+  const lien = `${SITE}/${fr ? 'test-ia' : 'ai-test'}?m=${met}&v=${encodeURIComponent(lieu)}&src=${SRC_TEXTE}`;
+  paras.push([`<p style="margin:0 0 12px 0;">${fr ? 'Voyez qui l’IA recommande dans votre secteur (gratuit, 30 secondes)' : 'See who AI recommends in your area (free, 30 seconds)'} : <a href="${lien}" style="color:#1a56c4;">payotte.com/${fr ? 'test-ia' : 'ai-test'}</a></p>`,
+    `${fr ? 'Voyez qui l’IA recommande dans votre secteur (gratuit, 30 secondes)' : 'See who AI recommends in your area (free, 30 seconds)'} : ${lien}`]);
+  P(fr ? 'Bonne journée,<br>Grégory Payotte' : 'Have a good day,<br>Grégory Payotte');
+  // Désabonnement affiché par payotte.com (relais vers le worker) ; l'en-tête List-Unsubscribe garde l'adresse du worker (POST un clic).
+  const desab = String(unsubUrl).replace(/^https?:\/\/[^/]+\/unsubscribe/, `${SITE}/${fr ? 'desabonnement' : 'unsubscribe'}`);
+  const post = String(postale || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  const legal = `<div style="margin-top:6px;font-size:12.5px;line-height:1.6;color:#5f6368;">Payotte.com${post ? ` &middot; ${echapper(post)}` : ''}<br>${fr ? 'Vous ne souhaitez plus recevoir nos messages ?' : 'Don’t want to hear from us?'} <a href="${desab}" style="color:#80868b;">${fr ? 'Se désabonner' : 'Unsubscribe'}</a></div>`;
   const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;color:#222222;max-width:600px;">${paras.map((p) => p[0]).join('')}${legal}</div>`;
-  const text = paras.map((p) => p[1]).join('\n\n') + `\n\n--\n${why} ${fr ? 'Ne plus recevoir' : 'Unsubscribe'} : ${unsubUrl}${postale ? `\n${String(postale).replace(/<[^>]+>/g, ' ')}` : ''}`;
-  return { subject, html, text };
+  const text = paras.map((p) => p[1]).join('\n\n') + `\n\nPayotte.com${post ? ` · ${post}` : ''}\n${fr ? 'Vous ne souhaitez plus recevoir nos messages ?' : 'Don’t want to hear from us?'} ${desab}`;
+  return { subject, html, text, from: 'Grégory Payotte <outreach@payotte.com>' };
 }
 
 function renderPulse({ segment, stage, city, expert, lang, unsubUrl, macro = null, metier = '', postale = '', villeCouverte = null }) {
@@ -3159,7 +3155,7 @@ async function sendPulseBatch(env, envois, { from: fromDemande } = {}) {
       headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(valides.map(({ e }) => ({
         // 6 oct. 2026 : la prospection invite à répondre ; l'attrape-tout ImprovMX renvoie gregory@ à la boîte du proprio.
-        from, to: [e.to], reply_to: /outreach@/.test(from) && env.REPLY_TO_OUTREACH ? env.REPLY_TO_OUTREACH : REPLY_TO,
+        from: e.from || from, to: [e.to], reply_to: /outreach@/.test(from) && env.REPLY_TO_OUTREACH ? env.REPLY_TO_OUTREACH : REPLY_TO,
         subject: e.subject, html: e.html, ...(e.text ? { text: e.text } : {}),
         // ── L'ÉTIQUETTE (2026-08-19) ───────────────────────────────────────────────
         // Sans elle, le webhook apprend qu'« un courriel a été ouvert » sans savoir
@@ -4641,14 +4637,14 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
           report.attempts++;
           done.add(idReel);
           if (fluxRec === 'outreach') report.outreachEnvoyes++;
-          file.push({ to: rec.email, subject: v.subject, html: v.html, text: v.text, unsubUrl, cle: idReel,
+          file.push({ to: rec.email, subject: v.subject, html: v.html, text: v.text, ...(v.from ? { from: v.from } : {}), unsubUrl, cle: idReel,
                       flux: fluxRec,
                       sousFlux: 'bulletin-provincial',   // MESURE — étiquette Resend distincte, même routage
                       etiquette: `provincial ${rec.email}` });
           if (file.length >= TAILLE_LOT) await viderFile();
           continue;
         }
-        const { subject, html, text } = MODE_TEXTE
+        const { subject, html, text, from: fromItem } = MODE_TEXTE
           ? renderTexte({ lieu: nomVilleBulletin(city, rec.lang !== 'en'), citySlug: city.slug, provSlug: CODE_TO_PROVSLUG[city.province], metier: rec.metier, nom: rec.nom, lang: rec.lang, unsubUrl, postale })
           : renderPulse({ segment: 'prospect', city, lang: rec.lang, unsubUrl, macro, metier: rec.metier , postale,
           villeCouverte: couvertes ? couvertes.has(normVille(city.slug ?? key.slice(0, sep))) : null });
@@ -4665,7 +4661,7 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
         // /flux-stats. Les deux vivaient sur la même clé, écrite deux fois — et en JS la
         // SECONDE gagne : l'étiquette fine était donc jetée en silence depuis le début, et
         // « bulletin-prospect » n'a jamais existé dans les statistiques (2026-08-28).
-        file.push({ to: rec.email, subject, html, text, unsubUrl, cle: idReel,
+        file.push({ to: rec.email, subject, html, text, ...(fromItem ? { from: fromItem } : {}), unsubUrl, cle: idReel,
                     flux: fluxRec,                  // ROUTAGE — 'bulletin' | 'outreach'
                     sousFlux: 'bulletin-prospect',  // MESURE  — l'étiquette envoyée à Resend
                     etiquette: `prospect ${rec.email}` });

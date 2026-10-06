@@ -198,7 +198,8 @@ export async function obtenirPresence(env, metier, secteur, lieu, fr) {
   const gabarits = QUESTIONS_IA[metier][fr ? 'fr' : 'en'].slice(0, 3);
   const cleAppels = `vip:recherches:${jour}`;
   const deja = env.COUNTERS ? parseInt((await env.COUNTERS.get(cleAppels)) || '0', 10) : 0;
-  if (deja + gabarits.length > 160) return { erreur: 'quota', statut: 429 };
+  // Plafond de sécurité quotidien : 160 par défaut ; VIP_PLAFOND_JOUR le relève (franchise : 5 000 recherches/mois).
+  if (deja + gabarits.length > (Number(env.VIP_PLAFOND_JOUR) || 160)) return { erreur: 'quota', statut: 429 };
   if (env.COUNTERS) {
     await env.COUNTERS.put(cleAppels, String(deja + gabarits.length), { expirationTtl: 2 * 86400 });
     const cm = `vip:recherches-mois:${MOIS_RECH()}`;
@@ -241,7 +242,8 @@ export async function handlePrecalcul(request, env, url, h) {
   const vus = new Set();
   for (const r of o.res.reponses) for (const n of r.noms || []) { const k = sansAccents(n).replace(/[^a-z0-9]+/g, ''); if (k.length >= 3 && !/payotte/.test(k)) vus.add(k); }
   const carte = JSON.parse((await env.COUNTERS.get('vi:compte-ia')) || '{}');
-  carte[`${ville}:${metier}:${fr ? 'fr' : 'en'}`] = { n: vus.size, date: o.res.date };
+  // `noms` = clés normalisées (minuscules, sans accents ni espaces), pour dire « votre nom n'y était pas » sans jamais les afficher.
+  carte[`${ville}:${metier}:${fr ? 'fr' : 'en'}`] = { n: vus.size, date: o.res.date, noms: [...vus] };
   await env.COUNTERS.put('vi:compte-ia', JSON.stringify(carte));
   return h.json({ ok: true, cle: `${ville}:${metier}:${fr ? 'fr' : 'en'}`, n: vus.size, date: o.res.date });
 }

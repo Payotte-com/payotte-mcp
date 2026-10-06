@@ -166,6 +166,8 @@ PLAFOND_DU_JOUR = "2026-10-06:9000"
 PLAFOND_MATIN_DU_JOUR = "2026-10-06:3000:17"
 PROVINCES_APRES = "2026-10-06|17:QC,ON,AB,BC,MB,SK,NL"
 GABARIT_TEXTE_DES = "2026-10-06T17"
+# Recherches Gemini par jour (précalcul du courriel texte) : 160 par défaut, relevé le 6 oct. 2026.
+VIP_PLAFOND_JOUR = "400"
 SEUIL_PLAINTES_DU_JOUR = "2026-10-06:0.0007"
 EXCLURE_DOMAINES = "hotmail.com,hotmail.ca,live.com,live.ca,outlook.com,outlook.fr,msn.com"
 PART_PASSAGE_DU_JOUR = "2026-10-06:500"
