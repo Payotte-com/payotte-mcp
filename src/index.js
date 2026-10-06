@@ -2392,6 +2392,92 @@ function renderTestIA({ segment, stage, city, expert, lang, unsubUrl, postale = 
     html: corpsTestIA2({ segment, stage, lieu, cityPouls: city, compteCle: `${city.slug}:${met}:${fr ? 'fr' : 'en'}`, expert, fr, villeCouverte, metier: met, why, unsubUrl, postale }) };
 }
 
+/* ═══ GABARIT « TEXTE SIMPLE » (6 oct. 2026, après-midi) ════════════════════════════════════
+ * Maquette approuvée : https://claude.ai/artifact/QCu3PfUW4TiKDwENy3PPg4 (v10). Un courriel qui a
+ * l'air écrit à la main : objet = la phrase du client entre guillemets (verbe selon le métier),
+ * Payotte en une phrase, la grille des secteurs de SA ville pour SON métier (pris ✓ / libres ○)
+ * avec son nom dans la place à prendre, deux liens (proposer son nom, voir la ville). Prospects
+ * seulement ; les experts gardent le gabarit v2. S'active à l'heure de `GABARIT_TEXTE_DES`.
+ * Grégory a voulu « le premier répertoire » : c'est son affirmation, gardée telle quelle. */
+let MODE_TEXTE = false;
+let SECTEURS_VILLES = {};   // `secteurs` de /api/villes-couvertes.json, posé avant la boucle prospects
+const SRC_TEXTE = 'courriel-texte';
+const TEXTE_METIER = {
+  'real-estate-broker': { fr: ['vendre ma maison', 'courtier', 'courtiers'], en: ['sell my house', 'real estate agent', 'real estate agents'] },
+  'mortgage-broker': { fr: ['financer ma maison', 'courtier hypothécaire', 'courtiers hypothécaires'], en: ['finance my home', 'mortgage broker', 'mortgage brokers'] },
+  'home-inspector': { fr: ['faire inspecter ma maison', 'inspecteur', 'inspecteurs'], en: ['get my house inspected', 'home inspector', 'home inspectors'] },
+  appraiser: { fr: ['faire évaluer ma maison', 'évaluateur', 'évaluateurs'], en: ['get my house appraised', 'appraiser', 'appraisers'] },
+  'notary-lawyer': { fr: [null, 'notaire', 'notaires'], en: [null, 'real estate lawyer', 'real estate lawyers'] },
+};
+const CODE_TO_PROVSLUG = { QC: 'quebec', ON: 'ontario', AB: 'alberta', BC: 'british-columbia', MB: 'manitoba', SK: 'saskatchewan', NS: 'nova-scotia', NB: 'new-brunswick', PE: 'prince-edward-island', NL: 'newfoundland-and-labrador' };
+const echapper = (x) => String(x ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function renderTexte({ lieu, citySlug = null, provSlug = null, metier, nom = '', lang, unsubUrl, postale = '' }) {
+  const fr = lang !== 'en';
+  const M = (TEXTE_METIER[metier] || TEXTE_METIER['real-estate-broker'])[fr ? 'fr' : 'en'];
+  const met = TEXTE_METIER[metier] ? metier : 'real-estate-broker';
+  const citation = M[0]
+    ? (fr ? `J’ai besoin d’aide pour ${M[0]} à ${lieu}` : `I need help to ${M[0]} in ${lieu}`)
+    : (fr ? `J’ai besoin d’un notaire pour l’achat de ma maison à ${lieu}` : `I need a real estate lawyer to buy my house in ${lieu}`);
+  const subject = fr ? `« ${citation} »` : `“${citation}”`;
+  // Le nom du destinataire, seulement s'il ressemble à un nom (la récolte contient parfois une firme).
+  const nomPropre = /^[A-ZÀ-Ý][\p{L}'’-]+( [A-ZÀ-Ý][\p{L}'’-]+){1,2}$/u.test(String(nom || '').trim()) ? String(nom).trim() : '';
+  const place = nomPropre ? `${nomPropre} ?` : (fr ? 'Votre nom ?' : 'Your name?');
+  const placeEn = nomPropre ? `${nomPropre}?` : 'Your name?';
+  const secteurs = (citySlug && SECTEURS_VILLES[citySlug]) || [];
+  const villePage = citySlug && provSlug ? `${SITE}/canada/${provSlug}/${citySlug}` : provSlug ? `${SITE}/canada/${provSlug}` : SITE;
+  const villeAff = villePage.replace(/^https:\/\//, '');
+  const lienProposer = `${SITE}/proposer?m=${met}&v=${encodeURIComponent(lieu)}&src=${SRC_TEXTE}${fr ? '' : '&l=en'}`;
+  const lienVille = `${villePage}?src=${SRC_TEXTE}`;
+
+  // Paragraphes : [html, texte]
+  const paras = [];
+  const P = (h, t = h.replace(/<[^>]+>/g, '')) => paras.push([`<p style="margin:0 0 12px 0;">${h}</p>`, t]);
+  P(fr ? 'Bonjour,' : 'Hi,');
+  P(echapper(fr ? `« ${citation}. »` : `“${citation}.”`));
+  P(fr ? `C’est le genre de phrase que vos futurs clients tapent maintenant dans ChatGPT plutôt que dans Google pour trouver leur ${M[1]}.`
+       : `That’s the kind of thing your future clients now type into ChatGPT instead of Google to find their ${M[1]}.`);
+  P(fr ? 'Je m’occupe de Payotte.com, le premier répertoire gratuit dédié aux experts immobiliers du Canada : presque 700 professionnels ajoutés en 4 mois, vérifiés et prêts à être cités par les IA.'
+       : 'I run Payotte.com, the first free directory dedicated to Canada’s real estate experts: almost 700 professionals added in 4 months, verified and ready to be cited by AI.');
+  if (secteurs.length) {
+    const pris = secteurs.filter((x) => x.metiers.includes(met));
+    const libres = secteurs.filter((x) => !x.metiers.includes(met));
+    P(libres.length
+      ? (fr ? `Voici où en est ${echapper(lieu)} pour les ${M[2]} :` : `Here is where ${echapper(lieu)} stands for ${M[2]}:`)
+      : (fr ? `À ${echapper(lieu)}, ${secteurs.length === 1 ? 'le secteur qu’on couvre a déjà son' : `les ${secteurs.length} secteurs qu’on couvre ont déjà leur`} ${M[1]} :` : `In ${echapper(lieu)}, ${secteurs.length === 1 ? 'the area we cover already has its' : `all ${secteurs.length} areas we cover already have their`} ${M[1]}:`));
+    let premierLibre = true;
+    const lignes = secteurs.map((x) => {
+      const nomS = echapper(fr ? x.fr : x.en);
+      if (x.metiers.includes(met)) return [`<span style="color:#1a7f4b;font-weight:bold;">&#10003;</span> ${nomS}`, `✓ ${fr ? x.fr : x.en}`];
+      const qui = premierLibre ? (fr ? place : placeEn) : (fr ? 'libre' : 'open');
+      const h = `<span style="color:#c8102e;font-weight:bold;">&#9675;</span> ${nomS} — <b style="color:#c8102e;">${echapper(qui)}</b>`;
+      const r = [premierLibre ? `<span style="background:#fbf3f4;">${h}</span>` : h, `○ ${fr ? x.fr : x.en} — ${qui}`];
+      premierLibre = false;
+      return r;
+    });
+    if (!libres.length) lignes.push([`<span style="background:#fbf3f4;"><span style="color:#c8102e;font-weight:bold;">&#9675;</span> ${fr ? 'Nouveau secteur' : 'New area'} — <b style="color:#c8102e;">${echapper(fr ? place : placeEn)}</b></span>`, `○ ${fr ? 'Nouveau secteur' : 'New area'} — ${fr ? place : placeEn}`]);
+    const resume = libres.length
+      ? (fr ? `${pris.length} pris · ${libres.length} encore ${libres.length > 1 ? 'libres' : 'libre'} · un seul ${M[1]} par secteur` : `${pris.length} taken · ${libres.length} still open · one ${M[1]} per area`)
+      : (fr ? `${secteurs.length} sur ${secteurs.length} pris · les noms sont sur la page de ${lieu}` : `${secteurs.length} of ${secteurs.length} taken · names are on the ${lieu} page`);
+    paras.push([`<div style="border:1px solid #e3e5e8;border-radius:6px;padding:10px 12px;margin:0 0 12px 0;">${lignes.map((l) => `<div>${l[0]}</div>`).join('')}<div style="color:#80868b;font-size:12px;margin-top:4px;">${echapper(resume)}</div></div>`,
+      lignes.map((l) => l[1]).join('\n') + `\n(${resume})`]);
+    P(libres.length
+      ? (fr ? `Chaque secteur libre n’aura qu’un seul ${M[1]}. Votre nom pourrait être sur cette liste.` : `Each open area will go to one ${M[1]} only. Your name could be on this list.`)
+      : (fr ? `On ajoute maintenant d’autres secteurs, et chacun n’aura qu’un seul ${M[1]}. Votre nom pourrait être le prochain sur cette liste.` : `We are now adding more areas, and each will have one ${M[1]} only. Your name could be next on this list.`));
+  } else {
+    P(fr ? `À ${echapper(lieu)}, Payotte n’a pas encore de secteur. On en ouvre à mesure que des ${M[2]} se proposent, et chacun n’aura qu’un seul ${M[1]}. Votre nom pourrait être le premier.`
+         : `In ${echapper(lieu)}, Payotte has no area yet. We open them as ${M[2]} come forward, and each will have one ${M[1]} only. Your name could be the first.`);
+  }
+  paras.push([`<p style="margin:0 0 12px 0;">${fr ? 'Si ça vous intéresse, vous pouvez proposer votre nom ici' : 'If you’re interested, you can put your name forward here'} : <a href="${lienProposer}" style="color:#1a56c4;">payotte.com/proposer</a><br>${fr ? `Ou jeter un œil à ce qu’on fait à ${echapper(lieu)}` : `Or have a look at what we do in ${echapper(lieu)}`} : <a href="${lienVille}" style="color:#1a56c4;">${villeAff}</a></p>`,
+    `${fr ? 'Si ça vous intéresse, vous pouvez proposer votre nom ici' : 'If you’re interested, you can put your name forward here'} : ${lienProposer}\n${fr ? `Ou jeter un œil à ce qu’on fait à ${lieu}` : `Or have a look at what we do in ${lieu}`} : ${lienVille}`]);
+  P(fr ? 'Bonne journée,<br>Grégory' : 'Have a good day,<br>Grégory', fr ? 'Bonne journée,\nGrégory' : 'Have a good day,\nGrégory');
+  const why = fr ? `Vous recevez ce courriel parce que vous exercez à ${lieu}.` : `You are receiving this email because you practise in ${lieu}.`;
+  const legal = `<div style="margin-top:18px;padding-top:10px;border-top:1px solid #e3e5e8;font-size:11.5px;line-height:1.5;color:#80868b;">${echapper(why)} <a href="${unsubUrl}" style="color:#80868b;">${fr ? 'Ne plus recevoir' : 'Unsubscribe'}</a> &middot; payotte.com${postale ? ` &middot; ${postale}` : ''}</div>`;
+  const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;color:#222222;max-width:600px;">${paras.map((p) => p[0]).join('')}${legal}</div>`;
+  const text = paras.map((p) => p[1]).join('\n\n') + `\n\n--\n${why} ${fr ? 'Ne plus recevoir' : 'Unsubscribe'} : ${unsubUrl}${postale ? `\n${String(postale).replace(/<[^>]+>/g, ' ')}` : ''}`;
+  return { subject, html, text };
+}
+
 function renderPulse({ segment, stage, city, expert, lang, unsubUrl, macro = null, metier = '', postale = '', villeCouverte = null }) {
   const fr = lang !== 'en';
   if (GABARIT_IA) return renderTestIA({ segment, stage, city, expert, lang, unsubUrl, postale, villeCouverte, metier });
@@ -3074,7 +3160,7 @@ async function sendPulseBatch(env, envois, { from: fromDemande } = {}) {
       body: JSON.stringify(valides.map(({ e }) => ({
         // 6 oct. 2026 : la prospection invite à répondre ; l'attrape-tout ImprovMX renvoie gregory@ à la boîte du proprio.
         from, to: [e.to], reply_to: /outreach@/.test(from) && env.REPLY_TO_OUTREACH ? env.REPLY_TO_OUTREACH : REPLY_TO,
-        subject: e.subject, html: e.html,
+        subject: e.subject, html: e.html, ...(e.text ? { text: e.text } : {}),
         // ── L'ÉTIQUETTE (2026-08-19) ───────────────────────────────────────────────
         // Sans elle, le webhook apprend qu'« un courriel a été ouvert » sans savoir
         // lequel. On ne pourrait donc rien conclure sur un flux précis — or toute la
@@ -3615,7 +3701,10 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
   /* SEUILS DU 2 OCT. 2026 (décision de Grégory) : Resend tolère 4 % de rebonds et 0,08 % de
      plaintes ; on s'arrête AVANT, à 3 % et 0,05 %. Le plancher des plaintes se recalcule
      selon la règle ci-dessus : 3 ÷ 0,0005 = 6 000 envois sur 24 h. */
-  const SEUIL_PLAINTES = 0.0005;
+  // SEUIL_PLAINTES_DU_JOUR = "AAAA-MM-JJ:0.0007" : dérogation datée (6 oct. 2026, accord explicite de Grégory),
+  // toujours SOUS les 0,08 % de Resend. Inerte le lendemain.
+  const spj = String(env.SEUIL_PLAINTES_DU_JOUR || '');
+  const SEUIL_PLAINTES = spj.slice(0, 10) === dayKey && spj[10] === ':' ? Math.min(Number(spj.slice(11)) || 0.0005, 0.00075) : 0.0005;
   const SEUIL_REBONDS = 0.035; // 3 % → 3,5 % le 5 oct. 2026 (Grégory), sous les 4 % de Resend
   const PLANCHER_PLAINTES = Math.round(3 / SEUIL_PLAINTES);   // 6 000
   const PLANCHER_REBONDS = 200;     // seuil à 3 % : un plancher bas ne produit pas de faux positif
@@ -3722,7 +3811,11 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
   // freine aussi. C'est assumé tant que les abonnés du formulaire sont une poignée face
   // aux adresses récoltées ; le jour où le bulletin redevient le gros du volume, il lui
   // faudra sa propre part, pas ce raccourci.
-  const capJourEffectif = Math.min(dayCap, rampeOutreach());
+  /* PLAFOND DU MATIN (6 oct. 2026) : « AAAA-MM-JJ:N:HH » — avant HH h UTC, le jour ne dépasse pas N
+     (l'essai du gabarit v2 sur les Maritimes) ; à partir de HH h, le plafond du jour reprend. */
+  const pm = String(env.PLAFOND_MATIN_DU_JOUR || '').split(':');
+  const capMatin = pm[0] === dayKey && pm.length === 3 && at.getUTCHours() < Number(pm[2]) ? Number(pm[1]) : Infinity;
+  const capJourEffectif = Math.min(dayCap, rampeOutreach(), capMatin);
   // `PART_PASSAGE_DU_JOUR = "AAAA-MM-JJ:500"` : PLANCHER daté de la part d'un passage, toujours borné
   // par ce qui reste du plafond du jour ; inerte le lendemain (30 sept. 2026, demande de Grégory).
   const partMinJour = String(env.PART_PASSAGE_DU_JOUR || '');
@@ -3830,6 +3923,7 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
     'aol.com', 'protonmail.com', 'proton.me',
   ]);
   const plafondDomaine = (dom) => (MESSAGERIES_PUBLIQUES.has(dom) ? Infinity : MAX_PAR_DOMAINE);
+  const domainesExclus = new Set(String(env.EXCLURE_DOMAINES || '').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean));
   /* ── UNE CLÉ PAR JOUR, PAS UNE PAR DOMAINE (2026-09-14, palier gratuit) ───────────
      `dom:{jour}:{domaine}` coûtait une LECTURE par domaine et une ÉCRITURE par domaine et
      par lot. Sur le palier gratuit Workers KV — 1 000 écritures par JOUR pour tout le
@@ -4029,6 +4123,8 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
      quand même, sans pouls (règle de Grégory du 5 oct. pour les trimestrielles, élargie le 6 aux
      Maritimes). Le filtre ne décide plus qui reçoit : il décide si le pouls s'affiche. */
   MOIS_MIN_POULS = moisMin;
+  // Gabarit texte simple pour les prospects à partir de `GABARIT_TEXTE_DES` (« AAAA-MM-JJTHH », heure UTC).
+  MODE_TEXTE = !!env.GABARIT_TEXTE_DES && at.toISOString().slice(0, 13) >= String(env.GABARIT_TEXTE_DES);
   await chargerCompteIA(env);
   const allActive = (market.cities || []).filter((c) => hasMarketStats(c) || GABARIT_IA);
   // Le filtre par fuseau s'applique ICI, sur les villes : tout le reste (prospects comme
@@ -4059,7 +4155,10 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
      10 h locales existe pour empêcher. La date est celle du jour visé, au format
      `AAAA-MM-JJ:QC,ON` ; le lendemain la variable est inerte et le filtre par fuseau
      reprend tout seul. Rien à retirer à la main, rien à oublier. */
-  const forcage = String(env.PROVINCES_DU_JOUR || '');
+  // PROVINCES_APRES (6 oct. 2026) : « AAAA-MM-JJ|HH:PROV,PROV » — à partir de HH h UTC, remplace PROVINCES_DU_JOUR.
+  const apres = String(env.PROVINCES_APRES || '');
+  const apresOk = apres.slice(0, 10) === dayKey && apres[10] === '|' && at.getUTCHours() >= Number(apres.slice(11).split(':')[0]);
+  const forcage = apresOk ? `${dayKey}:${apres.slice(11).split(':')[1] || ''}` : String(env.PROVINCES_DU_JOUR || '');
   const forcees = forcage.slice(0, 10) === dayKey && forcage.includes(':')
     ? new Set(forcage.slice(11).split(',').map((x) => x.trim().toUpperCase()).filter(Boolean))
     : null;
@@ -4337,6 +4436,7 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
     try {
       const vc = await F('/api/villes-couvertes.json');
       if (Array.isArray(vc?.villes)) { couvertes = new Set(vc.villes.map((v) => v.slug)); villesCouvertes = vc.villes; }
+      SECTEURS_VILLES = vc?.secteurs || {};
     } catch { couvertes = null; }
     if (!couvertes) console.warn('  ▸ villes-couvertes.json illisible — prospects sur le contenu générique.');
 
@@ -4468,6 +4568,9 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
       for (; j < candidats.length && tranche.length < LOT_KV; j++) {
         const c = candidats[j];
         const dom = domaineDe(c.key.slice(c.sep + 1));
+        // EXCLURE_DOMAINES (6 oct. 2026) : 3 plaintes sur 4 venaient de Microsoft (bouton « Indésirable »
+        // d'Outlook). Ces adresses attendent, rien n'est marqué : elles repartiront quand la ligne sera retirée.
+        if (domainesExclus.has(dom)) { report.exclusDomaine = (report.exclusDomaine || 0) + 1; report.pending++; continue; }
         const n = (domCache.get(dom) ?? 0) + (prises.get(dom) ?? 0);
         if (n >= plafondDomaine(dom)) { report.reportesDomaine = (report.reportesDomaine || 0) + 1; report.pending++; continue; }
         prises.set(dom, (prises.get(dom) ?? 0) + 1);
@@ -4522,7 +4625,9 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
         if (provSlug) {
           // BULLETIN PROVINCIAL — même file, mêmes marques, même désabonnement ; seul le gabarit change.
           const ctxP = await contexteProvincial();
-          const v = renderBulletinProvincial({ provSlug, villeReelle: rec.villeReelle, metier: rec.metier, lang: rec.lang, unsubUrl, postale }, ctxP);
+          const v = MODE_TEXTE
+            ? { ...renderTexte({ lieu: rec.villeReelle || PROV_NOMS[provSlug]?.[rec.lang !== 'en' ? 0 : 1] || '', provSlug, metier: rec.metier, nom: rec.nom, lang: rec.lang, unsubUrl, postale }), variante: 'texte', zone: null }
+            : renderBulletinProvincial({ provSlug, villeReelle: rec.villeReelle, metier: rec.metier, lang: rec.lang, unsubUrl, postale }, ctxP);
           if (!v) {
             // Rien de vrai à dire (aucun chiffre de marché) : le créneau de domaine déjà pris
             // est rendu, rien n'est marqué, l'adresse repassera quand la donnée reviendra.
@@ -4532,18 +4637,20 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
           }
           report.prospects++; report.recipients.push({ to: rec.email, kind: 'prospect', city: rec.city, variante: v.variante, zone: v.zone, prov: PROV_TO_CODE[provSlug]?.toUpperCase(), cat: 'sansSecteur' });
           report.provincial = report.provincial || { banlieue: 0, provincial: 0 };
-          report.provincial[v.variante]++;
+          report.provincial[v.variante] = (report.provincial[v.variante] || 0) + 1;
           report.attempts++;
           done.add(idReel);
           if (fluxRec === 'outreach') report.outreachEnvoyes++;
-          file.push({ to: rec.email, subject: v.subject, html: v.html, unsubUrl, cle: idReel,
+          file.push({ to: rec.email, subject: v.subject, html: v.html, text: v.text, unsubUrl, cle: idReel,
                       flux: fluxRec,
                       sousFlux: 'bulletin-provincial',   // MESURE — étiquette Resend distincte, même routage
                       etiquette: `provincial ${rec.email}` });
           if (file.length >= TAILLE_LOT) await viderFile();
           continue;
         }
-        const { subject, html } = renderPulse({ segment: 'prospect', city, lang: rec.lang, unsubUrl, macro, metier: rec.metier , postale,
+        const { subject, html, text } = MODE_TEXTE
+          ? renderTexte({ lieu: nomVilleBulletin(city, rec.lang !== 'en'), citySlug: city.slug, provSlug: CODE_TO_PROVSLUG[city.province], metier: rec.metier, nom: rec.nom, lang: rec.lang, unsubUrl, postale })
+          : renderPulse({ segment: 'prospect', city, lang: rec.lang, unsubUrl, macro, metier: rec.metier , postale,
           villeCouverte: couvertes ? couvertes.has(normVille(city.slug ?? key.slice(0, sep))) : null });
         report.prospects++; report.recipients.push({ to: rec.email, kind: 'prospect', city: rec.city, prov: city?.province, cat: 'secteur' });
         report.attempts++;
@@ -4558,7 +4665,7 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
         // /flux-stats. Les deux vivaient sur la même clé, écrite deux fois — et en JS la
         // SECONDE gagne : l'étiquette fine était donc jetée en silence depuis le début, et
         // « bulletin-prospect » n'a jamais existé dans les statistiques (2026-08-28).
-        file.push({ to: rec.email, subject, html, unsubUrl, cle: idReel,
+        file.push({ to: rec.email, subject, html, text, unsubUrl, cle: idReel,
                     flux: fluxRec,                  // ROUTAGE — 'bulletin' | 'outreach'
                     sousFlux: 'bulletin-prospect',  // MESURE  — l'étiquette envoyée à Resend
                     etiquette: `prospect ${rec.email}` });
@@ -6169,6 +6276,13 @@ const WORKER_MAIN = {
       const citySlug = strip(q.get('city') || 'laval');
       const lang = q.get('lang') || 'fr';
       const market = await feed('/api/market.json').catch(() => ({ cities: [] }));
+      // Gabarit texte simple : ?texte=1&city=montreal&metier=real-estate-broker&nom=Sophie%20Martin
+      if (q.get('texte')) {
+        try { const vc = await feed('/api/villes-couvertes.json'); SECTEURS_VILLES = vc?.secteurs || {}; } catch { SECTEURS_VILLES = {}; }
+        const cz = (market.cities || []).find((c) => c.slug === q.get('city'));
+        const v = renderTexte({ lieu: cz ? nomVilleBulletin(cz, lang !== 'en') : (q.get('ville') || 'Okotoks'), citySlug: cz?.slug ?? null, provSlug: cz ? CODE_TO_PROVSLUG[cz.province] : (q.get('prov') || null), metier: q.get('metier') || 'real-estate-broker', nom: q.get('nom') || '', lang, unsubUrl: '#preview' });
+        return new Response(`<!--${v.subject}-->\n${v.html}`, { headers: { 'content-type': 'text/html; charset=utf-8' } });
+      }
       // Variante provinciale ou banlieue : ?prov=alberta&ville=Okotoks&metier=appraiser
       if (q.get('prov')) {
         const pmj = await feed('/api/province-market.json').catch(() => null);
