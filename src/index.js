@@ -2324,6 +2324,8 @@ function lignePouls(c, fr) {
 }
 
 function corpsTestIA2({ segment, stage, lieu, cityPouls = null, compteCle = '', expert = null, fr, villeCouverte = null, metier = '', why, unsubUrl, postale = '' }) {
+  // Les liens du courriel portent le métier, la ville et son slug : le test arrive déjà rempli (6 oct. 2026).
+  const qPre = `${metier ? `&m=${metier}` : ''}&v=${encodeURIComponent(lieu)}${compteCle ? `&c=${compteCle.split(':')[0]}` : ''}`;
   const nb = (v) => Number(v).toLocaleString(fr ? 'fr-CA' : 'en-CA');
   const moisTete = poulsAJour(cityPouls) ? ` &middot; ${moisLisible(cityPouls.referenceMonth, fr)}` : '';
   const tete = `<tr><td style="padding:26px 32px 22px 32px;border-bottom:1px solid #f1ecec;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td valign="middle"><a href="${SITE}"><img src="${LOGO}" width="140" height="29" alt="Payotte" style="display:block;border:0;"></a></td><td align="right" valign="middle" style="font-size:11px;letter-spacing:.5px;color:#9a9294;line-height:1.5;">${fr ? 'Plateforme IA pour l’immobilier' : 'AI platform for real estate'}<br><span style="color:#c8102e;letter-spacing:1px;">${lieu}${moisTete}</span></td></tr></table></td></tr>`;
@@ -2356,11 +2358,11 @@ function corpsTestIA2({ segment, stage, lieu, cityPouls = null, compteCle = '', 
                  : 'On Payotte, <b>one seat per profession and area</b>. Once it is taken, that is the name AI finds.';
   if (segment === 'prospect' && villeCouverte === false) apres += fr ? ` À ${lieu}, la place de votre métier est encore libre.` : ` In ${lieu}, your profession’s seat is still open.`;
   else if (segment !== 'prospect' && stage === 'reco' && expert?.slug) apres = fr ? `Vous êtes l’expert recommandé de votre secteur&nbsp;: ${lien(`${SITE}/badge/${expert.slug}`, 'posez votre badge')} pour que les IA relient votre site à votre fiche.` : `You are the recommended expert in your area: ${lien(`${SITE}/badge/${expert.slug}`, 'put up your badge')} so AI tools connect your website to your profile.`;
-  else if (segment !== 'prospect') apres = fr ? `Votre fiche est déjà sur Payotte. Pour vous faire citer davantage&nbsp;: ${lien(`${page}?src=${SRC_COURRIEL_V2}#forfaits`, 'voir les forfaits')}.` : `Your profile is already on Payotte. To get cited more: ${lien(`${page}?src=${SRC_COURRIEL_V2}#forfaits`, 'see the plans')}.`;
+  else if (segment !== 'prospect') apres = fr ? `Votre fiche est déjà sur Payotte. Pour vous faire citer davantage&nbsp;: ${lien(`${page}?src=${SRC_COURRIEL_V2}${qPre}#forfaits`, 'voir les forfaits')}.` : `Your profile is already on Payotte. To get cited more: ${lien(`${page}?src=${SRC_COURRIEL_V2}${qPre}#forfaits`, 'see the plans')}.`;
   const offre = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fbf3f4;border:1px solid #f1d5da;border-radius:10px;"><tr><td style="padding:16px;">`
     + `<div style="font-size:15px;font-weight:bold;color:#211c1e;margin-bottom:8px;">${fr ? 'Vérifiez ce que les IA disent de vous' : 'Check what AI says about you'}</div>`
     + `<table role="presentation" cellpadding="0" cellspacing="0" border="0">${coches}</table><div style="height:12px;font-size:0;line-height:0;">&nbsp;</div>`
-    + BTN(`${page}?src=${SRC_COURRIEL_V2}#ia`, fr ? 'Vérifier ce que les IA disent de moi &rarr;' : 'Check what AI says about me &rarr;')
+    + BTN(`${page}?src=${SRC_COURRIEL_V2}${qPre}#ia`, fr ? 'Vérifier ce que les IA disent de moi &rarr;' : 'Check what AI says about me &rarr;')
     + `<div style="margin-top:10px;font-size:13px;line-height:1.5;color:#443e40;">${apres}</div></td></tr></table>`;
   const corps = `<tr><td style="padding:26px 32px 6px 32px;">`
     + `<div style="font-family:Georgia,'Times New Roman',serif;font-size:24px;line-height:1.25;color:#211c1e;margin-bottom:12px;">${fr ? 'Vos clients demandent déjà à l’IA qui engager. Que répond-elle sur vous&nbsp;?' : 'Your clients already ask AI who to hire. What does it say about you?'}</div>`
@@ -2473,7 +2475,7 @@ function renderTexte({ lieu, citySlug = null, provSlug = null, metier, nom = '',
     paras.push([`<p style="margin:0 0 8px 0;">${fr ? 'J’ai résumé tout ça en 10 diapos, 90 secondes :' : 'I summed it all up in 10 slides, 90 seconds:'}</p><p style="margin:0 0 12px 0;"><a href="${lienP}"><img src="${img}" width="480" alt="${fr ? 'Voir la présentation Payotte (90 secondes)' : 'View the Payotte presentation (90 seconds)'}" style="display:block;width:100%;max-width:480px;height:auto;border:0;border-radius:6px;"></a><a href="${lienP}" style="color:#1a56c4;">${fr ? '▶ Voir la présentation' : '▶ View the presentation'}</a></p>`,
       `${fr ? 'J’ai résumé tout ça en 10 diapos, 90 secondes' : 'I summed it all up in 10 slides, 90 seconds'}${fr ? ' :' : ':'} ${lienP}`]);
   } else {
-    const lien = `${SITE}/${fr ? 'test-ia' : 'en/ai-test'}?m=${met}&v=${encodeURIComponent(lieu)}&src=${SRC_TEXTE}`;
+    const lien = `${SITE}/${fr ? 'test-ia' : 'en/ai-test'}?m=${met}&v=${encodeURIComponent(lieu)}${citySlug ? `&c=${citySlug}` : ''}&src=${SRC_TEXTE}`;
     paras.push([`<p style="margin:0 0 12px 0;">${fr ? 'Voyez qui l’IA recommande dans votre secteur (gratuit, 30 secondes)' : 'See who AI recommends in your area (free, 30 seconds)'}${fr ? ' :' : ':'} <a href="${lien}" style="color:#1a56c4;">payotte.com/${fr ? 'test-ia' : 'en/ai-test'}</a></p>`,
       `${fr ? 'Voyez qui l’IA recommande dans votre secteur (gratuit, 30 secondes)' : 'See who AI recommends in your area (free, 30 seconds)'}${fr ? ' :' : ':'} ${lien}`]);
   }

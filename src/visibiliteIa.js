@@ -40,8 +40,10 @@ export async function handleVisite(request, env, url, h) {
   if (src && env.COUNTERS) {
     const ip = request.headers.get('cf-connecting-ip') || 'x';
     // `etape=fin` (présentation lue jusqu'à la dernière diapositive, 6 oct. 2026) : compté à part, une fois par IP et par jour.
-    const etape = url.searchParams.get('etape') === 'fin' ? 'fin' : '';
-    if ((await h.bumpCounter(env, `vip:vu:${src}${etape ? ':' + etape : ''}:${ip}:${new Date().toISOString().slice(0, 10)}`, 2 * 86400)) === 1) await compterSrc(env, h.bumpCounter, src, etape ? 'presentation-lue' : 'visites');
+    // Étapes comptées (6 oct. 2026) : où le visiteur décroche entre l'arrivée et le formulaire.
+    const ETAPES = { fin: 'presentation-lue', resultat: 'resultats', reserver: 'clics-reserver', formulaire: 'formulaires-commences' };
+    const etape = ETAPES[url.searchParams.get('etape')] ? url.searchParams.get('etape') : '';
+    if ((await h.bumpCounter(env, `vip:vu:${src}${etape ? ':' + etape : ''}:${ip}:${new Date().toISOString().slice(0, 10)}`, 2 * 86400)) === 1) await compterSrc(env, h.bumpCounter, src, etape ? ETAPES[etape] : 'visites');
   }
   return new Response(null, { status: 204, headers: { 'Access-Control-Allow-Origin': '*' } });
 }
@@ -190,13 +192,20 @@ const MOIS_RECH = () => new Date().toISOString().slice(0, 7);
 
 /** Résultat de présence pour métier × secteur × lieu × langue : cache 7 j, sinon 3 questions à Gemini.
  *  Retourne { res } ou { erreur, statut }. Le plafond est compté en RECHERCHES (160/jour). */
-export async function obtenirPresence(env, metier, secteur, lieu, fr) {
+export async function obtenirPresence(env, metier, secteur, lieu, fr, c = '') {
   const f = FOURNISSEURS.gemini;
   if (!env[f.cle]) return { erreur: 'non-configure', statut: 503 };
   const jour = new Date().toISOString().slice(0, 10);
-  const cle = `vip:cache3:${metier}:${secteur}:${fr ? 'fr' : 'en'}:${sansAccents(lieu).replace(/[^a-z0-9]+/g, '-')}`;
+  const lieuCle = sansAccents(lieu).replace(/[^a-z0-9]+/g, '-');
+  const cle = `vip:cache3:${metier}:${secteur}:${fr ? 'fr' : 'en'}:${lieuCle}`;
   let res = env.COUNTERS ? JSON.parse((await env.COUNTERS.get(cle)) || 'null') : null;
   if (res) return { res };
+  /* Résultat instantané (6 oct. 2026) : un test « hors liste » à l'échelle d'une ville (lien des courriels,
+     ?c={ville}) reprend le relevé déjà fait pour cette ville par /vi/precalcul, sans nouvelle recherche. */
+  if (secteur === 'hors-liste' && /^[a-z0-9-]{2,80}$/.test(c || '') && env.COUNTERS) {
+    res = JSON.parse((await env.COUNTERS.get(`vip:cache3:${metier}:${c}:${fr ? 'fr' : 'en'}:${lieuCle}`)) || 'null');
+    if (res) return { res };
+  }
   const gabarits = QUESTIONS_IA[metier][fr ? 'fr' : 'en'].slice(0, 3);
   const cleAppels = `vip:recherches:${jour}`;
   const deja = env.COUNTERS ? parseInt((await env.COUNTERS.get(cleAppels)) || '0', 10) : 0;
@@ -274,7 +283,7 @@ export async function handlePresence(request, env, url, h) {
   const jour = new Date().toISOString().slice(0, 10);
   const ip = request.headers.get('cf-connecting-ip') || 'x';
   if ((await bumpCounter(env, `vip:ip:${ip}:${jour}`, 2 * 86400)) > 3) return json({ ok: false, erreur: 'limite' }, 429);
-  const o = await obtenirPresence(env, metier, secteur, lieu, fr);
+  const o = await obtenirPresence(env, metier, secteur, lieu, fr, url.searchParams.get('c') || '');
   if (o.erreur) return json({ ok: false, erreur: o.erreur, ...(o.detail ? { detail: o.detail } : {}) }, o.statut);
   await bumpCounter(env, `vip:diag:${MOIS_RECH()}`, 400 * 86400);
   await compterSrc(env, bumpCounter, srcDe(url.searchParams.get('src')), 'tests');
@@ -312,13 +321,25 @@ async function courrielSuivi(env, h, a, res, premier) {
   const verdict = !a.nom ? (fr ? 'Voici qui Gemini (Google) recommande à vos clients' : 'Here is who Gemini (Google) recommends to your clients')
     : nomme ? (fr ? 'Gemini (Google) vous nomme.' : 'Gemini (Google) names you.') : (fr ? 'Gemini (Google) ne vous nomme pas.' : 'Gemini (Google) does not name you.');
   const couleur = a.nom && !nomme ? '#c8102e' : a.nom && nomme ? '#1f7a5a' : '#211c1e';
-  const sujet = fr ? `${premier ? 'Votre test' : 'Votre test du mois'} : qui l'IA recommande comme ${metier} à ${a.lieu}` : `${premier ? 'Your test' : 'Your monthly test'}: who AI recommends as ${metier} in ${a.lieu}`;
+  const sujet = premier
+    ? (fr ? `Vos 3 actions pour que l'IA vous nomme à ${a.lieu}` : `Your 3 steps to get named by AI in ${a.lieu}`)
+    : (fr ? `Votre test du mois : qui l'IA recommande comme ${metier} à ${a.lieu}` : `Your monthly test: who AI recommends as ${metier} in ${a.lieu}`);
+  /* Les 3 actions (6 oct. 2026) : ce que le visiteur a demandé en laissant son courriel. Des gestes
+     concrets, sans promesse de résultat ; la 1re est Payotte, les deux autres valent sans nous. */
+  const lienNom = `${PAGE[fr ? 'fr' : 'en']}?m=${encodeURIComponent(a.metier)}&v=${encodeURIComponent(a.lieu)}#inscription`;
+  const lienSite = fr ? 'https://payotte.com/outil-ia-site-immobilier' : 'https://payotte.com/en/ai-tool-real-estate-website';
+  const action = (n, titre, texte) => `<tr><td valign="top" style="padding:8px 10px 8px 0;font-family:Georgia,serif;font-size:22px;color:#c8102e;">${n}</td><td style="padding:8px 0;font-size:14px;line-height:1.5;color:#443e40;"><b style="color:#211c1e;">${titre}</b><br>${texte}</td></tr>`;
+  const actions = !premier ? '' : `<tr><td style="padding:16px 24px 0;"><div style="font-size:16px;font-weight:bold;color:#211c1e;margin-bottom:4px;">${fr ? `Vos 3 actions pour que l'IA vous nomme à ${escH(a.lieu)}` : `Your 3 steps to get named by AI in ${escH(a.lieu)}`}</div><table role="presentation" cellpadding="0" cellspacing="0" border="0">`
+    + action('1', fr ? 'Soyez dans une source que les IA citent.' : 'Be in a source AI tools cite.', fr ? `Copilot cite Payotte 250 à 325 fois par jour. Une fiche vérifiée à votre nom vous y place : <a href="${lienNom}" style="color:#c8102e;">proposez votre nom</a>.` : `Copilot cites Payotte 250 to 325 times a day. A verified profile in your name puts you there: <a href="${lienNom}" style="color:#c8102e;">put your name forward</a>.`)
+    + action('2', fr ? 'Écrivez en clair, sur votre site, ce qu’une IA vérifie.' : 'Spell out on your website what AI checks.', fr ? `Votre permis et son numéro, vos années de pratique, les secteurs que vous servez : en texte, pas dans une image. <a href="${lienSite}" style="color:#c8102e;">Voyez ce qu’une IA lit de votre site</a>.` : `Your licence and its number, your years of practice, the areas you serve: as text, not in an image. <a href="${lienSite}" style="color:#c8102e;">See what AI reads from your site</a>.`)
+    + action('3', fr ? 'Demandez des avis qui nomment votre métier et votre secteur.' : 'Ask for reviews that name your profession and area.', fr ? `« Notre ${escH(metier)} à ${escH(a.lieu)}… » : ces mentions aident les IA à relier votre nom à un lieu.` : `“Our ${escH(metier)} in ${escH(a.lieu)}…”: these mentions help AI tools connect your name to a place.`)
+    + `</table></td></tr>`;
   const html = `<div style="background:#f5f3f2;padding:20px 10px;font-family:Arial,Helvetica,sans-serif;"><table role="presentation" width="520" cellpadding="0" cellspacing="0" border="0" align="center" style="max-width:520px;width:100%;background:#fff;border:1px solid #eae5e5;border-radius:8px;">
 <tr><td style="padding:18px 24px 6px;font-size:13px;color:#8a8284;">Payotte · ${fr ? 'Visibilité IA' : 'AI visibility'} · ${res.date}</td></tr>
 <tr><td style="padding:6px 24px 0;"><div style="font-size:22px;font-weight:bold;color:${couleur};">${verdict}</div>
 <div style="font-size:14px;line-height:1.5;color:#443e40;margin-top:6px;">${fr ? `Quand un client lui demande qui consulter comme ${escH(metier)} à ${escH(a.lieu)}, il recommande :` : `When a client asks it who to see as a ${escH(metier)} in ${escH(a.lieu)}, it recommends:`}</div>
 <ol style="font-size:15px;font-weight:bold;color:#211c1e;line-height:1.6;margin:8px 0 0;padding-left:22px;">${noms.map((n) => `<li>${escH(n)}</li>`).join('') || `<li>${fr ? 'aucun nom précis' : 'no specific name'}</li>`}</ol></td></tr>
-<tr><td style="padding:16px 24px 0;"><div style="background:#eef7f2;border-radius:8px;padding:12px 14px;font-size:14px;line-height:1.5;color:#1f3d31;"><b>${fr ? 'Faites entrer votre nom dans leurs réponses' : 'Get your name into their answers'}</b><br>${fr ? 'Votre fiche Payotte vous ajoute à une source que Copilot cite déjà des centaines de fois par jour, et que les autres IA lisent.' : 'Your Payotte profile adds you to a source Copilot already cites hundreds of times a day, and that other AI tools read.'}<br><a href="${PAGE[fr ? 'fr' : 'en']}#nom" style="display:inline-block;margin-top:10px;background:#c8102e;color:#fff;text-decoration:none;font-weight:bold;padding:9px 16px;border-radius:9px;">${fr ? 'Soumettre mon nom' : 'Submit my name'} &rarr;</a></div></td></tr>
+${actions}<tr><td style="padding:16px 24px 0;"><div style="background:#eef7f2;border-radius:8px;padding:12px 14px;font-size:14px;line-height:1.5;color:#1f3d31;"><b>${fr ? 'Faites entrer votre nom dans leurs réponses' : 'Get your name into their answers'}</b><br>${fr ? 'Votre fiche Payotte vous ajoute à une source que Copilot cite déjà des centaines de fois par jour, et que les autres IA lisent.' : 'Your Payotte profile adds you to a source Copilot already cites hundreds of times a day, and that other AI tools read.'}<br><a href="${lienNom}" style="display:inline-block;margin-top:10px;background:#c8102e;color:#fff;text-decoration:none;font-weight:bold;padding:9px 16px;border-radius:9px;">${fr ? 'Soumettre mon nom' : 'Submit my name'} &rarr;</a></div></td></tr>
 <tr><td style="padding:14px 24px 18px;font-size:11px;line-height:1.6;color:#a49c9e;">${fr ? 'Réponse de Gemini (Google), avec recherche Google. Les réponses des IA varient : c’est une estimation.' : 'Gemini (Google) answer, with Google Search. AI answers vary: this is an estimate.'}<br>${fr ? 'Vous recevez ce test une fois par mois parce que vous l’avez demandé sur payotte.com.' : 'You receive this test once a month because you asked for it on payotte.com.'} <a href="${desab}" style="color:#8a8284;">${fr ? 'Ne plus recevoir' : 'Unsubscribe'}</a>${adresse ? `<br>${escH(adresse)}` : ''}</td></tr></table></div>`;
   const r = await fetch('https://api.resend.com/emails', {
     method: 'POST', headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
@@ -353,7 +374,7 @@ export async function handleSuivi(request, env, h) {
   // Si le test est indisponible (quota du jour atteint), le premier envoi part au cron dans ~6 h.
   let envoye = false;
   if (env.RESEND_API_KEY) {
-    const o = await obtenirPresence(env, metier, secteur, lieu, fr);
+    const o = await obtenirPresence(env, metier, secteur, lieu, fr, String(b.c || ''));
     if (o.res) envoye = await courrielSuivi(env, h, a, o.res, true);
   }
   await env.COUNTERS.put(cle, JSON.stringify(a), { metadata: { p: Date.now() + (envoye ? 30 * 86400000 : 6 * 3600000) } });
