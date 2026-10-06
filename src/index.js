@@ -2423,7 +2423,10 @@ function renderTexte({ lieu, citySlug = null, provSlug = null, metier, nom = '',
   const fr = lang !== 'en';
   const met = TEXTE_METIER[metier] ? metier : 'real-estate-broker';
   const M = TEXTE_METIER[met][fr ? 'fr' : 'en'];
-  const subject = fr ? `Qui ChatGPT recommande comme ${M[0]} à ${lieu} ?` : `Who does ChatGPT recommend as ${M[0]} in ${lieu}?`;
+  // Le test « présentation » est un explicatif : son objet le dit (Grégory, 6 oct. 2026).
+  const subject = MODE_PRESENTATION
+    ? (fr ? `Comment être sur ChatGPT comme ${M[0]} à ${lieu} ?` : `How to be on ChatGPT as ${M[0]} in ${lieu}?`)
+    : (fr ? `Qui ChatGPT recommande comme ${M[0]} à ${lieu} ?` : `Who does ChatGPT recommend as ${M[0]} in ${lieu}?`);
   const nomOk = /^[A-ZÀ-Ý][\p{L}'’-]+( [A-ZÀ-Ý][\p{L}'’-]+){1,2}$/u.test(String(nom || '').trim()) ? String(nom).trim() : '';
   const prenom = nomOk ? nomOk.split(' ')[0] : '';
   const metUn = fr ? M[0] : M[2];
