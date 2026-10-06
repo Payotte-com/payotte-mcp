@@ -2461,12 +2461,12 @@ function renderTexte({ lieu, citySlug = null, provSlug = null, metier, nom = '',
     P(fr ? `Chaque secteur n’a qu’un seul ${metUn} recommandé, choisi sur une grille publique de 100 points. Nous ouvrons de nouveaux secteurs à ${echapper(lieu)} en ce moment.`
          : `Each area has one recommended ${metUn} only, chosen on a public 100-point grid. We are opening new areas in ${echapper(lieu)} right now.`);
   }
-  const lien = `${SITE}/${fr ? 'test-ia' : 'ai-test'}?m=${met}&v=${encodeURIComponent(lieu)}&src=${SRC_TEXTE}`;
-  paras.push([`<p style="margin:0 0 12px 0;">${fr ? 'Voyez qui l’IA recommande dans votre secteur (gratuit, 30 secondes)' : 'See who AI recommends in your area (free, 30 seconds)'} : <a href="${lien}" style="color:#1a56c4;">payotte.com/${fr ? 'test-ia' : 'ai-test'}</a></p>`,
+  const lien = `${SITE}/${fr ? 'test-ia' : 'en/ai-test'}?m=${met}&v=${encodeURIComponent(lieu)}&src=${SRC_TEXTE}`;
+  paras.push([`<p style="margin:0 0 12px 0;">${fr ? 'Voyez qui l’IA recommande dans votre secteur (gratuit, 30 secondes)' : 'See who AI recommends in your area (free, 30 seconds)'} : <a href="${lien}" style="color:#1a56c4;">payotte.com/${fr ? 'test-ia' : 'en/ai-test'}</a></p>`,
     `${fr ? 'Voyez qui l’IA recommande dans votre secteur (gratuit, 30 secondes)' : 'See who AI recommends in your area (free, 30 seconds)'} : ${lien}`]);
   P(fr ? 'Bonne journée,<br>Grégory Payotte' : 'Have a good day,<br>Grégory Payotte');
   // Désabonnement affiché par payotte.com (relais vers le worker) ; l'en-tête List-Unsubscribe garde l'adresse du worker (POST un clic).
-  const desab = String(unsubUrl).replace(/^https?:\/\/[^/]+\/unsubscribe/, `${SITE}/${fr ? 'desabonnement' : 'unsubscribe'}`);
+  const desab = String(unsubUrl).replace(/^https?:\/\/[^/]+\/unsubscribe/, `${SITE}/${fr ? 'desabonnement' : 'en/unsubscribe'}`);
   const post = String(postale || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
   const legal = `<div style="margin-top:6px;font-size:12.5px;line-height:1.6;color:#5f6368;">Payotte.com${post ? ` &middot; ${echapper(post)}` : ''}<br>${fr ? 'Vous ne souhaitez plus recevoir nos messages ?' : 'Don’t want to hear from us?'} <a href="${desab}" style="color:#80868b;">${fr ? 'Se désabonner' : 'Unsubscribe'}</a></div>`;
   const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;color:#222222;max-width:600px;">${paras.map((p) => p[0]).join('')}${legal}</div>`;
