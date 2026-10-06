@@ -4152,9 +4152,11 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
      `AAAA-MM-JJ:QC,ON` ; le lendemain la variable est inerte et le filtre par fuseau
      reprend tout seul. Rien à retirer à la main, rien à oublier. */
   // PROVINCES_APRES (6 oct. 2026) : « AAAA-MM-JJ|HH:PROV,PROV » — à partir de HH h UTC, remplace PROVINCES_DU_JOUR.
+  // Plusieurs paliers : « AAAA-MM-JJ|13:QC,ON;16:QC,ON,AB,BC » — le dernier palier atteint gagne.
   const apres = String(env.PROVINCES_APRES || '');
-  const apresOk = apres.slice(0, 10) === dayKey && apres[10] === '|' && at.getUTCHours() >= Number(apres.slice(11).split(':')[0]);
-  const forcage = apresOk ? `${dayKey}:${apres.slice(11).split(':')[1] || ''}` : String(env.PROVINCES_DU_JOUR || '');
+  const palier = apres.slice(0, 10) === dayKey && apres[10] === '|'
+    ? apres.slice(11).split(';').map((x) => x.split(':')).filter(([h]) => at.getUTCHours() >= Number(h)).pop() : null;
+  const forcage = palier ? `${dayKey}:${palier[1] || ''}` : String(env.PROVINCES_DU_JOUR || '');
   const forcees = forcage.slice(0, 10) === dayKey && forcage.includes(':')
     ? new Set(forcage.slice(11).split(',').map((x) => x.trim().toUpperCase()).filter(Boolean))
     : null;
