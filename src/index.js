@@ -20,7 +20,7 @@
  * Licence des données : CC BY 4.0 — chaque réponse porte l'attribution.
  */
 
-import { handleInscription, handlePresence, handleSuivi, handleDesabonnement, handleStats, handleVisite, handlePrecalcul, passerSuivi } from './visibiliteIa.js';
+import { handleInscription, handlePresence, handleSuivi, handleDesabonnement, handleStats, handleVisite, handlePrecalcul, handleCompte, passerSuivi } from './visibiliteIa.js';
 import { handleDossierRevision } from './dossierRevision.js';
 import { efAdresse, efMunis, efFilet, efFiletMunis } from './efAdresse.js';
 import RISQUES_EPOQUE from './data/risques-par-epoque.json';
@@ -2468,7 +2468,7 @@ function renderTexte({ lieu, citySlug = null, provSlug = null, metier, nom = '',
   }
   if (MODE_PRESENTATION) {
     // Seule différence avec le texte : le lien. Une vignette de la 1re diapositive, cliquable, et le même lien en texte.
-    const lienP = `${SITE}/${fr ? 'presentation' : 'en/presentation'}?m=${met}&v=${encodeURIComponent(lieu)}&src=${SRC_PRESENTATION}`;
+    const lienP = `${SITE}/${fr ? 'presentation' : 'en/presentation'}?m=${met}&v=${encodeURIComponent(lieu)}${citySlug ? `&c=${citySlug}` : ''}&src=${SRC_PRESENTATION}`;
     const img = `${SITE}/presentation/vignette-${fr ? 'fr' : 'en'}.jpg`;
     paras.push([`<p style="margin:0 0 8px 0;">${fr ? 'J’ai résumé tout ça en 10 diapos, 90 secondes :' : 'I summed it all up in 10 slides, 90 seconds:'}</p><p style="margin:0 0 12px 0;"><a href="${lienP}"><img src="${img}" width="480" alt="${fr ? 'Voir la présentation Payotte (90 secondes)' : 'View the Payotte presentation (90 seconds)'}" style="display:block;width:100%;max-width:480px;height:auto;border:0;border-radius:6px;"></a><a href="${lienP}" style="color:#1a56c4;">${fr ? '▶ Voir la présentation' : '▶ View the presentation'}</a></p>`,
       `${fr ? 'J’ai résumé tout ça en 10 diapos, 90 secondes' : 'I summed it all up in 10 slides, 90 seconds'}${fr ? ' :' : ':'} ${lienP}`]);
@@ -6690,6 +6690,7 @@ const WORKER_MAIN = {
     if ((request.method === 'GET' || request.method === 'POST') && url.pathname === '/vi/desabonnement') return handleDesabonnement(url, env, { hmacHex });
     if (request.method === 'GET' && url.pathname === '/vi/stats') return handleStats(url, env, { json });
     if (request.method === 'GET' && url.pathname === '/vi/visite') return handleVisite(request, env, url, { bumpCounter });
+    if (request.method === 'GET' && url.pathname === '/vi/compte') return handleCompte(url, env);
     if (request.method === 'GET' && url.pathname === '/vi/precalcul') return handlePrecalcul(request, env, url, { json });
     // Modèle du courriel mensuel « Test IA », envoyé à GRÉGORY SEUL (REPORT_TO, codé en dur) pour voir le
     // vrai rendu dans Gmail : un brouillon ne le montre pas, la fenêtre de rédaction retire styles et images.

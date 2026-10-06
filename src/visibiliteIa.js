@@ -250,6 +250,18 @@ export async function handlePrecalcul(request, env, url, h) {
   return h.json({ ok: true, cle: `${ville}:${metier}:${fr ? 'fr' : 'en'}`, n: vus.size, date: o.res.date });
 }
 
+/* GET /vi/compte?c={ville}&m={métier}&l=fr|en (6 oct. 2026) : le NOMBRE de noms que Gemini a cités
+ * pour cette ville et ce métier, lu dans `vi:compte-ia`. Jamais les noms. Sert à la présentation. */
+export async function handleCompte(url, env) {
+  const c = url.searchParams.get('c') || '', m = url.searchParams.get('m') || '', l = url.searchParams.get('l') === 'en' ? 'en' : 'fr';
+  let n = null;
+  if (/^[a-z0-9-]{2,80}$/.test(c) && QUESTIONS_IA[m] && env.COUNTERS) {
+    const carte = JSON.parse((await env.COUNTERS.get('vi:compte-ia')) || '{}');
+    n = carte[`${c}:${m}:${l}`]?.n ?? carte[`${c}:${m}:${l === 'fr' ? 'en' : 'fr'}`]?.n ?? null;
+  }
+  return new Response(JSON.stringify({ n }), { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=3600' } });
+}
+
 export async function handlePresence(request, env, url, h) {
   const { json, bumpCounter } = h;
   const fr = url.searchParams.get('lang') !== 'en';
