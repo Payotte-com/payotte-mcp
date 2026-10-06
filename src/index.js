@@ -2462,8 +2462,8 @@ function renderTexte({ lieu, citySlug = null, provSlug = null, metier, nom = '',
          : `Each area has one recommended ${metUn} only, chosen on a public 100-point grid. We are opening new areas in ${echapper(lieu)} right now.`);
   }
   const lien = `${SITE}/${fr ? 'test-ia' : 'en/ai-test'}?m=${met}&v=${encodeURIComponent(lieu)}&src=${SRC_TEXTE}`;
-  paras.push([`<p style="margin:0 0 12px 0;">${fr ? 'Voyez qui l’IA recommande dans votre secteur (gratuit, 30 secondes)' : 'See who AI recommends in your area (free, 30 seconds)'} : <a href="${lien}" style="color:#1a56c4;">payotte.com/${fr ? 'test-ia' : 'en/ai-test'}</a></p>`,
-    `${fr ? 'Voyez qui l’IA recommande dans votre secteur (gratuit, 30 secondes)' : 'See who AI recommends in your area (free, 30 seconds)'} : ${lien}`]);
+  paras.push([`<p style="margin:0 0 12px 0;">${fr ? 'Voyez qui l’IA recommande dans votre secteur (gratuit, 30 secondes)' : 'See who AI recommends in your area (free, 30 seconds)'}${fr ? ' :' : ':'} <a href="${lien}" style="color:#1a56c4;">payotte.com/${fr ? 'test-ia' : 'en/ai-test'}</a></p>`,
+    `${fr ? 'Voyez qui l’IA recommande dans votre secteur (gratuit, 30 secondes)' : 'See who AI recommends in your area (free, 30 seconds)'}${fr ? ' :' : ':'} ${lien}`]);
   P(fr ? 'Bonne journée,<br>Grégory Payotte' : 'Have a good day,<br>Grégory Payotte');
   // Désabonnement affiché par payotte.com (relais vers le worker) ; l'en-tête List-Unsubscribe garde l'adresse du worker (POST un clic).
   const desab = String(unsubUrl).replace(/^https?:\/\/[^/]+\/unsubscribe/, `${SITE}/${fr ? 'desabonnement' : 'en/unsubscribe'}`);
