@@ -39,7 +39,9 @@ export async function handleVisite(request, env, url, h) {
   const src = srcDe(url.searchParams.get('src'));
   if (src && env.COUNTERS) {
     const ip = request.headers.get('cf-connecting-ip') || 'x';
-    if ((await h.bumpCounter(env, `vip:vu:${src}:${ip}:${new Date().toISOString().slice(0, 10)}`, 2 * 86400)) === 1) await compterSrc(env, h.bumpCounter, src, 'visites');
+    // `etape=fin` (présentation lue jusqu'à la dernière diapositive, 6 oct. 2026) : compté à part, une fois par IP et par jour.
+    const etape = url.searchParams.get('etape') === 'fin' ? 'fin' : '';
+    if ((await h.bumpCounter(env, `vip:vu:${src}${etape ? ':' + etape : ''}:${ip}:${new Date().toISOString().slice(0, 10)}`, 2 * 86400)) === 1) await compterSrc(env, h.bumpCounter, src, etape ? 'presentation-lue' : 'visites');
   }
   return new Response(null, { status: 204, headers: { 'Access-Control-Allow-Origin': '*' } });
 }

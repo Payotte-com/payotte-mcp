@@ -2400,6 +2400,8 @@ function renderTestIA({ segment, stage, city, expert, lang, unsubUrl, postale = 
  * seulement ; les experts gardent le gabarit v2. S'active à l'heure de `GABARIT_TEXTE_DES`.
  * Grégory a voulu « le premier répertoire » : c'est son affirmation, gardée telle quelle. */
 let MODE_TEXTE = false;
+let MODE_PRESENTATION = false;   // 6 oct. 2026 : le lien du courriel texte devient la vignette de la présentation (/presentation)
+const SRC_PRESENTATION = 'courriel-presentation';
 let SECTEURS_VILLES = {};   // `secteurs` de /api/villes-couvertes.json, posé avant la boucle prospects
 const SRC_TEXTE = 'courriel-texte';
 const TEXTE_METIER = {
@@ -2461,9 +2463,17 @@ function renderTexte({ lieu, citySlug = null, provSlug = null, metier, nom = '',
     P(fr ? `Chaque secteur n’a qu’un seul ${metUn} recommandé, choisi sur une grille publique de 100 points. Nous ouvrons de nouveaux secteurs à ${echapper(lieu)} en ce moment.`
          : `Each area has one recommended ${metUn} only, chosen on a public 100-point grid. We are opening new areas in ${echapper(lieu)} right now.`);
   }
-  const lien = `${SITE}/${fr ? 'test-ia' : 'en/ai-test'}?m=${met}&v=${encodeURIComponent(lieu)}&src=${SRC_TEXTE}`;
-  paras.push([`<p style="margin:0 0 12px 0;">${fr ? 'Voyez qui l’IA recommande dans votre secteur (gratuit, 30 secondes)' : 'See who AI recommends in your area (free, 30 seconds)'}${fr ? ' :' : ':'} <a href="${lien}" style="color:#1a56c4;">payotte.com/${fr ? 'test-ia' : 'en/ai-test'}</a></p>`,
-    `${fr ? 'Voyez qui l’IA recommande dans votre secteur (gratuit, 30 secondes)' : 'See who AI recommends in your area (free, 30 seconds)'}${fr ? ' :' : ':'} ${lien}`]);
+  if (MODE_PRESENTATION) {
+    // Seule différence avec le texte : le lien. Une vignette de la 1re diapositive, cliquable, et le même lien en texte.
+    const lienP = `${SITE}/${fr ? 'presentation' : 'en/presentation'}?m=${met}&v=${encodeURIComponent(lieu)}&src=${SRC_PRESENTATION}`;
+    const img = `${SITE}/presentation/vignette-${fr ? 'fr' : 'en'}.jpg`;
+    paras.push([`<p style="margin:0 0 8px 0;">${fr ? 'J’ai résumé tout ça en 9 diapos, 90 secondes :' : 'I summed it all up in 9 slides, 90 seconds:'}</p><p style="margin:0 0 12px 0;"><a href="${lienP}"><img src="${img}" width="480" alt="${fr ? 'Voir la présentation Payotte (90 secondes)' : 'View the Payotte presentation (90 seconds)'}" style="display:block;width:100%;max-width:480px;height:auto;border:0;border-radius:6px;"></a><a href="${lienP}" style="color:#1a56c4;">${fr ? '▶ Voir la présentation' : '▶ View the presentation'}</a></p>`,
+      `${fr ? 'J’ai résumé tout ça en 9 diapos, 90 secondes' : 'I summed it all up in 9 slides, 90 seconds'}${fr ? ' :' : ':'} ${lienP}`]);
+  } else {
+    const lien = `${SITE}/${fr ? 'test-ia' : 'en/ai-test'}?m=${met}&v=${encodeURIComponent(lieu)}&src=${SRC_TEXTE}`;
+    paras.push([`<p style="margin:0 0 12px 0;">${fr ? 'Voyez qui l’IA recommande dans votre secteur (gratuit, 30 secondes)' : 'See who AI recommends in your area (free, 30 seconds)'}${fr ? ' :' : ':'} <a href="${lien}" style="color:#1a56c4;">payotte.com/${fr ? 'test-ia' : 'en/ai-test'}</a></p>`,
+      `${fr ? 'Voyez qui l’IA recommande dans votre secteur (gratuit, 30 secondes)' : 'See who AI recommends in your area (free, 30 seconds)'}${fr ? ' :' : ':'} ${lien}`]);
+  }
   P(fr ? 'Bonne journée,<br>Grégory Payotte' : 'Have a good day,<br>Grégory Payotte');
   // Désabonnement affiché par payotte.com (relais vers le worker) ; l'en-tête List-Unsubscribe garde l'adresse du worker (POST un clic).
   const desab = String(unsubUrl).replace(/^https?:\/\/[^/]+\/unsubscribe/, `${SITE}/${fr ? 'desabonnement' : 'en/unsubscribe'}`);
@@ -4121,6 +4131,7 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
   MOIS_MIN_POULS = moisMin;
   // Gabarit texte simple pour les prospects à partir de `GABARIT_TEXTE_DES` (« AAAA-MM-JJTHH », heure UTC).
   MODE_TEXTE = !!env.GABARIT_TEXTE_DES && at.toISOString().slice(0, 13) >= String(env.GABARIT_TEXTE_DES);
+  MODE_PRESENTATION = !!env.PRESENTATION_DES && at.toISOString().slice(0, 13) >= String(env.PRESENTATION_DES);
   await chargerCompteIA(env);
   const allActive = (market.cities || []).filter((c) => hasMarketStats(c) || GABARIT_IA);
   // Le filtre par fuseau s'applique ICI, sur les villes : tout le reste (prospects comme
@@ -6276,6 +6287,7 @@ const WORKER_MAIN = {
       const market = await feed('/api/market.json').catch(() => ({ cities: [] }));
       // Gabarit texte simple : ?texte=1&city=montreal&metier=real-estate-broker&nom=Sophie%20Martin
       if (q.get('texte')) {
+        MODE_PRESENTATION = q.get('presentation') === '1';
         try { const vc = await feed('/api/villes-couvertes.json'); SECTEURS_VILLES = vc?.secteurs || {}; } catch { SECTEURS_VILLES = {}; }
         const cz = (market.cities || []).find((c) => c.slug === q.get('city'));
         const v = renderTexte({ lieu: cz ? nomVilleBulletin(cz, lang !== 'en') : (q.get('ville') || 'Okotoks'), citySlug: cz?.slug ?? null, provSlug: cz ? CODE_TO_PROVSLUG[cz.province] : (q.get('prov') || null), metier: q.get('metier') || 'real-estate-broker', nom: q.get('nom') || '', lang, unsubUrl: '#preview' });

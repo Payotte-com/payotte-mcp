@@ -162,10 +162,12 @@ REPLY_TO_OUTREACH = "gregory@payotte.com"
 #     AB et C.-B. jusqu'à 21 h 30 UTC (17 h 30 à Montréal ; 15 h 30 AB, 14 h 30 C.-B.).
 MAX_PAR_DOMAINE_DU_JOUR = "2026-09-30:50"
 EXPERTS_SHARE_DU_JOUR = "2026-09-30:0"
-PLAFOND_DU_JOUR = "2026-10-06:9000"
+PLAFOND_DU_JOUR = "2026-10-06:8100"
 PLAFOND_MATIN_DU_JOUR = "2026-10-06:3000:13"
-PROVINCES_APRES = "2026-10-06|13:QC,ON,MB,NL;15:QC,ON,MB,NL,SK,AB;16:QC,ON,MB,NL,SK,AB,BC"
+PROVINCES_APRES = "2026-10-06|13:QC,ON,MB,NL;15:QC,ON,MB,NL,SK,AB;16:AB,BC"
 GABARIT_TEXTE_DES = "2026-10-06T13"
+# Test « vignette de la présentation » : AB + C.-B., ~1 500 envois (8 100 - 6 600 déjà partis).
+PRESENTATION_DES = "2026-10-06T16"
 # Recherches Gemini par jour (précalcul du courriel texte) : 160 par défaut, relevé le 6 oct. 2026.
 VIP_PLAFOND_JOUR = "400"
 SEUIL_PLAINTES_DU_JOUR = "2026-10-06:0.0007"
