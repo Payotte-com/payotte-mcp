@@ -204,7 +204,7 @@ const MOIS_RECH = () => new Date().toISOString().slice(0, 7);
 
 /** Résultat de présence pour métier × secteur × lieu × langue : cache 7 j, sinon 3 questions à Gemini.
  *  Retourne { res } ou { erreur, statut }. Le plafond est compté en RECHERCHES (160/jour). */
-export async function obtenirPresence(env, metier, secteur, lieu, fr, c = '') {
+export async function obtenirPresence(env, metier, secteur, lieu, fr, c = '', avantRecherche = null) {
   const f = FOURNISSEURS.gemini;
   if (!env[f.cle]) return { erreur: 'non-configure', statut: 503 };
   const jour = new Date().toISOString().slice(0, 10);
@@ -218,6 +218,7 @@ export async function obtenirPresence(env, metier, secteur, lieu, fr, c = '') {
     res = JSON.parse((await env.COUNTERS.get(`vip:cache3:${metier}:${c}:${fr ? 'fr' : 'en'}:${lieuCle}`)) || 'null');
     if (res) return { res };
   }
+  if (avantRecherche && !(await avantRecherche())) return { erreur: 'limite', statut: 429 };
   const gabarits = QUESTIONS_IA[metier][fr ? 'fr' : 'en'].slice(0, 3);
   const cleAppels = `vip:recherches:${jour}`;
   const deja = env.COUNTERS ? parseInt((await env.COUNTERS.get(cleAppels)) || '0', 10) : 0;
@@ -294,8 +295,12 @@ export async function handlePresence(request, env, url, h) {
   if (!env[FOURNISSEURS.gemini.cle]) return json({ ok: false, erreur: 'non-configure' }, 503);
   const jour = new Date().toISOString().slice(0, 10);
   const ip = request.headers.get('cf-connecting-ip') || 'x';
-  if ((await bumpCounter(env, `vip:ip:${ip}:${jour}`, 2 * 86400)) > 3) return json({ ok: false, erreur: 'limite' }, 429);
-  const o = await obtenirPresence(env, metier, secteur, lieu, fr, url.searchParams.get('c') || '');
+  /* 7 oct. 2026 : la limite de 3 par IP et par jour ne vaut que pour une NOUVELLE recherche Gemini. Un résultat
+     déjà en cache ne coûte rien ; le compter bloquait les connexions partagées (un bureau de courtage) et le
+     résultat affiché sans clic à l'arrivée d'un courriel. */
+  const avantRecherche = async () => (await bumpCounter(env, `vip:ip:${ip}:${jour}`, 2 * 86400)) <= 3;
+  const o = await obtenirPresence(env, metier, secteur, lieu, fr, url.searchParams.get('c') || '', avantRecherche);
+  if (o.erreur === 'limite') return json({ ok: false, erreur: 'limite' }, 429);
   if (o.erreur) return json({ ok: false, erreur: o.erreur, ...(o.detail ? { detail: o.detail } : {}) }, o.statut);
   await bumpCounter(env, `vip:diag:${MOIS_RECH()}`, 400 * 86400);
   // `auto=1` (7 oct. 2026) : résultat affiché sans clic à l'arrivée d'un courriel ; compté à part pour garder « tests » = clics.
