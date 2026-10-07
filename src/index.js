@@ -6911,6 +6911,8 @@ const WORKER_MAIN = {
       if (!env.PRECALC_TOKEN || url.searchParams.get('t') !== env.PRECALC_TOKEN) return json({ error: 'forbidden' }, 403);
       const cle = env.RESEND_LECTURE_KEY || env.RESEND_API_KEY;
       const depuis = url.searchParams.get('depuis') || '2026-10-05';
+      // `avant=AAAA-MM-JJTHH:MM` (UTC, 7 oct. 2026) : écarte les envois trop récents pour être jugés.
+      const avant = String(url.searchParams.get('avant') || '').replace('T', ' ').slice(0, 16);
       const classer = (sub) => {
         if (/^(Pourquoi l’IA ne vous recommande|Why doesn’t AI recommend you)/.test(sub)) return '5 · top5 raisons';
         if (/(plateforme immobilière IA|AI real estate platform)/.test(sub)) return '6 · top5 plateforme';
@@ -6933,6 +6935,7 @@ const WORKER_MAIN = {
         const lignes = Array.isArray(j?.data) ? j.data : [];
         for (const m of lignes) {
           if (String(m.created_at || '').slice(0, 10) < depuis) { fini = true; continue; }
+          if (avant && String(m.created_at || '').replace('T', ' ').slice(0, 16) >= avant) continue;
           const c = classer(String(m.subject || ''));
           const e = (par[c] ??= { envoyes: 0, evenements: {} });
           e.envoyes++; const ev = m.last_event || 'inconnu'; e.evenements[ev] = (e.evenements[ev] || 0) + 1;
@@ -6940,7 +6943,7 @@ const WORKER_MAIN = {
         if (!j?.has_more || !lignes.length) fini = true; else apres = lignes[lignes.length - 1].id;
         await new Promise((ok) => setTimeout(ok, 520));
       }
-      return json({ depuis, pages, par });
+      return json({ depuis, avant: avant || null, pages, par });
     }
     if (request.method === 'GET' && url.pathname === '/vi/precalcul') return handlePrecalcul(request, env, url, { json });
     // Modèle du courriel mensuel « Test IA », envoyé à GRÉGORY SEUL (REPORT_TO, codé en dur) pour voir le
