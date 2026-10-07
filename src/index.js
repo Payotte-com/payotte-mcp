@@ -4310,6 +4310,21 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
   MODE_TOP5 = !!env.TOP5_DES && at.toISOString().slice(0, 13) >= String(env.TOP5_DES);
   TOP5_PAR = Math.max(1, Number(env.TOP5_PAR || 1500));
   let top5Compte = null, top5Bouge = false;
+  /* ENVOI ÉTALÉ (7 oct. 2026, demande de Grégory : « prépare l'envoi étalé pour le prochain ») :
+     « AAAA-MM-JJ|PROV,PROV|HH,HH,HH,HH|N|clé » — ce jour-là, la prospection ne part QU'aux heures UTC
+     listées, N envois par heure, aux provinces listées, avec le courriel Top 5 `clé`. Le même courriel et
+     le même volume à chaque heure : la seule différence est l'heure. Les liens portent `e=HH-PR`
+     (vip:envoi:*), d'où la comparaison des visites par heure d'envoi. Inerte tout autre jour. */
+  const ETALE = (() => {
+    const [d, pv, hh, n, k] = String(env.ETALE_DU_JOUR || '').split('|');
+    if (d !== dayKey || !TOP5_CLES.includes(k)) return null;
+    const heures = String(hh || '').split(',').map(Number).filter((x) => x >= 0 && x <= 23);
+    const provs = String(pv || '').split(',').map((x) => x.trim().toUpperCase()).filter(Boolean);
+    return heures.length && provs.length && Number(n) > 0 ? { heures, provs, par: Number(n), k } : null;
+  })();
+  const ETALE_H = String(at.getUTCHours()).padStart(2, '0');
+  let etaleCompte = 0, etaleBouge = false;
+  if (ETALE) { etaleCompte = Number((await env.COUNTERS?.get(`etale:${dayKey}:${ETALE_H}`)) || 0); report.etale = { ...ETALE, heure: ETALE_H, deja: etaleCompte }; }
   if (MODE_TOP5) { try { top5Compte = JSON.parse((await env.COUNTERS?.get('top5:envois')) || 'null'); } catch {} top5Compte ||= { total: 0 }; report.top5 = top5Compte; }
   await chargerCompteIA(env);
   const allActive = (market.cities || []).filter((c) => hasMarketStats(c) || GABARIT_IA);
@@ -4347,7 +4362,9 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
   const palier = apres.slice(0, 10) === dayKey && apres[10] === '|'
     ? apres.slice(11).split(';').map((x) => x.split(':')).filter(([h]) => at.getUTCHours() >= Number(h)).pop() : null;
   const forcage = palier ? `${dayKey}:${palier[1] || ''}` : String(env.PROVINCES_DU_JOUR || '');
-  const forcees = forcage.slice(0, 10) === dayKey && forcage.includes(':')
+  // Envoi étalé : ses provinces, et SEULEMENT pendant ses heures (ensemble vide le reste du jour).
+  const forcees = ETALE ? new Set(ETALE.heures.includes(at.getUTCHours()) ? ETALE.provs : [])
+    : forcage.slice(0, 10) === dayKey && forcage.includes(':')
     ? new Set(forcage.slice(11).split(',').map((x) => x.trim().toUpperCase()).filter(Boolean))
     : null;
   if (forcees && !dryRun) console.log(`[bulletin] forçage de provinces (${[...forcees].join(' ')}) pour ${dayKey} — règle des 10 h locales écartée pour aujourd'hui.`);
@@ -4801,8 +4818,10 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
       for (const { key, sep, city, id, rec, fluxRec, provSlug } of retenus) {
         if (!canSend('prospect')) { report.pending++; continue; }
         // Test Top 5 terminé (7 500 envois) : plus aucun prospect récolté tant que TOP5_DES est posé.
-        const top5K = MODE_TOP5 && fluxRec === 'outreach' ? top5Pour(top5Compte.total) : null;
-        if (MODE_TOP5 && fluxRec === 'outreach' && !top5K) { report.pending++; report.top5Fini = true; continue; }
+        // Envoi étalé : le quota de l'heure atteint, plus rien jusqu'à l'heure suivante.
+        if (ETALE && fluxRec === 'outreach' && etaleCompte >= ETALE.par) { report.pending++; report.etaleQuota = true; continue; }
+        const top5K = ETALE && fluxRec === 'outreach' ? ETALE.k : MODE_TOP5 && fluxRec === 'outreach' ? top5Pour(top5Compte.total) : null;
+        if (!ETALE && MODE_TOP5 && fluxRec === 'outreach' && !top5K) { report.pending++; report.top5Fini = true; continue; }
         if (fluxRec === 'outreach' && dejaOutreach + report.outreachEnvoyes >= rampeOutreach()) { report.pending++; continue; }
         // Garde-fou : si la valeur stockée ne concordait pas avec sa clé, l'identifiant
         // calculé plus haut serait faux et on risquerait un doublon. On revérifie sur
@@ -4829,7 +4848,8 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
             continue;
           }
           report.prospects++; report.recipients.push({ to: rec.email, kind: 'prospect', city: rec.city, variante: v.variante, zone: v.zone, prov: PROV_TO_CODE[provSlug]?.toUpperCase(), cat: 'sansSecteur' });
-          if (top5K) { top5Compte.total++; top5Compte[top5K] = (top5Compte[top5K] || 0) + 1; top5Bouge = true; }
+          if (top5K && ETALE) { etaleCompte++; etaleBouge = true; }
+          else if (top5K) { top5Compte.total++; top5Compte[top5K] = (top5Compte[top5K] || 0) + 1; top5Bouge = true; }
           report.provincial = report.provincial || { banlieue: 0, provincial: 0 };
           report.provincial[v.variante] = (report.provincial[v.variante] || 0) + 1;
           report.attempts++;
@@ -4849,7 +4869,8 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
           : renderPulse({ segment: 'prospect', city, lang: rec.lang, unsubUrl, macro, metier: rec.metier , postale,
           villeCouverte: couvertes ? couvertes.has(normVille(city.slug ?? key.slice(0, sep))) : null });
         report.prospects++; report.recipients.push({ to: rec.email, kind: 'prospect', city: rec.city, prov: city?.province, cat: 'secteur' });
-        if (top5K) { top5Compte.total++; top5Compte[top5K] = (top5Compte[top5K] || 0) + 1; top5Bouge = true; report.recipients[report.recipients.length - 1].top5 = top5K; }
+        if (top5K && ETALE) { etaleCompte++; etaleBouge = true; }
+        else if (top5K) { top5Compte.total++; top5Compte[top5K] = (top5Compte[top5K] || 0) + 1; top5Bouge = true; report.recipients[report.recipients.length - 1].top5 = top5K; }
         report.attempts++;
         done.add(idReel);                // servi pour ce cycle dès la mise en file
         // FLUX (2026-08-19) : `source: 'form-ville'` = l'abonné a rempli le formulaire du
@@ -4878,6 +4899,7 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
        ⚠ Jamais en dry-run : une simulation ne doit pas déplacer la position réelle du
        programme. C'est la même règle que partout ailleurs ici. */
     if (top5Bouge && !dryRun && env.COUNTERS) await env.COUNTERS.put('top5:envois', JSON.stringify(top5Compte)).catch(() => {});
+    if (etaleBouge && !dryRun && env.COUNTERS) await env.COUNTERS.put(`etale:${dayKey}:${ETALE_H}`, String(etaleCompte), { expirationTtl: 400 * 86400 }).catch(() => {});
     if (env.SUBSCRIBERS && !dryRun && curseurFin) {
       ctr.kv++;
       await env.SUBSCRIBERS.put(CLE_CURSEUR, curseurFin).catch(() => {});

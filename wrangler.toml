@@ -173,6 +173,17 @@ GABARIT_TEXTE_DES = "2026-10-06T13"
 # prospect récolté ne part tant que TOP5_DES est posé : le retirer pour revenir au gabarit texte.
 TOP5_DES = "2026-10-07T13"
 TOP5_PAR = "1500"
+# ── ENVOI ÉTALÉ (préparé le 7 oct. 2026, demande de Grégory) ─────────────────────────────
+# But : trouver la meilleure HEURE d'envoi. Même courriel, même volume, seule l'heure change.
+# Format : « AAAA-MM-JJ|PROVINCES|HEURES UTC|ENVOIS PAR HEURE|COURRIEL » ; vide = inactif.
+# Recommandé : QC et ON seulement (un seul fuseau, donc l'heure locale est la même pour tous),
+# 13,15,17,19 UTC = 9 h, 11 h, 13 h, 15 h à Montréal, 1 000 par heure, le Top 5 gagnant du 7 oct.
+# Exemple : ETALE_DU_JOUR = "2026-10-08|QC,ON|13,15,17,19|1000|questions"
+# Le même jour, régler aussi : PLAFOND_DU_JOUR = "AAAA-MM-JJ:4200", ajouter « AAAA-MM-JJ:4200 » à
+# OUTREACH_RAMPE, PART_PASSAGE_DU_JOUR = "AAAA-MM-JJ:300" (sinon une heure n'atteint pas ses 1 000),
+# DIX_MIN_DU_JOUR = "AAAA-MM-JJ:13,14,15,16,17,18,19". Hors des heures listées, aucun prospect ne part.
+# Lecture : vip:envoi:{src}:{HH}-{PR}:{jour} (visites par heure d'envoi) et etale:{jour}:{HH} (envois).
+ETALE_DU_JOUR = ""
 # Test « vignette de la présentation » : AB + C.-B., ~1 500 envois (8 100 - 6 600 déjà partis).
 PRESENTATION_DES = "2026-10-06T16"
 # Recherches Gemini par jour (précalcul du courriel texte) : 160 par défaut, relevé le 6 oct. 2026.
