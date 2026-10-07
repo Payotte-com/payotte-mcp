@@ -5145,7 +5145,10 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
   const aDireQuelqueChose = report.attempts || report.failed || report.pending
     || (report.passagesMorts?.length ?? 0);
   // Fin de semaine sans aucun envoi : pas de rapport (demande de Grégory, 30 sept. 2026).
-  const finDeSemaineVide = FIN_DE_SEMAINE(at) && !report.attempts && !report.failed
+  // 7 oct. 2026, Grégory : « arrête de m'envoyer les emails avec 0 envoi ». Plus AUCUN jour, un passage
+  // qui n'a rien envoyé n'écrit pas (même avec des candidats en attente) ; seules les alertes restent :
+  // envois ratés, passage mort.
+  const finDeSemaineVide = !report.attempts && !report.failed
     && !(report.passagesMorts?.length ?? 0);
   report.at = at.toISOString();
   if (!dryRun && aDireQuelqueChose && !finDeSemaineVide) await sendRunReport(env, report);
