@@ -2522,7 +2522,7 @@ const TOP5_Q_EN_PLUS = {
 const TOP5_PRIX = { fr: [['Fiche IA', '19 $', 'par mois'], ['Premium', '49 $', '+ 5 articles signés'], ['Premium Pro', '99 $', '+ 1 article et 1 infolettre par mois']],
   en: [['AI profile', '$19', 'per month'], ['Premium', '$49', '+ 5 signed articles'], ['Premium Pro', '$99', '+ 1 article and 1 newsletter a month']] };
 
-function renderTop5({ k, lieu, citySlug = null, metier, nom = '', lang, unsubUrl, postale = '' }) {
+function renderTop5({ k, lieu, citySlug = null, prov = '', metier, nom = '', lang, unsubUrl, postale = '' }) {
   const fr = lang !== 'en';
   const met = METIER_UN[metier] ? metier : 'real-estate-broker';
   const mUn = METIER_UN[met][fr ? 0 : 1], mPlur = METIER_PLURIEL[met][fr ? 0 : 1];
@@ -2536,7 +2536,9 @@ function renderTop5({ k, lieu, citySlug = null, metier, nom = '', lang, unsubUrl
   const B = (s) => `<b style="color:#211c1e;">${s}</b>`;
   const bonjour = fr ? `Bonjour${prenom ? ` ${prenom}` : ''}, ` : `Hi${prenom ? ` ${prenom}` : ''}, `;
   const src = `courriel-top5-${k}`;
-  const qPre = `&m=${met}&v=${encodeURIComponent(lieu)}${citySlug ? `&c=${citySlug}` : ''}`;
+  // `e=HH-PR` : heure UTC de l'envoi et province du destinataire, comptées à la visite (vip:envoi:*).
+  const eTag = /^[A-Z]{2}$/.test(prov) ? `&e=${String(new Date().getUTCHours()).padStart(2, '0')}-${prov}` : '';
+  const qPre = `&m=${met}&v=${encodeURIComponent(lieu)}${citySlug ? `&c=${citySlug}` : ''}${eTag}`;
   const page = PAGE_VI[fr ? 'fr' : 'en'];
   // La promo mène à la page des forfaits (7 oct. 2026 : la page Visibilité IA ne parle plus de prix).
   const lien = k === 'promo' ? `${PAGE_FORFAITS[fr ? 'fr' : 'en']}?src=${src}${qPre}#forfaits` : `${page}?src=${src}${qPre}#${k === 'plateforme' ? 'nom' : 'ia'}`;
@@ -4815,7 +4817,7 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
           // BULLETIN PROVINCIAL — même file, mêmes marques, même désabonnement ; seul le gabarit change.
           const ctxP = await contexteProvincial();
           const v = top5K
-            ? { ...renderTop5({ k: top5K, lieu: rec.villeReelle || PROV_NOMS[provSlug]?.[rec.lang !== 'en' ? 0 : 1] || '', metier: rec.metier, nom: rec.nom, lang: rec.lang, unsubUrl, postale }), zone: null }
+            ? { ...renderTop5({ k: top5K, lieu: rec.villeReelle || PROV_NOMS[provSlug]?.[rec.lang !== 'en' ? 0 : 1] || '', prov: PROV_TO_CODE[provSlug]?.toUpperCase() || '', metier: rec.metier, nom: rec.nom, lang: rec.lang, unsubUrl, postale }), zone: null }
             : MODE_TEXTE
             ? { ...renderTexte({ lieu: rec.villeReelle || PROV_NOMS[provSlug]?.[rec.lang !== 'en' ? 0 : 1] || '', provSlug, metier: rec.metier, nom: rec.nom, lang: rec.lang, unsubUrl, postale }), variante: 'texte', zone: null }
             : renderBulletinProvincial({ provSlug, villeReelle: rec.villeReelle, metier: rec.metier, lang: rec.lang, unsubUrl, postale }, ctxP);
@@ -4841,7 +4843,7 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
           continue;
         }
         const { subject, html, text, from: fromItem } = top5K
-          ? renderTop5({ k: top5K, lieu: nomVilleBulletin(city, rec.lang !== 'en'), citySlug: city.slug, metier: rec.metier, nom: rec.nom, lang: rec.lang, unsubUrl, postale })
+          ? renderTop5({ k: top5K, lieu: nomVilleBulletin(city, rec.lang !== 'en'), citySlug: city.slug, prov: String(city.province || '').toUpperCase(), metier: rec.metier, nom: rec.nom, lang: rec.lang, unsubUrl, postale })
           : MODE_TEXTE
           ? renderTexte({ lieu: nomVilleBulletin(city, rec.lang !== 'en'), citySlug: city.slug, provSlug: CODE_TO_PROVSLUG[city.province], metier: rec.metier, nom: rec.nom, lang: rec.lang, unsubUrl, postale })
           : renderPulse({ segment: 'prospect', city, lang: rec.lang, unsubUrl, macro, metier: rec.metier , postale,

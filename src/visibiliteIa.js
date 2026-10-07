@@ -43,7 +43,17 @@ export async function handleVisite(request, env, url, h) {
     // Étapes comptées (6 oct. 2026) : où le visiteur décroche entre l'arrivée et le formulaire.
     const ETAPES = { fin: 'presentation-lue', resultat: 'resultats', reserver: 'clics-reserver', formulaire: 'formulaires-commences' };
     const etape = ETAPES[url.searchParams.get('etape')] ? url.searchParams.get('etape') : '';
-    if ((await h.bumpCounter(env, `vip:vu:${src}${etape ? ':' + etape : ''}:${ip}:${new Date().toISOString().slice(0, 10)}`, 2 * 86400)) === 1) await compterSrc(env, h.bumpCounter, src, etape ? ETAPES[etape] : 'visites');
+    if ((await h.bumpCounter(env, `vip:vu:${src}${etape ? ':' + etape : ''}:${ip}:${new Date().toISOString().slice(0, 10)}`, 2 * 86400)) === 1) {
+      await compterSrc(env, h.bumpCounter, src, etape ? ETAPES[etape] : 'visites');
+      /* Heures (7 oct. 2026) : quelle heure d'ENVOI amène des visites, et à quelle heure on visite.
+         `e=HH-PR` est posé dans le lien par le courriel (heure UTC de l'envoi, province du destinataire). */
+      if (!etape) {
+        const jour = new Date().toISOString().slice(0, 10);
+        const e = String(url.searchParams.get('e') || '');
+        if (/^\d{2}-[A-Z]{2}$/.test(e)) await h.bumpCounter(env, `vip:envoi:${src}:${e}:${jour}`, 400 * 86400);
+        await h.bumpCounter(env, `vip:heure:${src}:${String(new Date().getUTCHours()).padStart(2, '0')}:${jour}`, 400 * 86400);
+      }
+    }
   }
   return new Response(null, { status: 204, headers: { 'Access-Control-Allow-Origin': '*' } });
 }
