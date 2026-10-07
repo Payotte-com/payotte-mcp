@@ -162,21 +162,28 @@ REPLY_TO_OUTREACH = "gregory@payotte.com"
 #     AB et C.-B. jusqu'à 21 h 30 UTC (17 h 30 à Montréal ; 15 h 30 AB, 14 h 30 C.-B.).
 MAX_PAR_DOMAINE_DU_JOUR = "2026-09-30:50"
 EXPERTS_SHARE_DU_JOUR = "2026-09-30:0"
-PLAFOND_DU_JOUR = "2026-10-06:8100"
-PLAFOND_MATIN_DU_JOUR = "2026-10-06:3000:13"
-PROVINCES_APRES = "2026-10-06|13:QC,ON,MB,NL;15:QC,ON,MB,NL,SK,AB;16:AB,BC"
+PLAFOND_DU_JOUR = "2026-10-07:8000"
+PLAFOND_MATIN_DU_JOUR = ""
+PROVINCES_APRES = "2026-10-07|13:QC,ON,NS,NB,PE,NL;14:QC,ON,NS,NB,PE,NL,MB;15:QC,ON,NS,NB,PE,NL,MB,SK,AB;16:QC,ON,NS,NB,PE,NL,MB,SK,AB,BC"
 GABARIT_TEXTE_DES = "2026-10-06T13"
+# ── TEST DES CINQ « TOP 5 » (7 oct. 2026, demande de Grégory) ───────────────────────
+# 1 500 envois par courriel, toutes les provinces (paliers de PROVINCES_APRES : chaque province
+# ouvre vers 9 h locale), une journée. Rangs 0-5 999 : tourniquet des quatre Top 5 ; 6 000-7 499 :
+# la promo, en dernier. Compteur cumulatif `top5:envois` (COUNTERS). Après 7 500, plus aucun
+# prospect récolté ne part tant que TOP5_DES est posé : le retirer pour revenir au gabarit texte.
+TOP5_DES = "2026-10-07T13"
+TOP5_PAR = "1500"
 # Test « vignette de la présentation » : AB + C.-B., ~1 500 envois (8 100 - 6 600 déjà partis).
 PRESENTATION_DES = "2026-10-06T16"
 # Recherches Gemini par jour (précalcul du courriel texte) : 160 par défaut, relevé le 6 oct. 2026.
 VIP_PLAFOND_JOUR = "400"
 SEUIL_PLAINTES_DU_JOUR = "2026-10-06:0.0007"
 EXCLURE_DOMAINES = "hotmail.com,hotmail.ca,live.com,live.ca,outlook.com,outlook.fr,msn.com"
-PART_PASSAGE_DU_JOUR = "2026-10-06:500"
-DIX_MIN_DU_JOUR = "2026-10-06:13,14,15,16,17,18,19,20,21"
+PART_PASSAGE_DU_JOUR = "2026-10-07:500"
+DIX_MIN_DU_JOUR = "2026-10-07:13,14,15,16,17,18,19,20,21"
 RENFORT_DU_JOUR = ""
 
-OUTREACH_RAMPE = "2026-09-09:75,2026-09-10:150,2026-09-11:300,2026-09-14:600,2026-09-15:1200,2026-09-16:2400,2026-09-17:4800,2026-09-29:6000,2026-09-30:8000,2026-10-01:6000,2026-10-05:12000,2026-10-06:9000"
+OUTREACH_RAMPE = "2026-09-09:75,2026-09-10:150,2026-09-11:300,2026-09-14:600,2026-09-15:1200,2026-09-16:2400,2026-09-17:4800,2026-09-29:6000,2026-09-30:8000,2026-10-01:6000,2026-10-05:12000,2026-10-06:9000,2026-10-07:7600"
 
 # ── FORÇAGE DE PROVINCES POUR UNE JOURNÉE (14 sept. 2026, demande proprio) ───────
 # QC et ON sont normalement servis au passage de 14 h UTC (10 h locale). Celui du
@@ -189,7 +196,7 @@ OUTREACH_RAMPE = "2026-09-09:75,2026-09-10:150,2026-09-11:300,2026-09-14:600,202
 # variable est inerte et le filtre par fuseau reprend sans intervention. NE PAS la
 # remplacer par une liste sans date : un forçage permanent finirait par expédier à
 # 6 h du matin sur la côte Ouest.
-PROVINCES_DU_JOUR = "2026-10-06:NS,NB,PE"
+PROVINCES_DU_JOUR = "2026-10-07:QC,ON,NS,NB,PE,NL"
 
 # ── ADRESSE POSTALE LCAP — EN SECRET, PAS ICI (2026-08-25) ───────────────────────
 # Le Règlement de la LCAP (art. 2(2)) impose l'adresse postale de l'expéditeur dans TOUT

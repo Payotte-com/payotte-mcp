@@ -25,6 +25,7 @@ import { handleDossierRevision } from './dossierRevision.js';
 import { efAdresse, efMunis, efFilet, efFiletMunis } from './efAdresse.js';
 import RISQUES_EPOQUE from './data/risques-par-epoque.json';
 import TAUX_QC from './data/efTauxQc2026.json';
+import QUESTIONS_IA_DATA from './data/questionsIa.json';
 const SITE = 'https://payotte.com';
 const WORKER_ORIGIN = 'https://payotte-mcp.payotte.workers.dev';
 const ATTRIBUTION =
@@ -2489,6 +2490,168 @@ function renderTexte({ lieu, citySlug = null, provSlug = null, metier, nom = '',
   return { subject, html, text, from: 'Grégory Payotte <outreach@payotte.com>' };
 }
 
+/* ═══ TEST DES CINQ COURRIELS « TOP 5 » (7 oct. 2026) ═══════════════════════════════════════
+ * Maquettes approuvées : https://claude.ai/artifact/PeSMx2dwrajPFfg1wABg9n (v4). Demande de Grégory :
+ * 1 500 envois par courriel, toutes les provinces, une seule journée, la promo (n° 5) EN DERNIER pour
+ * que les quatre premiers soient passés si les plaintes arrêtent la journée.
+ * Attribution : le rang d'envoi du test (compteur `top5:envois` dans COUNTERS, cumulatif) décide.
+ * Rangs 0 à 5 999 : tourniquet raisons → plateforme → 2026 → questions, donc les quatre reçoivent le
+ * même mélange de provinces, de métiers et d'heures. Rangs 6 000 à 7 499 : promo. Au-delà, la
+ * prospection s'arrête tant que `TOP5_DES` est posé (sinon l'ancien gabarit repartirait seul).
+ * Suivi : `?src=courriel-top5-{clé}` sur chaque lien ; /vi/campagnes classe par objet.
+ * ⚠ Chiffres de l'étude Indice IA (18 août 2026, 446 sites) : 26 %, 9 %, 33 %, 94 %, médiane 49.
+ * ⚠ Prix et garantie : copiés de la page Visibilité IA le 7 oct. 2026 ; à réaligner si elle change. */
+let MODE_TOP5 = false;            // posé par runBulletin selon `TOP5_DES`
+let TOP5_PAR = 1500;              // envois par courriel (`TOP5_PAR`)
+const TOP5_ORDRE = ['raisons', 'plateforme', '2026', 'questions'];
+const TOP5_CLES = [...TOP5_ORDRE, 'promo'];
+const top5Pour = (rang) => (rang < TOP5_ORDRE.length * TOP5_PAR ? TOP5_ORDRE[rang % TOP5_ORDRE.length] : rang < TOP5_CLES.length * TOP5_PAR ? 'promo' : null);
+const METIER_PLURIEL = { 'real-estate-broker': ['courtiers', 'brokers'], 'mortgage-broker': ['courtiers hypothécaires', 'mortgage brokers'],
+  appraiser: ['évaluateurs agréés', 'appraisers'], 'home-inspector': ['inspecteurs en bâtiment', 'home inspectors'], 'notary-lawyer': ['notaires', 'real estate lawyers'] };
+// Questions 4 et 5 du Top 5 « questions » : ajoutées pour le courriel, l'outil ne pose que les 3 premières.
+const TOP5_Q_EN_PLUS = {
+  'real-estate-broker': { fr: ['Combien vaut ma maison à {lieu} ?', 'Quel courtier connaît le mieux mon quartier à {lieu} ?'], en: ['What is my house worth in {lieu}?', 'Which agent knows my neighbourhood best in {lieu}?'] },
+  'mortgage-broker': { fr: ['Quel taux hypothécaire puis-je obtenir à {lieu} ?', 'Banque ou courtier hypothécaire : qui choisir à {lieu} ?'], en: ['What mortgage rate can I get in {lieu}?', 'Bank or mortgage broker: which should I choose in {lieu}?'] },
+  'home-inspector': { fr: ['Combien coûte une inspection de maison à {lieu} ?', 'Que vérifie un inspecteur avant l’achat d’une maison ?'], en: ['How much does a home inspection cost in {lieu}?', 'What does an inspector check before I buy a house?'] },
+  appraiser: { fr: ['Combien coûte une évaluation de maison à {lieu} ?', 'Comment contester mon évaluation foncière à {lieu} ?'], en: ['How much does a home appraisal cost in {lieu}?', 'How do I contest my property assessment in {lieu}?'] },
+  'notary-lawyer': { fr: ['Combien coûtent les frais de notaire à {lieu} ?', 'Que fait le notaire lors d’un achat de maison ?'], en: ['How much are legal fees to buy a house in {lieu}?', 'What does a real estate lawyer do when I buy a house?'] },
+};
+const TOP5_PRIX = { fr: [['Fiche IA', '19 $', 'par mois'], ['Premium', '49 $', '+ 5 articles signés'], ['Premium Pro', '99 $', '+ 1 article et 1 infolettre par mois']],
+  en: [['AI profile', '$19', 'per month'], ['Premium', '$49', '+ 5 signed articles'], ['Premium Pro', '$99', '+ 1 article and 1 newsletter a month']] };
+
+function renderTop5({ k, lieu, citySlug = null, metier, nom = '', lang, unsubUrl, postale = '' }) {
+  const fr = lang !== 'en';
+  const met = METIER_UN[metier] ? metier : 'real-estate-broker';
+  const mUn = METIER_UN[met][fr ? 0 : 1], mPlur = METIER_PLURIEL[met][fr ? 0 : 1];
+  const nomOk = /^[A-ZÀ-Ý][\p{L}'’-]+( [A-ZÀ-Ý][\p{L}'’-]+){1,2}$/u.test(String(nom || '').trim()) ? String(nom).trim() : '';
+  const prenom = nomOk ? echapper(nomOk.split(' ')[0]) : '';
+  const L = echapper(lieu);
+  const nb = (v) => Number(v).toLocaleString(fr ? 'fr-CA' : 'en-CA');
+  const citDer = nb(CITATIONS_MOIS[CITATIONS_MOIS.length - 1][2]), citPrem = nb(CITATIONS_MOIS[0][2]);
+  const res = citySlug ? COMPTE_IA[`${citySlug}:${met}:${fr ? 'fr' : 'en'}`] : null;
+  const n = res && res.n > 0 ? res.n : null;
+  const B = (s) => `<b style="color:#211c1e;">${s}</b>`;
+  const bonjour = fr ? `Bonjour${prenom ? ` ${prenom}` : ''}, ` : `Hi${prenom ? ` ${prenom}` : ''}, `;
+  const src = `courriel-top5-${k}`;
+  const qPre = `&m=${met}&v=${encodeURIComponent(lieu)}${citySlug ? `&c=${citySlug}` : ''}`;
+  const page = PAGE_VI[fr ? 'fr' : 'en'];
+  const ancre = k === 'plateforme' ? 'nom' : k === 'promo' ? 'forfaits' : 'ia';
+  const lien = `${page}?src=${src}${qPre}#${ancre}`;
+  const voirQui = fr ? `Voir qui l’IA nomme à ${L} &rarr;` : `See who AI names in ${L} &rarr;`;
+  let c;
+  if (k === 'raisons') c = {
+    subject: fr ? 'Pourquoi l’IA ne vous recommande-t-elle pas ? 5 raisons' : 'Why doesn’t AI recommend you? 5 reasons',
+    pre: fr ? 'Sur 446 cabinets immobiliers, la plupart font au moins une de ces erreurs.' : 'Out of 446 real estate firms, most make at least one of these mistakes.',
+    titre: fr ? '5 raisons pour lesquelles l’IA ne vous recommande pas' : '5 reasons AI doesn’t recommend you',
+    intro: fr ? `${bonjour}vos clients demandent déjà à ChatGPT quel ${mUn} engager. Nous avons analysé ${B('446 sites de cabinets immobiliers')} : voici pourquoi l’IA en nomme si peu.`
+              : `${bonjour}your clients already ask ChatGPT which ${mUn} to hire. We analyzed ${B('446 real estate firm websites')}: here is why AI names so few of them.`,
+    items: fr ? [['Elle ne peut pas lire votre site', '26 % des sites bloquent au moins un robot d’IA, souvent sans le savoir.'],
+      ['Votre texte est caché', '9 % n’affichent leur contenu qu’en JavaScript : pour l’IA, la page est vide.'],
+      ['Elle ne sait pas qui vous êtes', '33 % n’ont aucune donnée structurée : ni métier, ni secteur, ni permis lisibles par une machine.'],
+      ['Elle ne trouve rien à citer', '94 % n’ont aucune réponse claire à une question de client.']]
+      : [['It can’t read your site', '26% of sites block at least one AI crawler, often without knowing it.'],
+      ['Your text is hidden', '9% only show their content through JavaScript: to AI, the page is blank.'],
+      ['It doesn’t know who you are', '33% have no structured data: no trade, area or licence a machine can read.'],
+      ['It finds nothing to quote', '94% have no clear answer to a client’s question.']],
+    cinq: fr ? ['Personne d’autre ne parle de vous', `L’IA fait confiance aux sources indépendantes. En immobilier au Canada, elle cite <b>Payotte</b> : ${citDer} fois par Copilot en septembre.`]
+             : ['Nobody else talks about you', `AI trusts independent sources. In Canadian real estate, it cites <b>Payotte</b>: ${citDer} times by Copilot in September.`],
+    btn: voirQui, place: true };
+  else if (k === 'plateforme') c = {
+    subject: fr ? 'Pourquoi être sur une plateforme immobilière IA ? 5 raisons' : 'Why be on an AI real estate platform? 5 reasons',
+    pre: fr ? `Quand vos clients demandent un ${mUn} à l’IA, elle répond avec les sources qu’elle connaît.` : `When your clients ask AI for a ${mUn}, it answers with the sources it knows.`,
+    titre: fr ? '5 raisons d’être sur une plateforme immobilière IA' : '5 reasons to be on an AI real estate platform',
+    intro: fr ? `${bonjour}quand vos clients demandent un ${mUn} à ChatGPT ou à Copilot, l’IA ne lit pas chaque site un par un : ${B('elle répond avec les sources qu’elle juge fiables')}. Voici ce qu’une plateforme comme Payotte vous apporte.`
+              : `${bonjour}when your clients ask ChatGPT or Copilot for a ${mUn}, AI doesn’t read every website one by one: ${B('it answers with the sources it trusts')}. Here’s what a platform like Payotte gives you.`,
+    items: fr ? [['L’IA la cite déjà', `Copilot a cité Payotte ${citDer} fois en septembre.`],
+      ['Votre fiche est faite pour l’IA', 'Une fiche Payotte obtient 100/100 à notre Indice IA. Le site de cabinet médian obtient 49.'],
+      ['Votre permis est vérifié', 'Vérifié à la source chez l’organisme qui le délivre : l’IA et vos clients voient un pro vérifié, pas une publicité.'],
+      ['Les demandes vous arrivent', 'Un client qui vous trouve vous écrit depuis votre fiche, et sa demande vous est relayée.']]
+      : [['AI already cites it', `Copilot cited Payotte ${citDer} times in September.`],
+      ['Your profile is built for AI', 'A Payotte profile scores 100/100 on our AI Index. The median firm website scores 49.'],
+      ['Your licence is verified', 'Checked at the source, with the body that issues it: AI and your clients see a verified pro, not an ad.'],
+      ['Requests come to you', 'A client who finds you writes from your profile, and the request is passed on to you.']],
+    cinq: fr ? ['Une seule place par secteur', `Un seul ${mUn} par secteur à ${L}. Quand la place est prise, c’est ce nom que l’IA trouve.`]
+             : ['One spot per area', `One ${mUn} per area in ${L}. Once the spot is taken, that’s the name AI finds.`],
+    btn: fr ? `Voir si la place est libre à ${L} &rarr;` : `See if the spot is open in ${L} &rarr;`, place: false };
+  else if (k === '2026') c = {
+    subject: fr ? 'Pourquoi s’occuper de son IA dès maintenant ? 5 raisons' : 'Why take care of your AI presence now? 5 reasons',
+    pre: fr ? `Copilot a cité Payotte ${citPrem} fois en juin. En septembre : ${citDer}.` : `Copilot cited Payotte ${citPrem} times in June. In September: ${citDer}.`,
+    titre: fr ? '5 raisons de vous occuper de votre IA en 2026' : '5 reasons to take care of your AI presence in 2026',
+    intro: fr ? `${bonjour}l’IA devient le premier réflexe de vos clients pour trouver un ${mUn}. ${B('C’est maintenant que les places se prennent')} : voici pourquoi.`
+              : `${bonjour}AI is becoming your clients’ first reflex to find a ${mUn}. ${B('The spots are being taken now')}: here’s why.`,
+    items: fr ? [['La courbe vient de décoller', `Copilot a cité Payotte ${citPrem} fois en juin, et ${citDer} fois en septembre.`],
+      ['L’IA ne donne qu’une poignée de noms', n ? `Pour trois questions de clients à ${L}, Gemini a nommé ${n} ${n > 1 ? mPlur : mUn}. Il n’y a pas de 2e page.` : 'Une réponse de l’IA ne nomme qu’une poignée de professionnels. Il n’y a pas de 2e page.'],
+      ['Vos concurrents ne sont pas prêts', 'Le site de cabinet médian obtient 49/100 à notre Indice IA. Celui qui bouge maintenant passe devant.'],
+      ['Le prix de lancement finit le 31 décembre', 'Ceux qui commencent d’ici là gardent leur prix à vie.']]
+      : [['The curve just took off', `Copilot cited Payotte ${citPrem} times in June, and ${citDer} times in September.`],
+      ['AI only gives a handful of names', n ? `For three client questions in ${L}, Gemini named ${n} ${n > 1 ? mPlur : mUn}. There is no page 2.` : 'An AI answer only names a handful of professionals. There is no page 2.'],
+      ['Your competitors aren’t ready', 'The median firm website scores 49/100 on our AI Index. Whoever moves now gets ahead.'],
+      ['Launch pricing ends December 31', 'Those who start before then keep their price for life.']],
+    cinq: fr ? ['Ça se vérifie en 30 secondes', `Voyez gratuitement qui l’IA nomme comme ${mUn} à ${L}, et si votre nom en fait partie.`]
+             : ['It takes 30 seconds to check', `See for free who AI names as a ${mUn} in ${L}, and whether your name is on the list.`],
+    btn: voirQui, place: true };
+  else if (k === 'questions') {
+    const qs = [...(QUESTIONS_IA_DATA[met]?.[fr ? 'fr' : 'en'] || []), ...TOP5_Q_EN_PLUS[met][fr ? 'fr' : 'en']].slice(0, 5)
+      .map((q) => [echapper(fr ? `« ${q.replace('{lieu}', lieu).replace(/ \?$/, ' ?')} »` : `“${q.replace('{lieu}', lieu)}”`), '']);
+    c = {
+      subject: fr ? `${prenom ? `${prenom}, vos` : 'Vos'} clients posent ces 5 questions à l’IA. Qui répond ?` : `${prenom ? `${prenom}, your` : 'Your'} clients ask AI these 5 questions. Who answers?`,
+      pre: n ? (fr ? `Nous avons posé les trois premières à Gemini : il a nommé ${n} ${n > 1 ? mPlur : mUn} à ${lieu}.` : `We asked Gemini the first three: it named ${n} ${n > 1 ? mPlur : mUn} in ${lieu}.`)
+             : (fr ? `Ce que vos futurs clients tapent dans ChatGPT avant de choisir un ${mUn}.` : `What your future clients type into ChatGPT before choosing a ${mUn}.`),
+      titre: fr ? 'Les 5 questions que vos clients posent à l’IA' : 'The 5 questions your clients ask AI',
+      intro: fr ? `${bonjour}voici ce que vos futurs clients tapent dans ChatGPT avant de choisir un ${mUn} à ${L}.` : `${bonjour}here’s what your future clients type into ChatGPT before choosing a ${mUn} in ${L}.`,
+      items: qs,
+      boite: n ? (fr ? `Nous avons posé les trois premières à Gemini : ${B(`il a nommé ${n} ${n > 1 ? mPlur : mUn} à ${L}`)}. Le vôtre en fait-il partie&nbsp;?` : `We asked Gemini the first three: ${B(`it named ${n} ${n > 1 ? mPlur : mUn} in ${L}`)}. Is yours one of them?`)
+               : (fr ? `Nous posons ces questions à l’IA pour ${L}. ${B('Votre nom en fait-il partie ?')}` : `We ask AI these questions for ${L}. ${B('Is your name one of the answers?')}`),
+      btn: voirQui, place: true };
+  } else c = {
+    subject: fr ? 'Soyez nommé par les IA, ou la 2e année est offerte' : 'Get named by AI, or your second year is free',
+    pre: fr ? 'Votre fiche IA dès 19 $ par mois. Prix de lancement jusqu’au 31 décembre.' : 'Your AI profile from $19 a month. Launch prices until December 31.',
+    titre: fr ? 'Soyez nommé par les IA, ou votre 2e année est offerte' : 'Get named by AI, or your second year is free',
+    intro: fr ? `${bonjour}vos clients demandent déjà à ChatGPT quel ${mUn} engager à ${L}. ${B('Payotte vous y fait une place')}, et on s’y engage.`
+              : `${bonjour}your clients already ask ChatGPT which ${mUn} to hire in ${L}. ${B('Payotte gets you a spot there')}, and we commit to it.`,
+    items: fr ? [['Votre fiche écrite pour les IA', 'Une fiche Payotte obtient 100/100 à notre Indice IA. Le site de cabinet médian obtient 49.'],
+      ['Votre permis relié au registre officiel', 'L’IA et vos clients voient un pro vérifié, pas une publicité.'],
+      ['Les demandes vous arrivent', 'Les clients qui vous trouvent vous écrivent directement.'],
+      ['Un rapport chaque mois', 'ChatGPT, Perplexity, Claude et Gemini vous nomment-ils ? Et qui nomment-ils à votre place ?']]
+      : [['Your profile, written for AI', 'A Payotte profile scores 100/100 on our AI Index. The median firm website scores 49.'],
+      ['Your licence linked to the official registry', 'AI and your clients see a verified pro, not an ad.'],
+      ['Requests come to you', 'Clients who find you write to you directly.'],
+      ['A report every month', 'Do ChatGPT, Perplexity, Claude and Gemini name you? And who do they name instead?']],
+    cinq: fr ? ['La garantie 12 mois', 'En formule annuelle : si aucune IA ne vous nomme après 12 mois, votre 2e année est gratuite.']
+             : ['The 12-month guarantee', 'On a yearly plan: if no AI names you after 12 months, your second year is free.'],
+    prix: TOP5_PRIX[fr ? 'fr' : 'en'],
+    apres: fr ? 'Prix de lancement jusqu’au 31 décembre 2026, gardés à vie. Vous ne payez qu’une fois votre dossier vérifié.'
+              : 'Launch prices until December 31, 2026, kept for life. You pay only once your file is verified.',
+    btn: fr ? 'Voir les forfaits &rarr;' : 'See the plans &rarr;', place: false };
+
+  // Même ossature que corpsTestIA2 (gabarit v2) : en-tête logo, titre Georgia, liste, encadré rose, bouton rouge.
+  const SERIF = "font-family:Georgia,'Times New Roman',serif;";
+  const ligne = (num, [t, d], fond) => {
+    const bord = fond ? '' : 'border-top:1px solid #f1ecec;', pad = fond ? '0' : '12px 0';
+    return `<tr><td valign="top" width="34" style="padding:${pad};${bord}${SERIF}font-size:22px;line-height:1.1;color:#c8102e;">${num}</td><td style="padding:${pad};${bord}"><div style="font-size:15px;font-weight:bold;color:#211c1e;line-height:1.35;">${t}</div>${d ? `<div style="font-size:14px;line-height:1.5;color:${fond ? '#211c1e' : '#443e40'};margin-top:2px;">${d}</div>` : ''}</td></tr>`;
+  };
+  const preheader = `<div style="display:none;max-height:0;overflow:hidden;font-size:1px;line-height:1px;color:#ffffff;opacity:0;">${echapper(c.pre)}</div>`;
+  const tete = `<tr><td style="padding:26px 32px 22px 32px;border-bottom:1px solid #f1ecec;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td valign="middle"><a href="${SITE}"><img src="${LOGO}" width="140" height="29" alt="Payotte" style="display:block;border:0;"></a></td><td align="right" valign="middle" style="font-size:11px;letter-spacing:.5px;color:#9a9294;line-height:1.5;">${fr ? 'Plateforme IA pour l’immobilier' : 'AI platform for real estate'}<br><span style="color:#c8102e;letter-spacing:1px;">${L}</span></td></tr></table></td></tr>`;
+  const liste = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 14px 0;">${c.items.map((it, i) => ligne(i + 1, it)).join('')}</table>`;
+  const haut = c.cinq ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${ligne(5, c.cinq, true)}</table>`
+                      : `<div style="font-size:15px;line-height:1.5;color:#211c1e;">${c.boite}</div>`;
+  const prix = c.prix ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#ffffff;border:1px solid #f1d5da;border-radius:10px;margin:14px 0 0 0;"><tr>${c.prix.map(([pn, pp, pd], i) => `<td width="33%" align="center" valign="top" style="padding:12px 6px;${i ? 'border-left:1px solid #f1d5da;' : ''}"><div style="font-size:12px;font-weight:bold;color:#211c1e;">${pn}</div><div style="${SERIF}font-size:22px;color:#c8102e;line-height:1.2;margin-top:2px;">${pp}</div><div style="font-size:11.5px;color:#8a8284;line-height:1.3;margin-top:2px;">${pd}</div></td>`).join('')}</tr></table><div style="margin-top:8px;font-size:12.5px;line-height:1.5;color:#443e40;">${c.apres}</div>` : '';
+  const place = c.place ? `<div style="margin-top:10px;font-size:13px;line-height:1.5;color:#443e40;">${fr ? 'Sur Payotte, <b>une seule place par métier et par secteur</b>. Quand elle est prise, c’est ce nom que l’IA trouve.' : 'On Payotte, <b>one spot per trade and per area</b>. Once it’s taken, that’s the name AI finds.'}</div>` : '';
+  const offre = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fbf3f4;border:1px solid #f1d5da;border-radius:10px;"><tr><td style="padding:16px;">${haut}${prix}<div style="height:14px;font-size:0;line-height:0;">&nbsp;</div>${BTN(lien, c.btn)}${place}</td></tr></table>`;
+  const corps = `<tr><td style="padding:26px 32px 6px 32px;"><div style="${SERIF}font-size:24px;line-height:1.25;color:#211c1e;margin-bottom:12px;">${c.titre}</div><p style="margin:0 0 10px 0;font-size:15px;line-height:1.55;color:#443e40;">${c.intro}</p>${liste}${offre}</td></tr>`;
+  const repondre = `<tr><td style="padding:16px 32px 0 32px;font-size:13.5px;line-height:1.55;color:#443e40;">${fr ? 'Une question&nbsp;? Répondez simplement à ce courriel, je lis tout.<br>Grégory, Payotte' : 'Questions? Just reply to this email, I read everything.<br>Grégory, Payotte'}</td></tr>`;
+  const why = fr ? `Vous recevez ce courriel parce que vous exercez à ${L}.` : `You are receiving this email because you practise in ${L}.`;
+  const html = `${preheader}<div style="background:#f5f3f2;margin:0;padding:28px 12px;font-family:Arial,Helvetica,sans-serif;"><table role="presentation" width="580" cellpadding="0" cellspacing="0" border="0" align="center" style="max-width:580px;width:100%;background:#ffffff;border:1px solid #eae5e5;border-radius:8px;">${tete}${corps}${repondre}${FOOT(why, unsubUrl, fr ? 'Ne plus recevoir' : 'Unsubscribe', postale, fr)}</table></div>`;
+  // Version texte : même contenu, sans balises.
+  const nu = (h) => String(h).replace(/<br>/g, '\n').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&rarr;/g, '→').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"');
+  const text = [nu(c.titre), nu(c.intro), ...c.items.map(([t, d], i) => `${i + 1}. ${nu(t)}${d ? `\n   ${nu(d)}` : ''}`),
+    c.cinq ? `5. ${nu(c.cinq[0])}\n   ${nu(c.cinq[1])}` : nu(c.boite),
+    ...(c.prix ? [c.prix.map(([a, b, d]) => `${a} : ${b} (${d})`).join('\n'), nu(c.apres)] : []),
+    `${nu(c.btn)} ${lien}`, nu(fr ? 'Une question ? Répondez simplement à ce courriel, je lis tout.<br>Grégory, Payotte' : 'Questions? Just reply to this email, I read everything.<br>Grégory, Payotte'),
+    `${nu(why)} ${fr ? 'Ne plus recevoir' : 'Unsubscribe'} : ${unsubUrl}${postale ? `\n${nu(postale)}` : ''}`].join('\n\n');
+  return { subject: c.subject, html, text, variante: `top5-${k}` };
+}
+
 function renderPulse({ segment, stage, city, expert, lang, unsubUrl, macro = null, metier = '', postale = '', villeCouverte = null }) {
   const fr = lang !== 'en';
   if (GABARIT_IA) return renderTestIA({ segment, stage, city, expert, lang, unsubUrl, postale, villeCouverte, metier });
@@ -4137,6 +4300,12 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
   // Gabarit texte simple pour les prospects à partir de `GABARIT_TEXTE_DES` (« AAAA-MM-JJTHH », heure UTC).
   MODE_TEXTE = !!env.GABARIT_TEXTE_DES && at.toISOString().slice(0, 13) >= String(env.GABARIT_TEXTE_DES);
   MODE_PRESENTATION = !!env.PRESENTATION_DES && at.toISOString().slice(0, 13) >= String(env.PRESENTATION_DES);
+  // Test des cinq Top 5 (7 oct. 2026) : à partir de `TOP5_DES`, il remplace le texte et la présentation.
+  // Le compteur cumulatif `top5:envois` (COUNTERS) donne le rang de chaque envoi ; relu à chaque passage, écrit une fois en fin de bloc prospects.
+  MODE_TOP5 = !!env.TOP5_DES && at.toISOString().slice(0, 13) >= String(env.TOP5_DES);
+  TOP5_PAR = Math.max(1, Number(env.TOP5_PAR || 1500));
+  let top5Compte = null, top5Bouge = false;
+  if (MODE_TOP5) { try { top5Compte = JSON.parse((await env.COUNTERS?.get('top5:envois')) || 'null'); } catch {} top5Compte ||= { total: 0 }; report.top5 = top5Compte; }
   await chargerCompteIA(env);
   const allActive = (market.cities || []).filter((c) => hasMarketStats(c) || GABARIT_IA);
   // Le filtre par fuseau s'applique ICI, sur les villes : tout le reste (prospects comme
@@ -4626,6 +4795,9 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
 
       for (const { key, sep, city, id, rec, fluxRec, provSlug } of retenus) {
         if (!canSend('prospect')) { report.pending++; continue; }
+        // Test Top 5 terminé (7 500 envois) : plus aucun prospect récolté tant que TOP5_DES est posé.
+        const top5K = MODE_TOP5 && fluxRec === 'outreach' ? top5Pour(top5Compte.total) : null;
+        if (MODE_TOP5 && fluxRec === 'outreach' && !top5K) { report.pending++; report.top5Fini = true; continue; }
         if (fluxRec === 'outreach' && dejaOutreach + report.outreachEnvoyes >= rampeOutreach()) { report.pending++; continue; }
         // Garde-fou : si la valeur stockée ne concordait pas avec sa clé, l'identifiant
         // calculé plus haut serait faux et on risquerait un doublon. On revérifie sur
@@ -4639,7 +4811,9 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
         if (provSlug) {
           // BULLETIN PROVINCIAL — même file, mêmes marques, même désabonnement ; seul le gabarit change.
           const ctxP = await contexteProvincial();
-          const v = MODE_TEXTE
+          const v = top5K
+            ? { ...renderTop5({ k: top5K, lieu: rec.villeReelle || PROV_NOMS[provSlug]?.[rec.lang !== 'en' ? 0 : 1] || '', metier: rec.metier, nom: rec.nom, lang: rec.lang, unsubUrl, postale }), zone: null }
+            : MODE_TEXTE
             ? { ...renderTexte({ lieu: rec.villeReelle || PROV_NOMS[provSlug]?.[rec.lang !== 'en' ? 0 : 1] || '', provSlug, metier: rec.metier, nom: rec.nom, lang: rec.lang, unsubUrl, postale }), variante: 'texte', zone: null }
             : renderBulletinProvincial({ provSlug, villeReelle: rec.villeReelle, metier: rec.metier, lang: rec.lang, unsubUrl, postale }, ctxP);
           if (!v) {
@@ -4650,6 +4824,7 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
             continue;
           }
           report.prospects++; report.recipients.push({ to: rec.email, kind: 'prospect', city: rec.city, variante: v.variante, zone: v.zone, prov: PROV_TO_CODE[provSlug]?.toUpperCase(), cat: 'sansSecteur' });
+          if (top5K) { top5Compte.total++; top5Compte[top5K] = (top5Compte[top5K] || 0) + 1; top5Bouge = true; }
           report.provincial = report.provincial || { banlieue: 0, provincial: 0 };
           report.provincial[v.variante] = (report.provincial[v.variante] || 0) + 1;
           report.attempts++;
@@ -4662,11 +4837,14 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
           if (file.length >= TAILLE_LOT) await viderFile();
           continue;
         }
-        const { subject, html, text, from: fromItem } = MODE_TEXTE
+        const { subject, html, text, from: fromItem } = top5K
+          ? renderTop5({ k: top5K, lieu: nomVilleBulletin(city, rec.lang !== 'en'), citySlug: city.slug, metier: rec.metier, nom: rec.nom, lang: rec.lang, unsubUrl, postale })
+          : MODE_TEXTE
           ? renderTexte({ lieu: nomVilleBulletin(city, rec.lang !== 'en'), citySlug: city.slug, provSlug: CODE_TO_PROVSLUG[city.province], metier: rec.metier, nom: rec.nom, lang: rec.lang, unsubUrl, postale })
           : renderPulse({ segment: 'prospect', city, lang: rec.lang, unsubUrl, macro, metier: rec.metier , postale,
           villeCouverte: couvertes ? couvertes.has(normVille(city.slug ?? key.slice(0, sep))) : null });
         report.prospects++; report.recipients.push({ to: rec.email, kind: 'prospect', city: rec.city, prov: city?.province, cat: 'secteur' });
+        if (top5K) { top5Compte.total++; top5Compte[top5K] = (top5Compte[top5K] || 0) + 1; top5Bouge = true; report.recipients[report.recipients.length - 1].top5 = top5K; }
         report.attempts++;
         done.add(idReel);                // servi pour ce cycle dès la mise en file
         // FLUX (2026-08-19) : `source: 'form-ville'` = l'abonné a rempli le formulaire du
@@ -4694,6 +4872,7 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
        défaut qu'on corrige.
        ⚠ Jamais en dry-run : une simulation ne doit pas déplacer la position réelle du
        programme. C'est la même règle que partout ailleurs ici. */
+    if (top5Bouge && !dryRun && env.COUNTERS) await env.COUNTERS.put('top5:envois', JSON.stringify(top5Compte)).catch(() => {});
     if (env.SUBSCRIBERS && !dryRun && curseurFin) {
       ctr.kv++;
       await env.SUBSCRIBERS.put(CLE_CURSEUR, curseurFin).catch(() => {});
@@ -6290,6 +6469,12 @@ const WORKER_MAIN = {
       const citySlug = strip(q.get('city') || 'laval');
       const lang = q.get('lang') || 'fr';
       const market = await feed('/api/market.json').catch(() => ({ cities: [] }));
+      // Top 5 (7 oct. 2026) : ?top5=raisons|plateforme|2026|questions|promo&city=laval&metier=real-estate-broker&nom=Marie%20Tremblay&lang=fr
+      if (TOP5_CLES.includes(q.get('top5'))) {
+        const cz = (market.cities || []).find((c) => c.slug === q.get('city'));
+        const v = renderTop5({ k: q.get('top5'), lieu: cz ? nomVilleBulletin(cz, lang !== 'en') : (q.get('ville') || 'Okotoks'), citySlug: cz?.slug ?? null, metier: q.get('metier') || 'real-estate-broker', nom: q.get('nom') || '', lang, unsubUrl: '#preview' });
+        return new Response(`<!--${v.subject}-->\n${v.html}`, { headers: { 'content-type': 'text/html; charset=utf-8' } });
+      }
       // Gabarit texte simple : ?texte=1&city=montreal&metier=real-estate-broker&nom=Sophie%20Martin
       if (q.get('texte')) {
         MODE_PRESENTATION = q.get('presentation') === '1';
@@ -6700,6 +6885,11 @@ const WORKER_MAIN = {
       const cle = env.RESEND_LECTURE_KEY || env.RESEND_API_KEY;
       const depuis = url.searchParams.get('depuis') || '2026-10-05';
       const classer = (sub) => {
+        if (/^(Pourquoi l’IA ne vous recommande|Why doesn’t AI recommend you)/.test(sub)) return '5 · top5 raisons';
+        if (/(plateforme immobilière IA|AI real estate platform)/.test(sub)) return '6 · top5 plateforme';
+        if (/(s’occuper de son IA|take care of your AI presence)/.test(sub)) return '7 · top5 2026';
+        if (/(ces 5 questions à l’IA|ask AI these 5 questions)/.test(sub)) return '8 · top5 questions';
+        if (/(Soyez nommé par les IA|Get named by AI)/.test(sub)) return '9 · top5 promo';
         if (/^(Comment être sur ChatGPT|How to be on ChatGPT)/.test(sub)) return '4 · présentation';
         if (/^(Qui ChatGPT recommande|Who does ChatGPT recommend)/.test(sub)) return '3 · texte';
         if (/(rifiez ce que les IA disent de vous|heck what AI says about you)/.test(sub)) return '2 · designé v2';
