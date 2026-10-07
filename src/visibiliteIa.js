@@ -298,7 +298,8 @@ export async function handlePresence(request, env, url, h) {
   const o = await obtenirPresence(env, metier, secteur, lieu, fr, url.searchParams.get('c') || '');
   if (o.erreur) return json({ ok: false, erreur: o.erreur, ...(o.detail ? { detail: o.detail } : {}) }, o.statut);
   await bumpCounter(env, `vip:diag:${MOIS_RECH()}`, 400 * 86400);
-  await compterSrc(env, bumpCounter, srcDe(url.searchParams.get('src')), 'tests');
+  // `auto=1` (7 oct. 2026) : résultat affiché sans clic à l'arrivée d'un courriel ; compté à part pour garder « tests » = clics.
+  await compterSrc(env, bumpCounter, srcDe(url.searchParams.get('src')), url.searchParams.get('auto') === '1' ? 'affichages' : 'tests');
   return json({ ok: true, ia: o.res.ia, date: o.res.date, reponses: lirePresence(o.res, nom) });
 }
 

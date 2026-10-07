@@ -2541,7 +2541,8 @@ function renderTop5({ k, lieu, citySlug = null, prov = '', metier, nom = '', lan
   const qPre = `&m=${met}&v=${encodeURIComponent(lieu)}${citySlug ? `&c=${citySlug}` : ''}${eTag}`;
   const page = PAGE_VI[fr ? 'fr' : 'en'];
   // La promo mène à la page des forfaits (7 oct. 2026 : la page Visibilité IA ne parle plus de prix).
-  const lien = k === 'promo' ? `${PAGE_FORFAITS[fr ? 'fr' : 'en']}?src=${src}${qPre}#forfaits` : `${page}?src=${src}${qPre}#${k === 'plateforme' ? 'nom' : 'ia'}`;
+  // Les quatre Top 5 mènent au test (#ia), « plateforme » compris depuis le 7 oct. (il ouvrait l'étape 3, sans test).
+  const lien = k === 'promo' ? `${PAGE_FORFAITS[fr ? 'fr' : 'en']}?src=${src}${qPre}#forfaits` : `${page}?src=${src}${qPre}#ia`;
   const voirQui = fr ? `Voir qui l’IA nomme à ${L} &rarr;` : `See who AI names in ${L} &rarr;`;
   let c;
   if (k === 'raisons') c = {
