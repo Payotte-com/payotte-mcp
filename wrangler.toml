@@ -168,8 +168,8 @@ PROVINCES_APRES = "2026-10-07|13:QC,ON,NS,NB,PE,NL;14:QC,ON,NS,NB,PE,NL,MB;15:QC
 GABARIT_TEXTE_DES = "2026-10-06T13"
 # ── TEST DES CINQ « TOP 5 » (7 oct. 2026, demande de Grégory) ───────────────────────
 # 1 500 envois par courriel, toutes les provinces (paliers de PROVINCES_APRES : chaque province
-# ouvre vers 9 h locale), une journée. Rangs 0-5 999 : tourniquet des quatre Top 5 ; 6 000-7 499 :
-# la promo, en dernier. Compteur cumulatif `top5:envois` (COUNTERS). Après 7 500, plus aucun
+# ouvre vers 9 h locale), une journée. Rangs 0-5 999 : tourniquet des quatre Top 5. La promo (prévue
+# en 6 000-7 499) a été RETIRÉE le 7 oct. à 9 h 15 par Grégory : le test s'arrête à 6 000. Compteur cumulatif `top5:envois` (COUNTERS). Après 6 000, plus aucun
 # prospect récolté ne part tant que TOP5_DES est posé : le retirer pour revenir au gabarit texte.
 TOP5_DES = "2026-10-07T13"
 TOP5_PAR = "1500"

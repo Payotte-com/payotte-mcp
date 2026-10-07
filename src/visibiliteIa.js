@@ -56,7 +56,9 @@ export async function handleInscription(request, env, h) {
   else { const f = await request.formData().catch(() => null); if (f) for (const [k, v] of f.entries()) b[k] = typeof v === 'string' ? v : ''; }
 
   const fr = b.lang !== 'en';
-  const page = fr ? '/visibilite-ia-professionnels-immobilier' : '/en/ai-visibility-real-estate-professionals';
+  // Le formulaire de la page des forfaits (7 oct. 2026) renvoie ses erreurs chez lui (champ caché `retour`).
+  const page = b.retour === 'forfaits' ? (fr ? '/forfaits-visibilite-ia' : '/en/ai-visibility-plans')
+    : fr ? '/visibilite-ia-professionnels-immobilier' : '/en/ai-visibility-real-estate-professionals';
   const merci = fr ? '/inscription-recue' : '/en/registration-received';
   const retour = (code) => Response.redirect(`${SITE}${page}?erreur=${code}#inscription`, 303);
 
@@ -120,11 +122,11 @@ export async function handleInscription(request, env, h) {
         subject: fr ? 'Nous avons bien reçu votre inscription — Payotte' : 'We received your registration — Payotte',
         text: (fr
           ? [`Bonjour ${nom},`, '', 'Merci, nous avons bien reçu votre inscription.', '',
-             'La suite : nous vérifions votre permis et votre secteur, puis nous vous écrivons pour vous dire laquelle des trois possibilités est la vôtre : expert recommandé, nouveau secteur ou fiche professionnelle.',
+             'La suite : nous vérifions votre permis et votre secteur, puis nous vous écrivons pour vous dire laquelle des trois possibilités est la vôtre : expert recommandé, nouveau secteur ou dossier en réserve.',
              forfait === 'aucun' ? '' : `Pour le forfait ${FORFAITS[forfait].fr}, le lien de paiement vous parviendra après cette vérification. Vous ne payez rien avant.`,
              '', 'Une question d’ici là ? Répondez simplement à ce courriel.', '', '— Grégory Payotte', 'https://payotte.com']
           : [`Hello ${nom},`, '', 'Thank you, we received your registration.', '',
-             'Next: we check your licence and your sector, then write to tell you which of the three possibilities is yours: recommended expert, new sector or professional profile.',
+             'Next: we check your licence and your sector, then write to tell you which of the three possibilities is yours: recommended expert, new sector or file on hold.',
              forfait === 'aucun' ? '' : `For the ${FORFAITS[forfait].en} plan, the payment link will reach you after this check. You pay nothing before.`,
              '', 'Any question in the meantime? Just reply to this email.', '', '— Grégory Payotte', 'https://payotte.com']).filter((x) => x !== null).join('\n'),
         headers: { 'Auto-Submitted': 'auto-replied' },

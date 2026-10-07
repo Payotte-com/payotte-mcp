@@ -2241,6 +2241,7 @@ function ligneIA(metier, fr) {
  * ⚠️ CITATIONS_MOIS : chiffres Bing Webmaster Tools, à relever chaque mois (chroniques.ts). */
 const GABARIT_IA = true;
 const PAGE_VI = { fr: `${SITE}/visibilite-ia-professionnels-immobilier`, en: `${SITE}/en/ai-visibility-real-estate-professionals` };
+const PAGE_FORFAITS = { fr: `${SITE}/forfaits-visibilite-ia`, en: `${SITE}/en/ai-visibility-plans` };
 // Provenance des clics du courriel (5 oct. 2026) : compteurs `vip:src:*` du worker, lus par /vi/stats.
 const SRC_COURRIEL = 'courriel-oct';
 const CITATIONS_MOIS = [['juin', 'Jun', 15], ['juil.', 'Jul', 84], ['août', 'Aug', 2451], ['sept.', 'Sep', 5358]];
@@ -2272,8 +2273,8 @@ function offreTestIA({ segment, stage, city, expert, fr, villeCouverte }) {
     apres = fr ? `Vous êtes l’expert recommandé de votre secteur&nbsp;: ${lien(`${SITE}/badge/${expert.slug}`, 'posez votre badge')} pour que les IA relient votre site à votre fiche.`
                : `You are the recommended expert in your sector: ${lien(`${SITE}/badge/${expert.slug}`, 'put up your badge')} so AI tools connect your website to your profile.`;
   } else if (segment !== 'prospect') {
-    apres = fr ? `Votre fiche est déjà sur Payotte. Pour vous faire citer davantage&nbsp;: ${lien(`${PAGE_VI.fr}?src=${SRC_COURRIEL}#forfaits`, 'voir les forfaits')}.`
-               : `Your profile is already on Payotte. To get cited more: ${lien(`${PAGE_VI.en}?src=${SRC_COURRIEL}#forfaits`, 'see the plans')}.`;
+    apres = fr ? `Votre fiche est déjà sur Payotte. Pour vous faire citer davantage&nbsp;: ${lien(`${PAGE_FORFAITS.fr}?src=${SRC_COURRIEL}`, 'voir les forfaits')}.`
+               : `Your profile is already on Payotte. To get cited more: ${lien(`${PAGE_FORFAITS.en}?src=${SRC_COURRIEL}`, 'see the plans')}.`;
   }
   const inner = `<div style="font-size:15px;font-weight:bold;color:#211c1e;margin-bottom:6px;">${fr ? 'Testez gratuitement votre présence dans les IA' : 'Test your AI presence for free'}</div>`
     + `<table role="presentation" cellpadding="0" cellspacing="0" border="0">${coches}</table>`
@@ -2359,7 +2360,7 @@ function corpsTestIA2({ segment, stage, lieu, cityPouls = null, compteCle = '', 
                  : 'On Payotte, <b>one seat per profession and area</b>. Once it is taken, that is the name AI finds.';
   if (segment === 'prospect' && villeCouverte === false) apres += fr ? ` À ${lieu}, la place de votre métier est encore libre.` : ` In ${lieu}, your profession’s seat is still open.`;
   else if (segment !== 'prospect' && stage === 'reco' && expert?.slug) apres = fr ? `Vous êtes l’expert recommandé de votre secteur&nbsp;: ${lien(`${SITE}/badge/${expert.slug}`, 'posez votre badge')} pour que les IA relient votre site à votre fiche.` : `You are the recommended expert in your area: ${lien(`${SITE}/badge/${expert.slug}`, 'put up your badge')} so AI tools connect your website to your profile.`;
-  else if (segment !== 'prospect') apres = fr ? `Votre fiche est déjà sur Payotte. Pour vous faire citer davantage&nbsp;: ${lien(`${page}?src=${SRC_COURRIEL_V2}${qPre}#forfaits`, 'voir les forfaits')}.` : `Your profile is already on Payotte. To get cited more: ${lien(`${page}?src=${SRC_COURRIEL_V2}${qPre}#forfaits`, 'see the plans')}.`;
+  else if (segment !== 'prospect') apres = fr ? `Votre fiche est déjà sur Payotte. Pour vous faire citer davantage&nbsp;: ${lien(`${PAGE_FORFAITS[fr ? 'fr' : 'en']}?src=${SRC_COURRIEL_V2}${qPre}`, 'voir les forfaits')}.` : `Your profile is already on Payotte. To get cited more: ${lien(`${PAGE_FORFAITS[fr ? 'fr' : 'en']}?src=${SRC_COURRIEL_V2}${qPre}`, 'see the plans')}.`;
   const offre = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fbf3f4;border:1px solid #f1d5da;border-radius:10px;"><tr><td style="padding:16px;">`
     + `<div style="font-size:15px;font-weight:bold;color:#211c1e;margin-bottom:8px;">${fr ? 'Vérifiez ce que les IA disent de vous' : 'Check what AI says about you'}</div>`
     + `<table role="presentation" cellpadding="0" cellspacing="0" border="0">${coches}</table><div style="height:12px;font-size:0;line-height:0;">&nbsp;</div>`
@@ -2505,7 +2506,9 @@ let MODE_TOP5 = false;            // posé par runBulletin selon `TOP5_DES`
 let TOP5_PAR = 1500;              // envois par courriel (`TOP5_PAR`)
 const TOP5_ORDRE = ['raisons', 'plateforme', '2026', 'questions'];
 const TOP5_CLES = [...TOP5_ORDRE, 'promo'];
-const top5Pour = (rang) => (rang < TOP5_ORDRE.length * TOP5_PAR ? TOP5_ORDRE[rang % TOP5_ORDRE.length] : rang < TOP5_CLES.length * TOP5_PAR ? 'promo' : null);
+// 7 oct. 2026, 9 h 15 : Grégory retire la promo de la journée (« on va en faire que 4 aujourd'hui ») ; le test
+// s'arrête donc à 4 × TOP5_PAR. Le gabarit promo reste dans renderTop5 (aperçu ?top5=promo) mais ne part plus.
+const top5Pour = (rang) => (rang < TOP5_ORDRE.length * TOP5_PAR ? TOP5_ORDRE[rang % TOP5_ORDRE.length] : null);
 const METIER_PLURIEL = { 'real-estate-broker': ['courtiers', 'brokers'], 'mortgage-broker': ['courtiers hypothécaires', 'mortgage brokers'],
   appraiser: ['évaluateurs agréés', 'appraisers'], 'home-inspector': ['inspecteurs en bâtiment', 'home inspectors'], 'notary-lawyer': ['notaires', 'real estate lawyers'] };
 // Questions 4 et 5 du Top 5 « questions » : ajoutées pour le courriel, l'outil ne pose que les 3 premières.
@@ -2535,8 +2538,8 @@ function renderTop5({ k, lieu, citySlug = null, metier, nom = '', lang, unsubUrl
   const src = `courriel-top5-${k}`;
   const qPre = `&m=${met}&v=${encodeURIComponent(lieu)}${citySlug ? `&c=${citySlug}` : ''}`;
   const page = PAGE_VI[fr ? 'fr' : 'en'];
-  const ancre = k === 'plateforme' ? 'nom' : k === 'promo' ? 'forfaits' : 'ia';
-  const lien = `${page}?src=${src}${qPre}#${ancre}`;
+  // La promo mène à la page des forfaits (7 oct. 2026 : la page Visibilité IA ne parle plus de prix).
+  const lien = k === 'promo' ? `${PAGE_FORFAITS[fr ? 'fr' : 'en']}?src=${src}${qPre}#forfaits` : `${page}?src=${src}${qPre}#${k === 'plateforme' ? 'nom' : 'ia'}`;
   const voirQui = fr ? `Voir qui l’IA nomme à ${L} &rarr;` : `See who AI names in ${L} &rarr;`;
   let c;
   if (k === 'raisons') c = {
