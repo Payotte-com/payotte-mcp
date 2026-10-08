@@ -7123,7 +7123,7 @@ const WORKER_MAIN = {
       const classer = (sub) => {
         // FOMO (8 oct. 2026) : objets variables selon la ville, reconnus à leurs tournures fixes.
         if (/(Elle est prise\.|Toutes prises\.|sont déjà prises\.|encore libre\. Pour combien de temps|qu’une place de .* par secteur|It’s taken\.|All taken\.|are already taken\.|still open\. For how long|spot per area)/.test(sub)) return '10 · fomo place';
-        if (/(l’IA a retenu|l’IA ne retient qu’une poignée|AI picked|AI only picks a handful)/.test(sub)) return '11 · fomo nommés';
+        if (/(l’IA a retenu|l’IA ne retient qu’une poignée|AI picked|AI only picks a handful)/i.test(sub)) return '11 · fomo nommés';   // « L’IA » quand il n’y a pas de prénom
         if (/(De 65 à 94\/100|From 65 to 94\/100)/.test(sub)) return '12 · fomo récente';
         if (/(94 % des cabinets sont invisibles|94% of real estate firms are invisible)/.test(sub)) return '13 · fomo avance';
         if (/^(Pourquoi l’IA ne vous recommande|Why doesn’t AI recommend you)/.test(sub)) return '5 · top5 raisons';
