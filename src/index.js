@@ -2325,9 +2325,9 @@ function lignePouls(c, fr) {
   return `<tr><td style="padding:18px 32px 0 32px;"><div style="border-top:1px solid #f1ecec;padding-top:14px;font-size:13px;line-height:1.55;color:#6f6769;">${fr ? `Le pouls de ${nom} en ${moisLisible(c.referenceMonth, fr)}` : `${nom} in ${moisLisible(c.referenceMonth, fr)}`}&nbsp;: ${morceaux.join(' &middot; ')}. ${fr ? 'Source' : 'Source'}&nbsp;: ${chambreCourte(c)}.</div></td></tr>`;
 }
 
-function corpsTestIA2({ segment, stage, lieu, cityPouls = null, compteCle = '', expert = null, fr, villeCouverte = null, metier = '', why, unsubUrl, postale = '' }) {
+function corpsTestIA2({ segment, stage, lieu, cityPouls = null, compteCle = '', expert = null, fr, villeCouverte = null, metier = '', why, unsubUrl, postale = '', prov = '' }) {
   // Les liens du courriel portent le métier, la ville et son slug : le test arrive déjà rempli (6 oct. 2026).
-  const qPre = `${metier ? `&m=${metier}` : ''}&v=${encodeURIComponent(lieu)}${compteCle ? `&c=${compteCle.split(':')[0]}` : ''}`;
+  const qPre = `${metier ? `&m=${metier}` : ''}&v=${encodeURIComponent(lieu)}${compteCle ? `&c=${compteCle.split(':')[0]}` : ''}${etiquetteEnvoi(prov)}`;
   const nb = (v) => Number(v).toLocaleString(fr ? 'fr-CA' : 'en-CA');
   const moisTete = poulsAJour(cityPouls) ? ` &middot; ${moisLisible(cityPouls.referenceMonth, fr)}` : '';
   const tete = `<tr><td style="padding:26px 32px 22px 32px;border-bottom:1px solid #f1ecec;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td valign="middle"><a href="${SITE}"><img src="${LOGO}" width="140" height="29" alt="Payotte" style="display:block;border:0;"></a></td><td align="right" valign="middle" style="font-size:11px;letter-spacing:.5px;color:#9a9294;line-height:1.5;">${fr ? 'Plateforme IA pour l’immobilier' : 'AI platform for real estate'}<br><span style="color:#c8102e;letter-spacing:1px;">${lieu}${moisTete}</span></td></tr></table></td></tr>`;
@@ -2393,7 +2393,7 @@ function renderTestIA({ segment, stage, city, expert, lang, unsubUrl, postale = 
     : (fr ? `Vous recevez ce courriel parce que vous êtes l'expert vérifié en ${metierPhrase} pour ${lieu} sur Payotte.` : `You're receiving this because you are the verified ${metierPhrase} for ${lieu} on Payotte.`);
   const met = segment === 'prospect' ? metier : (expert?.profession || metier);
   return { subject: sujetTestIA2(segment, expert, fr),
-    html: corpsTestIA2({ segment, stage, lieu, cityPouls: city, compteCle: `${city.slug}:${met}:${fr ? 'fr' : 'en'}`, expert, fr, villeCouverte, metier: met, why, unsubUrl, postale }) };
+    html: corpsTestIA2({ segment, stage, lieu, cityPouls: city, compteCle: `${city.slug}:${met}:${fr ? 'fr' : 'en'}`, expert, fr, villeCouverte, metier: met, why, unsubUrl, postale, prov: String(city.province || '').toUpperCase() }) };
 }
 
 /* ═══ GABARIT « TEXTE SIMPLE » (6 oct. 2026, après-midi) ════════════════════════════════════
@@ -2472,12 +2472,12 @@ function renderTexte({ lieu, citySlug = null, provSlug = null, metier, nom = '',
   }
   if (MODE_PRESENTATION) {
     // Seule différence avec le texte : le lien. Une vignette de la 1re diapositive, cliquable, et le même lien en texte.
-    const lienP = `${SITE}/${fr ? 'presentation' : 'en/presentation'}?m=${met}&v=${encodeURIComponent(lieu)}${citySlug ? `&c=${citySlug}` : ''}&src=${SRC_PRESENTATION}`;
+    const lienP = `${SITE}/${fr ? 'presentation' : 'en/presentation'}?m=${met}&v=${encodeURIComponent(lieu)}${citySlug ? `&c=${citySlug}` : ''}&src=${SRC_PRESENTATION}${etiquetteEnvoi(PROV_TO_CODE[provSlug]?.toUpperCase())}`;
     const img = `${SITE}/presentation/vignette-${fr ? 'fr' : 'en'}.jpg`;
     paras.push([`<p style="margin:0 0 8px 0;">${fr ? 'J’ai résumé tout ça en 10 diapos, 90 secondes :' : 'I summed it all up in 10 slides, 90 seconds:'}</p><p style="margin:0 0 12px 0;"><a href="${lienP}"><img src="${img}" width="480" alt="${fr ? 'Voir la présentation Payotte (90 secondes)' : 'View the Payotte presentation (90 seconds)'}" style="display:block;width:100%;max-width:480px;height:auto;border:0;border-radius:6px;"></a><a href="${lienP}" style="color:#1a56c4;">${fr ? '▶ Voir la présentation' : '▶ View the presentation'}</a></p>`,
       `${fr ? 'J’ai résumé tout ça en 10 diapos, 90 secondes' : 'I summed it all up in 10 slides, 90 seconds'}${fr ? ' :' : ':'} ${lienP}`]);
   } else {
-    const lien = `${SITE}/${fr ? 'test-ia' : 'en/ai-test'}?m=${met}&v=${encodeURIComponent(lieu)}${citySlug ? `&c=${citySlug}` : ''}&src=${SRC_TEXTE}`;
+    const lien = `${SITE}/${fr ? 'test-ia' : 'en/ai-test'}?m=${met}&v=${encodeURIComponent(lieu)}${citySlug ? `&c=${citySlug}` : ''}&src=${SRC_TEXTE}${etiquetteEnvoi(PROV_TO_CODE[provSlug]?.toUpperCase())}`;
     paras.push([`<p style="margin:0 0 12px 0;">${fr ? 'Voyez qui l’IA recommande dans votre secteur (gratuit, 30 secondes)' : 'See who AI recommends in your area (free, 30 seconds)'}${fr ? ' :' : ':'} <a href="${lien}" style="color:#1a56c4;">payotte.com/${fr ? 'test-ia' : 'en/ai-test'}</a></p>`,
       `${fr ? 'Voyez qui l’IA recommande dans votre secteur (gratuit, 30 secondes)' : 'See who AI recommends in your area (free, 30 seconds)'}${fr ? ' :' : ':'} ${lien}`]);
   }
@@ -2521,6 +2521,12 @@ const TOP5_Q_EN_PLUS = {
 };
 const TOP5_PRIX = { fr: [['Fiche IA', '19 $', 'par mois'], ['Premium', '49 $', '+ 5 articles signés'], ['Premium Pro', '99 $', '+ 1 article et 1 infolettre par mois']],
   en: [['AI profile', '$19', 'per month'], ['Premium', '$49', '+ 5 signed articles'], ['Premium Pro', '$99', '+ 1 article and 1 newsletter a month']] };
+
+/* Étiquette d'envoi (8 oct. 2026, demande de Grégory : « pour les autres jours aussi ») : `&e=HH-PR`, l'heure UTC
+   de l'envoi et la province du destinataire, sur TOUS les liens de prospection vers le site. La visite la compte
+   (vip:envoi:{src}:{HH-PR}:{jour}), que la page soit Visibilité IA, forfaits ou n'importe quelle autre page
+   (script de provenance du Layout de payotte-astro). Vide si la province est inconnue. */
+const etiquetteEnvoi = (prov) => (/^[A-Z]{2}$/.test(String(prov || '')) ? `&e=${String(new Date().getUTCHours()).padStart(2, '0')}-${prov}` : '');
 
 function renderTop5({ k, lieu, citySlug = null, prov = '', metier, nom = '', lang, unsubUrl, postale = '' }) {
   const fr = lang !== 'en';
@@ -2756,7 +2762,7 @@ function renderFomo({ k, lieu, citySlug = null, provSlug = null, prov = '', meti
         + (libreTout ? p(fr ? 'Personne ne tient encore la place. Le premier dossier solide la prendra, et ce sera peut-être celui d’un concurrent.' : 'Nobody holds the spot yet. The first strong file will take it, and it may well be a competitor’s.')
                      : p(fr ? 'Ce client ne vous appellera pas. Vous ne saurez jamais qu’il vous cherchait.' : 'That client won’t call you. You’ll never know they were looking for you.')),
       boite: fr ? `<b>Qui a la place à ${L} ?</b>` : `<b>Who holds the spot in ${L}?</b>`,
-      lien: villeUrl ? `${villeUrl}?src=${src}` : `${PAGE_VI[fr ? 'fr' : 'en']}?src=${src}${qPre}#ia`,
+      lien: villeUrl ? `${villeUrl}?src=${src}${eTag}` : `${PAGE_VI[fr ? 'fr' : 'en']}?src=${src}${qPre}#ia`,
       btn: fr ? `Voir qui l’IA trouve à ${L} &rarr;` : `See who AI finds in ${L} &rarr;`,
       sous: fr ? 'La place ne s’achète pas. Elle se mérite, et elle se perd.' : 'The spot can’t be bought. It’s earned, and it can be lost.' };
   } else if (k === 'nommes') {
@@ -2791,7 +2797,7 @@ function renderFomo({ k, lieu, citySlug = null, provSlug = null, prov = '', meti
         + p(prisesTxt ? `${prisesTxt} ${fr ? (e.prises ? 'Elles peuvent changer de main demain. En votre faveur, ou pas.' : 'Demain, elle sera peut-être à quelqu’un d’autre.') : (e.prises ? 'They can change hands tomorrow. In your favour, or not.' : 'Tomorrow, it may belong to someone else.')}`
                       : (fr ? `À ${L} aussi, les places changent de main. La prochaine fois, ce sera peut-être en votre faveur. Ou pas.` : `In ${L} too, spots change hands. Next time, it might be in your favour. Or not.`)),
       boite: fr ? '<b>À quoi ressemble une place gagnée ?</b>' : '<b>What does a winning profile look like?</b>',
-      lien: `${FOMO_FICHE_FMM}?src=${src}`,
+      lien: `${FOMO_FICHE_FMM}?src=${src}${eTag}`,
       btn: fr ? 'Voir la fiche qui a pris la place &rarr;' : 'See the profile that took the spot &rarr;',
       sous: fr ? 'Toutes nos fiches sont publiques, notées sur les mêmes critères.' : 'All our profiles are public, scored on the same criteria.' };
   } else {
@@ -2806,7 +2812,7 @@ function renderFomo({ k, lieu, citySlug = null, provSlug = null, prov = '', meti
         + p(fr ? 'Vos clients de 2027 ne feront pas défiler dix pages de résultats. Ils demanderont à l’IA, et elle répondra avec ce qu’elle peut lire. Ceux qui attendent arriveront après les autres.'
                : 'Your 2027 clients won’t scroll through ten pages of results. They’ll ask AI, and it will answer with what it can read. Those who wait will arrive after everyone else.'),
       boite: fr ? '<b>Sortez du lot avant votre compétition.</b>' : '<b>Get ahead of your competition.</b>',
-      lien: `${FOMO_ETUDE[fr ? 'fr' : 'en']}?src=${src}`,
+      lien: `${FOMO_ETUDE[fr ? 'fr' : 'en']}?src=${src}${eTag}`,
       btn: fr ? 'Lire l’étude sur 468 cabinets &rarr;' : 'Read the study of 468 firms &rarr;',
       sous: fr ? 'Publiée par Payotte, données téléchargeables.' : 'Published by Payotte, data downloadable.' };
   }
