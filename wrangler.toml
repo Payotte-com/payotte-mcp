@@ -162,9 +162,9 @@ REPLY_TO_OUTREACH = "gregory@payotte.com"
 #     AB et C.-B. jusqu'à 21 h 30 UTC (17 h 30 à Montréal ; 15 h 30 AB, 14 h 30 C.-B.).
 MAX_PAR_DOMAINE_DU_JOUR = "2026-09-30:50"
 EXPERTS_SHARE_DU_JOUR = "2026-09-30:0"
-PLAFOND_DU_JOUR = "2026-10-07:8000"
+PLAFOND_DU_JOUR = "2026-10-08:8000"
 PLAFOND_MATIN_DU_JOUR = ""
-PROVINCES_APRES = "2026-10-07|13:QC,ON,NS,NB,PE,NL;14:QC,ON,NS,NB,PE,NL,MB;15:QC,ON,NS,NB,PE,NL,MB,SK,AB;16:QC,ON,NS,NB,PE,NL,MB,SK,AB,BC"
+PROVINCES_APRES = "2026-10-08|13:QC,ON,NS,NB,PE,NL;14:QC,ON,NS,NB,PE,NL,MB;15:QC,ON,NS,NB,PE,NL,MB,SK,AB;16:QC,ON,NS,NB,PE,NL,MB,SK,AB,BC"
 GABARIT_TEXTE_DES = "2026-10-06T13"
 # ── TEST DES CINQ « TOP 5 » (7 oct. 2026, demande de Grégory) ───────────────────────
 # 1 500 envois par courriel, toutes les provinces (paliers de PROVINCES_APRES : chaque province
@@ -172,6 +172,12 @@ GABARIT_TEXTE_DES = "2026-10-06T13"
 # en 6 000-7 499) a été RETIRÉE le 7 oct. à 9 h 15 par Grégory : le test s'arrête à 6 000. Compteur cumulatif `top5:envois` (COUNTERS). Après 6 000, plus aucun
 # prospect récolté ne part tant que TOP5_DES est posé : le retirer pour revenir au gabarit texte.
 TOP5_DES = "2026-10-07T13"
+# TEST FOMO (8 oct. 2026, approuvé par Grégory : « 1500 de chaque dans plusieurs provinces à la fois »).
+# À partir de FOMO_DES (heure UTC), il passe devant les Top 5 : tourniquet place → nommés → récente → avance,
+# FOMO_PAR envois chacun (compteur `fomo:envois` dans COUNTERS), puis plus aucun prospect récolté ne part.
+# Maquettes : https://claude.ai/artifact/Ybc9gNE3qL3f4Yb4GoHVia (v3).
+FOMO_DES = "2026-10-08T13"
+FOMO_PAR = "1500"
 TOP5_PAR = "1500"
 # ── ENVOI ÉTALÉ (préparé le 7 oct. 2026, demande de Grégory) ─────────────────────────────
 # But : trouver la meilleure HEURE d'envoi. Même courriel, même volume, seule l'heure change.
@@ -190,11 +196,11 @@ PRESENTATION_DES = "2026-10-06T16"
 VIP_PLAFOND_JOUR = "400"
 SEUIL_PLAINTES_DU_JOUR = "2026-10-06:0.0007"
 EXCLURE_DOMAINES = "hotmail.com,hotmail.ca,live.com,live.ca,outlook.com,outlook.fr,msn.com"
-PART_PASSAGE_DU_JOUR = "2026-10-07:500"
-DIX_MIN_DU_JOUR = "2026-10-07:13,14,15,16,17,18,19,20,21"
+PART_PASSAGE_DU_JOUR = "2026-10-08:500"
+DIX_MIN_DU_JOUR = "2026-10-08:13,14,15,16,17,18,19,20,21"
 RENFORT_DU_JOUR = ""
 
-OUTREACH_RAMPE = "2026-09-09:75,2026-09-10:150,2026-09-11:300,2026-09-14:600,2026-09-15:1200,2026-09-16:2400,2026-09-17:4800,2026-09-29:6000,2026-09-30:8000,2026-10-01:6000,2026-10-05:12000,2026-10-06:9000,2026-10-07:7600"
+OUTREACH_RAMPE = "2026-09-09:75,2026-09-10:150,2026-09-11:300,2026-09-14:600,2026-09-15:1200,2026-09-16:2400,2026-09-17:4800,2026-09-29:6000,2026-09-30:8000,2026-10-01:6000,2026-10-05:12000,2026-10-06:9000,2026-10-07:7600,2026-10-08:6200"
 
 # ── FORÇAGE DE PROVINCES POUR UNE JOURNÉE (14 sept. 2026, demande proprio) ───────
 # QC et ON sont normalement servis au passage de 14 h UTC (10 h locale). Celui du

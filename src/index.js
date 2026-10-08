@@ -2658,6 +2658,172 @@ function renderTop5({ k, lieu, citySlug = null, prov = '', metier, nom = '', lan
   return { subject: c.subject, html, text, variante: `top5-${k}` };
 }
 
+/* ── TEST FOMO (8 oct. 2026) ─────────────────────────────────────────────────────────────
+ * Maquettes v3 approuvées par Grégory le 8 oct. : https://claude.ai/artifact/Ybc9gNE3qL3f4Yb4GoHVia
+ * « Envoie 1500 de chaque dans plusieurs provinces à la fois. » Même mécanique que les Top 5 :
+ * rang d'envoi = compteur cumulatif `fomo:envois` (COUNTERS), tourniquet place → nommés → récente →
+ * avance, 4 × FOMO_PAR envois, puis plus aucun prospect récolté tant que `FOMO_DES` est posé.
+ * Chaque courriel a un bouton VERS LE SITE (demande du 8 oct.) et des chiffres vrais :
+ *   place   : état réel de la place (experts publiés de la ville / secteurs du flux villes-couvertes),
+ *             inscrits OACIQ ou OEAQ quand le registre donne un décompte par ville (Québec seulement) ;
+ *   nommés  : le nombre de noms donnés par Gemini (cache `vi:compte-ia`, le même que les Top 5) ;
+ *   récente : Fort McMurray, 65 → 94/100 le 7 oct. 2026 (fiche remplacée sur demande écrite) ;
+ *   avance  : l'étude publiée « Lisibilité IA » (relevé du 4 sept. 2026, 468 cabinets).
+ * Rien n'est affirmé quand la donnée manque : la phrase retombe sur une version neutre et vraie.
+ * Suivi : `?src=courriel-fomo-{clé}` ; /vi/campagnes classe par objet (10 à 13). */
+let MODE_FOMO = false;            // posé par runBulletin selon `FOMO_DES`
+let FOMO_PAR = 1500;
+const FOMO_ORDRE = ['place', 'nommes', 'recente', 'avance'];
+const fomoPour = (rang) => (rang < FOMO_ORDRE.length * FOMO_PAR ? FOMO_ORDRE[rang % FOMO_ORDRE.length] : null);
+// Registres avec un décompte FIABLE par ville (copie de payotte-astro/src/lib/registryCounts.ts, relevé du 3 juill. 2026).
+const INSCRITS_VILLE = {
+  'real-estate-broker': { montreal: 2812, 'quebec-city': 1016, laval: 2810, gatineau: 520, longueuil: 302, sherbrooke: 293, 'trois-rivieres': 229,
+    blainville: 156, 'saint-eustache': 100, 'saint-jerome': 98, boucherville: 135, 'sainte-julie': 28, 'saint-jean-sur-richelieu': 190, drummondville: 86, rimouski: 82 },
+  appraiser: { montreal: 297, 'quebec-city': 263, laval: 66, gatineau: 46, longueuil: 33, sherbrooke: 28, 'trois-rivieres': 26, 'saint-jerome': 10,
+    'saint-jean-sur-richelieu': 4, drummondville: 8, rimouski: 7 },
+};
+const INSCRITS_ORG = { 'real-estate-broker': ['courtiers et agences inscrits à l’OACIQ', 'brokers and agencies registered with the OACIQ'], appraiser: ['évaluateurs agréés inscrits à l’OEAQ', 'chartered appraisers registered with the OEAQ'] };
+const FOMO_FICHE_FMM = `${SITE}/canada/alberta/fort-mcmurray/fort-mcmurray/mortgage-broker`;
+const FOMO_ETUDE = { fr: `${SITE}/etudes/lisibilite-ia-experts-immobiliers`, en: `${SITE}/en/studies/ai-readiness-real-estate-experts` };
+const FOMO_SRC = (k) => `courriel-fomo-${k}`;
+
+/* État de la place d'un métier dans une ville : { places, prises, min, max } ou null si on ne sait pas.
+   `places` = secteurs de la ville (flux villes-couvertes), `prises` = experts publiés (couleur ≠ rouge) du
+   flux /api/experts/{prov}.json, chargé une fois par province et par passage. */
+const FOMO_EXPERTS = new Map();
+async function etatPlace(F, provSlug, citySlug, met) {
+  if (!provSlug || !citySlug) return null;
+  const secteurs = SECTEURS_VILLES[normVille(citySlug)] || SECTEURS_VILLES[citySlug];
+  if (!Array.isArray(secteurs) || !secteurs.length) return null;
+  if (!FOMO_EXPERTS.has(provSlug)) FOMO_EXPERTS.set(provSlug, F(`/api/experts/${provSlug}.json`).then((d) => d.experts ?? []).catch(() => null));
+  const tous = await FOMO_EXPERTS.get(provSlug);
+  if (!tous) return null;
+  const pub = tous.filter((e) => e.city === citySlug && e.profession === met && e.score?.color && e.score.color !== 'red');
+  const sc = pub.map((e) => Number(e.score?.total)).filter((x) => x > 0);
+  return { places: Math.max(secteurs.length, pub.length), prises: pub.length, min: sc.length ? Math.min(...sc) : null, max: sc.length ? Math.max(...sc) : null };
+}
+
+function renderFomo({ k, lieu, citySlug = null, provSlug = null, prov = '', metier, nom = '', lang, unsubUrl, postale = '', etat = null, libre = false }) {
+  const fr = lang !== 'en';
+  const met = METIER_UN[metier] ? metier : 'real-estate-broker';
+  const mUn = METIER_UN[met][fr ? 0 : 1], mPlur = METIER_PLURIEL[met][fr ? 0 : 1];
+  const nomOk = /^[A-ZÀ-Ý][\p{L}'’-]+( [A-ZÀ-Ý][\p{L}'’-]+){1,2}$/u.test(String(nom || '').trim()) ? String(nom).trim() : '';
+  const prenom = nomOk ? nomOk.split(' ')[0] : '';
+  const L = echapper(lieu);
+  const nb = (v) => Number(v).toLocaleString(fr ? 'fr-CA' : 'en-CA');
+  const maj = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+  const avecPrenom = (s) => (prenom ? `${prenom}, ${s}` : maj(s));
+  const inscrits = citySlug ? INSCRITS_VILLE[met]?.[citySlug] ?? null : null;
+  const res = citySlug ? COMPTE_IA[`${citySlug}:${met}:${fr ? 'fr' : 'en'}`] : null;
+  const n = res && res.n > 0 ? res.n : null;
+  const src = FOMO_SRC(k);
+  const eTag = /^[A-Z]{2}$/.test(prov) ? `&e=${String(new Date().getUTCHours()).padStart(2, '0')}-${prov}` : '';
+  const qPre = `&m=${met}&v=${encodeURIComponent(lieu)}${citySlug ? `&c=${citySlug}` : ''}${eTag}`;
+  const SERIF = "font-family:Georgia,'Times New Roman',serif;";
+  const p = (t) => `<p style="margin:0 0 10px 0;font-size:15px;line-height:1.55;color:#443e40;">${t}</p>`;
+  const trois = (items) => `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:6px 0 16px 0;"><tr>${items.map(([g, t]) => `<td valign="top" width="${Math.floor(100 / items.length)}%" style="padding:12px 8px 12px 0;border-top:1px solid #f1ecec;border-bottom:1px solid #f1ecec;"><div style="${SERIF}font-size:30px;line-height:1;color:#c8102e;">${g}</div><div style="margin-top:6px;font-size:12.5px;line-height:1.4;color:#443e40;">${t}</div></td>`).join('')}</tr></table>`;
+  const chiffre = (g, t) => `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:6px 0 16px 0;"><tr><td style="padding:14px 0;border-top:1px solid #f1ecec;border-bottom:1px solid #f1ecec;"><div style="${SERIF}font-size:40px;line-height:1;color:#c8102e;">${g}</div><div style="margin-top:6px;font-size:13.5px;line-height:1.45;color:#443e40;">${t}</div></td></tr></table>`;
+  const note = (t) => `<div style="margin-top:10px;font-size:13px;line-height:1.5;color:#443e40;">${t}</div>`;
+  const villeUrl = citySlug && provSlug && !libre ? `${SITE}/canada/${provSlug}/${citySlug}` : null;
+  // L'état, en mots. `libre` = la ville n'a aucune fiche sur Payotte (ville non couverte) : la place est libre, c'est vrai.
+  const e = libre ? { places: null, prises: 0 } : etat;
+  const prisesTxt = (() => {
+    if (!e) return null;
+    if (e.prises === 0) return fr ? `À ${L}, personne ne tient encore la place de ${mUn} sur Payotte.` : `In ${L}, nobody holds the ${mUn} spot on Payotte yet.`;
+    if (e.places === 1) return fr ? `À ${L}, la place de ${mUn} est prise, à ${e.max}/100.` : `In ${L}, the ${mUn} spot is taken, at ${e.max}/100.`;
+    return fr ? `À ${L}, ${e.prises} places de ${mUn} sur ${e.places} sont prises, de ${e.min} à ${e.max}/100.` : `In ${L}, ${e.prises} of ${e.places} ${mUn} spots are taken, from ${e.min} to ${e.max}/100.`;
+  })();
+  let c;
+  if (k === 'place') {
+    const libreTout = e && e.prises === 0;
+    const subject = !e ? (fr ? avecPrenom(`à ${lieu}, il n’y a qu’une place de ${mUn} par secteur`) : avecPrenom(`in ${lieu}, there is one ${mUn} spot per area`))
+      : libreTout ? (fr ? avecPrenom(`votre place à ${lieu} est encore libre. Pour combien de temps ?`) : avecPrenom(`your spot in ${lieu} is still open. For how long?`))
+      : e.places === 1 ? (fr ? avecPrenom(inscrits ? `1 place pour ${nb(inscrits)} ${mPlur} à ${lieu}. Elle est prise.` : `1 place de ${mUn} à ${lieu}. Elle est prise.`) : avecPrenom(`1 ${mUn} spot in ${lieu}. It’s taken.`))
+      : e.prises >= e.places ? (fr ? avecPrenom(`${e.places} places pour tout ${lieu}. Toutes prises.`) : avecPrenom(`${e.places} spots for all of ${lieu}. All taken.`))
+      : (fr ? avecPrenom(`à ${lieu}, ${e.prises} places sur ${e.places} sont déjà prises.`) : avecPrenom(`in ${lieu}, ${e.prises} of ${e.places} spots are already taken.`));
+    const tuiles = [];
+    if (inscrits) tuiles.push([nb(inscrits), fr ? `${INSCRITS_ORG[met][0]} à ${L}` : `${INSCRITS_ORG[met][1]} in ${L}`]);
+    if (e && e.places) tuiles.push([String(e.places), fr ? (e.places > 1 ? `places de ${mUn} sur Payotte à ${L}` : `seule place de ${mUn} sur Payotte à ${L}`) : (e.places > 1 ? `${mUn} spots on Payotte in ${L}` : `single ${mUn} spot on Payotte in ${L}`)]);
+    if (e && e.places > 1) tuiles.push([`${e.prises}/${e.places}`, fr ? 'déjà prises' : 'already taken']);
+    if (e && e.prises && e.max) tuiles.push([e.places === 1 ? `${e.max}/100` : `${e.min}–${e.max}`, fr ? (e.places === 1 ? 'le score de celui qui la tient' : 'les scores de ceux qui les tiennent, sur 100') : (e.places === 1 ? 'the score of whoever holds it' : 'the scores of those holding them, out of 100')]);
+    if (libreTout) tuiles.push(['0', fr ? `${mUn} recommandé par Payotte à ${L} pour l’instant` : `${mUn} recommended by Payotte in ${L} so far`]);
+    c = {
+      subject, pre: fr ? 'Quand vos clients demandent à l’IA, ils n’entendent qu’un nom.' : 'When your clients ask AI, they hear just one name.',
+      titre: fr ? 'Un client vous cherche. L’IA lui donne un autre nom.' : 'A client is looking for you. AI gives them another name.',
+      corps: p(fr ? `${prenom ? `Bonjour ${echapper(prenom)}, c` : 'C'}e soir, quelqu’un à ${L} va demander à ChatGPT quel ${mUn} choisir. L’IA ne donne pas une liste de vingt. Elle donne un nom.`
+                  : `${prenom ? `Hi ${echapper(prenom)}, t` : 'T'}onight, someone in ${L} will ask ChatGPT which ${mUn} to pick. AI doesn’t give a list of twenty. It gives a name.`)
+        + (tuiles.length ? trois(tuiles.slice(0, 3)) : '')
+        + (libreTout ? p(fr ? 'Personne ne tient encore la place. Le premier dossier solide la prendra, et ce sera peut-être celui d’un concurrent.' : 'Nobody holds the spot yet. The first strong file will take it, and it may well be a competitor’s.')
+                     : p(fr ? 'Ce client ne vous appellera pas. Vous ne saurez jamais qu’il vous cherchait.' : 'That client won’t call you. You’ll never know they were looking for you.')),
+      boite: fr ? `<b>Qui a la place à ${L} ?</b>` : `<b>Who holds the spot in ${L}?</b>`,
+      lien: villeUrl ? `${villeUrl}?src=${src}` : `${PAGE_VI[fr ? 'fr' : 'en']}?src=${src}${qPre}#ia`,
+      btn: fr ? `Voir qui l’IA trouve à ${L} &rarr;` : `See who AI finds in ${L} &rarr;`,
+      sous: fr ? 'La place ne s’achète pas. Elle se mérite, et elle se perd.' : 'The spot can’t be bought. It’s earned, and it can be lost.' };
+  } else if (k === 'nommes') {
+    const pct = n && inscrits ? Math.ceil((n / inscrits) * 1000) / 10 : null;
+    const pctTxt = pct ? (fr ? `${String(pct).replace('.', ',')} %` : `${pct}%`) : null;
+    c = {
+      subject: n ? (fr ? avecPrenom(inscrits ? `l’IA a retenu ${n} ${mPlur} sur ${nb(inscrits)} à ${lieu}. Et vous ?` : `l’IA a retenu ${n} ${mPlur} à ${lieu}. Et vous ?`) : avecPrenom(`AI picked ${n} ${mPlur} in ${lieu}. Are you one?`))
+                 : (fr ? avecPrenom(`l’IA ne retient qu’une poignée de ${mPlur} à ${lieu}. Et vous ?`) : avecPrenom(`AI only picks a handful of ${mPlur} in ${lieu}. Are you one?`)),
+      pre: pctTxt ? (fr ? `Moins de ${pctTxt} des inscrits. Vos clients n’appellent que ceux-là.` : `Under ${pctTxt} of those registered. Your clients only call those.`)
+                  : (fr ? 'Vos clients n’appellent que les noms que l’IA leur donne.' : 'Your clients only call the names AI gives them.'),
+      titre: fr ? 'Ils ne vous ont jamais appelé. Ils ont demandé à l’IA.' : 'They never called you. They asked AI.',
+      corps: p(fr ? `${prenom ? `Bonjour ${echapper(prenom)}, n` : 'N'}ous avons demandé à Gemini : « Quel est le meilleur ${mUn} à ${L} ? »` : `${prenom ? `Hi ${echapper(prenom)}, w` : 'W'}e asked Gemini: “Who is the best ${mUn} in ${L}?”`)
+        + (n ? chiffre(inscrits ? (fr ? `${n} sur ${nb(inscrits)}` : `${n} of ${nb(inscrits)}`) : (fr ? `${n} noms` : `${n} names`),
+            inscrits ? (fr ? `Les noms que Gemini a donnés, sur les ${INSCRITS_ORG[met][0]} à ${L}. Moins de ${pctTxt}.` : `The names Gemini gave, out of the ${INSCRITS_ORG[met][1]} in ${L}. Under ${pctTxt}.`)
+                     : (fr ? `C’est tout ce que Gemini a donné pour ${L}.` : `That’s all Gemini gave for ${L}.`)) : '')
+        + p(fr ? 'Vos futurs clients appellent ces noms-là. Pas les autres. Si vous n’y êtes pas, chaque semaine qui passe est une semaine de clients chez quelqu’un d’autre.'
+               : 'Your future clients call those names. Not the others. If you’re not on the list, every week that goes by is a week of clients going to someone else.'),
+      boite: n ? (fr ? `<b>Êtes-vous dans les ${n} ?</b>` : `<b>Are you one of the ${n}?</b>`) : (fr ? '<b>Votre nom en fait-il partie ?</b>' : '<b>Is your name on the list?</b>'),
+      lien: `${PAGE_VI[fr ? 'fr' : 'en']}?src=${src}${qPre}#ia`,
+      btn: n ? (fr ? `Voir les ${n} noms à ${L} &rarr;` : `See the ${n} names in ${L} &rarr;`) : (fr ? `Voir qui l’IA nomme à ${L} &rarr;` : `See who AI names in ${L} &rarr;`),
+      sous: fr ? 'Le test est gratuit, sans inscription.' : 'The test is free, no sign-up.' };
+  } else if (k === 'recente') {
+    c = {
+      subject: fr ? 'De 65 à 94/100 en une journée : elle a pris la place.' : 'From 65 to 94/100 in one day: she took the spot.',
+      pre: fr ? `Ça s’est passé mercredi. Demain, ce sera peut-être à ${lieu}.` : `It happened on Wednesday. Tomorrow, it could be in ${lieu}.`,
+      titre: fr ? 'Une journée a suffi' : 'One day was enough',
+      corps: p(fr ? `${prenom ? `Bonjour ${echapper(prenom)}, m` : 'M'}ercredi matin, une courtière hypothécaire de Fort McMurray nous a écrit. Le soir même, c’est elle que Payotte recommandait dans sa ville.`
+                  : `${prenom ? `Hi ${echapper(prenom)}, o` : 'O'}n Wednesday morning, a mortgage broker in Fort McMurray wrote to us. That same evening, she was the one Payotte recommended in her city.`)
+        + trois(fr ? [['65/100', 'la fiche qui tenait la place mardi'], ['94/100', 'la sienne, mercredi soir'], ['+29', 'points pour la place, en moins de 24 heures']]
+                   : [['65/100', 'the profile holding the spot on Tuesday'], ['94/100', 'hers, on Wednesday evening'], ['+29', 'points for the spot, in under 24 hours']])
+        + p(fr ? 'La personne qui avait la place l’a perdue. Elle ne l’a appris que plus tard.' : 'The person who held the spot lost it. They only found out later.')
+        + p(prisesTxt ? `${prisesTxt} ${fr ? (e.prises ? 'Elles peuvent changer de main demain. En votre faveur, ou pas.' : 'Demain, elle sera peut-être à quelqu’un d’autre.') : (e.prises ? 'They can change hands tomorrow. In your favour, or not.' : 'Tomorrow, it may belong to someone else.')}`
+                      : (fr ? `À ${L} aussi, les places changent de main. La prochaine fois, ce sera peut-être en votre faveur. Ou pas.` : `In ${L} too, spots change hands. Next time, it might be in your favour. Or not.`)),
+      boite: fr ? '<b>À quoi ressemble une place gagnée ?</b>' : '<b>What does a winning profile look like?</b>',
+      lien: `${FOMO_FICHE_FMM}?src=${src}`,
+      btn: fr ? 'Voir la fiche qui a pris la place &rarr;' : 'See the profile that took the spot &rarr;',
+      sous: fr ? 'Toutes nos fiches sont publiques, notées sur les mêmes critères.' : 'All our profiles are public, scored on the same criteria.' };
+  } else {
+    c = {
+      subject: fr ? '94 % des cabinets sont invisibles pour l’IA. Et le vôtre ?' : '94% of real estate firms are invisible to AI. Is yours?',
+      pre: fr ? 'Nous avons passé 468 cabinets au crible. La médiane : 49/100.' : 'We audited 468 firms. The median: 49/100.',
+      titre: fr ? 'Pour l’IA, la plupart des cabinets n’existent pas' : 'To AI, most firms don’t exist',
+      corps: p(fr ? `${prenom ? `Bonjour ${echapper(prenom)}, n` : 'N'}ous avons passé au crible les sites de 468 cabinets immobiliers au Canada, avec les critères que lisent ChatGPT, Gemini et Copilot.`
+                  : `${prenom ? `Hi ${echapper(prenom)}, w` : 'W'}e audited the websites of 468 real estate firms in Canada, using the criteria ChatGPT, Gemini and Copilot read.`)
+        + trois(fr ? [['49/100', 'la note médiane'], ['94 %', 'n’offrent aucune réponse que l’IA peut citer'], ['25 %', 'bloquent carrément un robot d’IA']]
+                   : [['49/100', 'the median score'], ['94%', 'offer no answer AI can quote'], ['25%', 'block an AI crawler outright']])
+        + p(fr ? 'Vos clients de 2027 ne feront pas défiler dix pages de résultats. Ils demanderont à l’IA, et elle répondra avec ce qu’elle peut lire. Ceux qui attendent arriveront après les autres.'
+               : 'Your 2027 clients won’t scroll through ten pages of results. They’ll ask AI, and it will answer with what it can read. Those who wait will arrive after everyone else.'),
+      boite: fr ? '<b>Sortez du lot avant votre compétition.</b>' : '<b>Get ahead of your competition.</b>',
+      lien: `${FOMO_ETUDE[fr ? 'fr' : 'en']}?src=${src}`,
+      btn: fr ? 'Lire l’étude sur 468 cabinets &rarr;' : 'Read the study of 468 firms &rarr;',
+      sous: fr ? 'Publiée par Payotte, données téléchargeables.' : 'Published by Payotte, data downloadable.' };
+  }
+  const preheader = `<div style="display:none;max-height:0;overflow:hidden;font-size:1px;line-height:1px;color:#ffffff;opacity:0;">${echapper(c.pre)}</div>`;
+  const tete = `<tr><td style="padding:26px 32px 22px 32px;border-bottom:1px solid #f1ecec;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td valign="middle"><a href="${SITE}"><img src="${LOGO}" width="140" height="29" alt="Payotte" style="display:block;border:0;"></a></td><td align="right" valign="middle" style="font-size:11px;letter-spacing:.5px;color:#9a9294;line-height:1.5;">${fr ? 'Plateforme IA pour l’immobilier' : 'AI platform for real estate'}<br><span style="color:#c8102e;letter-spacing:1px;">${L}</span></td></tr></table></td></tr>`;
+  const offre = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fbf3f4;border:1px solid #f1d5da;border-radius:10px;"><tr><td style="padding:16px;"><div style="font-size:15px;line-height:1.5;color:#211c1e;">${c.boite}</div><div style="height:14px;font-size:0;line-height:0;">&nbsp;</div>${BTN(c.lien, c.btn)}${note(c.sous)}</td></tr></table>`;
+  const corps = `<tr><td style="padding:26px 32px 6px 32px;"><div style="${SERIF}font-size:24px;line-height:1.25;color:#211c1e;margin-bottom:12px;">${c.titre}</div>${c.corps}${offre}</td></tr>`;
+  const signe = fr ? 'Une question&nbsp;? Répondez simplement à ce courriel, je lis tout.<br>Grégory, Payotte' : 'Questions? Just reply to this email, I read everything.<br>Grégory, Payotte';
+  const repondre = `<tr><td style="padding:16px 32px 0 32px;font-size:13.5px;line-height:1.55;color:#443e40;">${signe}</td></tr>`;
+  const why = fr ? `Vous recevez ce courriel parce que vous exercez à ${L}.` : `You are receiving this email because you practise in ${L}.`;
+  const html = `${preheader}<div style="background:#f5f3f2;margin:0;padding:28px 12px;font-family:Arial,Helvetica,sans-serif;"><table role="presentation" width="580" cellpadding="0" cellspacing="0" border="0" align="center" style="max-width:580px;width:100%;background:#ffffff;border:1px solid #eae5e5;border-radius:8px;">${tete}${corps}${repondre}${FOOT(why, unsubUrl, fr ? 'Ne plus recevoir' : 'Unsubscribe', postale, fr)}</table></div>`;
+  // Version texte : les tuiles deviennent « chiffre : légende ».
+  const nu = (h) => String(h).replace(/<\/td><td[^>]*>/g, ' — ').replace(/<\/tr>|<\/p>|<br>/g, '\n').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&rarr;/g, '→').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/\n{3,}/g, '\n\n').trim();
+  const text = [nu(c.titre), nu(c.corps), nu(c.boite), `${nu(c.btn)} ${c.lien}`, nu(c.sous), nu(signe), `${nu(why)} ${fr ? 'Ne plus recevoir' : 'Unsubscribe'} : ${unsubUrl}${postale ? `\n${nu(postale)}` : ''}`].join('\n\n');
+  return { subject: c.subject, html, text, variante: `fomo-${k}` };
+}
+
 function renderPulse({ segment, stage, city, expert, lang, unsubUrl, macro = null, metier = '', postale = '', villeCouverte = null }) {
   const fr = lang !== 'en';
   if (GABARIT_IA) return renderTestIA({ segment, stage, city, expert, lang, unsubUrl, postale, villeCouverte, metier });
@@ -4311,6 +4477,11 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
   MODE_TOP5 = !!env.TOP5_DES && at.toISOString().slice(0, 13) >= String(env.TOP5_DES);
   TOP5_PAR = Math.max(1, Number(env.TOP5_PAR || 1500));
   let top5Compte = null, top5Bouge = false;
+  // Test FOMO (8 oct. 2026) : à partir de `FOMO_DES`, il passe devant les Top 5. Compteur cumulatif `fomo:envois`.
+  MODE_FOMO = !!env.FOMO_DES && at.toISOString().slice(0, 13) >= String(env.FOMO_DES);
+  FOMO_PAR = Math.max(1, Number(env.FOMO_PAR || 1500));
+  let fomoCompte = null, fomoBouge = false;
+  FOMO_EXPERTS.clear();
   /* ENVOI ÉTALÉ (7 oct. 2026, demande de Grégory : « prépare l'envoi étalé pour le prochain ») :
      « AAAA-MM-JJ|PROV,PROV|HH,HH,HH,HH|N|clé » — ce jour-là, la prospection ne part QU'aux heures UTC
      listées, N envois par heure, aux provinces listées, avec le courriel Top 5 `clé`. Le même courriel et
@@ -4327,6 +4498,7 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
   let etaleCompte = 0, etaleBouge = false;
   if (ETALE) { etaleCompte = Number((await env.COUNTERS?.get(`etale:${dayKey}:${ETALE_H}`)) || 0); report.etale = { ...ETALE, heure: ETALE_H, deja: etaleCompte }; }
   if (MODE_TOP5) { try { top5Compte = JSON.parse((await env.COUNTERS?.get('top5:envois')) || 'null'); } catch {} top5Compte ||= { total: 0 }; report.top5 = top5Compte; }
+  if (MODE_FOMO) { try { fomoCompte = JSON.parse((await env.COUNTERS?.get('fomo:envois')) || 'null'); } catch {} fomoCompte ||= { total: 0 }; report.fomo = fomoCompte; }
   await chargerCompteIA(env);
   const allActive = (market.cities || []).filter((c) => hasMarketStats(c) || GABARIT_IA);
   // Le filtre par fuseau s'applique ICI, sur les villes : tout le reste (prospects comme
@@ -4821,8 +4993,11 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
         // Test Top 5 terminé (7 500 envois) : plus aucun prospect récolté tant que TOP5_DES est posé.
         // Envoi étalé : le quota de l'heure atteint, plus rien jusqu'à l'heure suivante.
         if (ETALE && fluxRec === 'outreach' && etaleCompte >= ETALE.par) { report.pending++; report.etaleQuota = true; continue; }
-        const top5K = ETALE && fluxRec === 'outreach' ? ETALE.k : MODE_TOP5 && fluxRec === 'outreach' ? top5Pour(top5Compte.total) : null;
-        if (!ETALE && MODE_TOP5 && fluxRec === 'outreach' && !top5K) { report.pending++; report.top5Fini = true; continue; }
+        // Test FOMO : terminé (4 × FOMO_PAR), plus aucun prospect récolté tant que FOMO_DES est posé.
+        const fomoK = !ETALE && MODE_FOMO && fluxRec === 'outreach' ? fomoPour(fomoCompte.total) : null;
+        if (!ETALE && MODE_FOMO && fluxRec === 'outreach' && !fomoK) { report.pending++; report.fomoFini = true; continue; }
+        const top5K = ETALE && fluxRec === 'outreach' ? ETALE.k : !MODE_FOMO && MODE_TOP5 && fluxRec === 'outreach' ? top5Pour(top5Compte.total) : null;
+        if (!ETALE && !MODE_FOMO && MODE_TOP5 && fluxRec === 'outreach' && !top5K) { report.pending++; report.top5Fini = true; continue; }
         if (fluxRec === 'outreach' && dejaOutreach + report.outreachEnvoyes >= rampeOutreach()) { report.pending++; continue; }
         // Garde-fou : si la valeur stockée ne concordait pas avec sa clé, l'identifiant
         // calculé plus haut serait faux et on risquerait un doublon. On revérifie sur
@@ -4836,7 +5011,13 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
         if (provSlug) {
           // BULLETIN PROVINCIAL — même file, mêmes marques, même désabonnement ; seul le gabarit change.
           const ctxP = await contexteProvincial();
-          const v = top5K
+          // FOMO : la ville réelle du provincial n'a une place connue que si Payotte la couvre ; sinon elle est libre.
+          const slugP = normVille(rec.villeReelle), couverteP = couvertes ? couvertes.has(slugP) : null;
+          const v = fomoK
+            ? { ...renderFomo({ k: fomoK, lieu: rec.villeReelle || PROV_NOMS[provSlug]?.[rec.lang !== 'en' ? 0 : 1] || '', citySlug: couverteP ? slugP : null, provSlug,
+                prov: PROV_TO_CODE[provSlug]?.toUpperCase() || '', metier: rec.metier, nom: rec.nom, lang: rec.lang, unsubUrl, postale, libre: couverteP === false,
+                etat: couverteP && (fomoK === 'place' || fomoK === 'recente') ? await etatPlace(F, provSlug, slugP, rec.metier) : null }), zone: null }
+            : top5K
             ? { ...renderTop5({ k: top5K, lieu: rec.villeReelle || PROV_NOMS[provSlug]?.[rec.lang !== 'en' ? 0 : 1] || '', prov: PROV_TO_CODE[provSlug]?.toUpperCase() || '', metier: rec.metier, nom: rec.nom, lang: rec.lang, unsubUrl, postale }), zone: null }
             : MODE_TEXTE
             ? { ...renderTexte({ lieu: rec.villeReelle || PROV_NOMS[provSlug]?.[rec.lang !== 'en' ? 0 : 1] || '', provSlug, metier: rec.metier, nom: rec.nom, lang: rec.lang, unsubUrl, postale }), variante: 'texte', zone: null }
@@ -4849,7 +5030,8 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
             continue;
           }
           report.prospects++; report.recipients.push({ to: rec.email, kind: 'prospect', city: rec.city, variante: v.variante, zone: v.zone, prov: PROV_TO_CODE[provSlug]?.toUpperCase(), cat: 'sansSecteur' });
-          if (top5K && ETALE) { etaleCompte++; etaleBouge = true; }
+          if (fomoK) { fomoCompte.total++; fomoCompte[fomoK] = (fomoCompte[fomoK] || 0) + 1; fomoBouge = true; }
+          else if (top5K && ETALE) { etaleCompte++; etaleBouge = true; }
           else if (top5K) { top5Compte.total++; top5Compte[top5K] = (top5Compte[top5K] || 0) + 1; top5Bouge = true; }
           report.provincial = report.provincial || { banlieue: 0, provincial: 0 };
           report.provincial[v.variante] = (report.provincial[v.variante] || 0) + 1;
@@ -4863,14 +5045,20 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
           if (file.length >= TAILLE_LOT) await viderFile();
           continue;
         }
-        const { subject, html, text, from: fromItem } = top5K
+        const couverteV = couvertes ? couvertes.has(normVille(city.slug)) : null;
+        const { subject, html, text, from: fromItem } = fomoK
+          ? renderFomo({ k: fomoK, lieu: nomVilleBulletin(city, rec.lang !== 'en'), citySlug: city.slug, provSlug: CODE_TO_PROVSLUG[city.province], prov: String(city.province || '').toUpperCase(),
+              metier: rec.metier, nom: rec.nom, lang: rec.lang, unsubUrl, postale, libre: couverteV === false,
+              etat: couverteV && (fomoK === 'place' || fomoK === 'recente') ? await etatPlace(F, CODE_TO_PROVSLUG[city.province], city.slug, rec.metier) : null })
+          : top5K
           ? renderTop5({ k: top5K, lieu: nomVilleBulletin(city, rec.lang !== 'en'), citySlug: city.slug, prov: String(city.province || '').toUpperCase(), metier: rec.metier, nom: rec.nom, lang: rec.lang, unsubUrl, postale })
           : MODE_TEXTE
           ? renderTexte({ lieu: nomVilleBulletin(city, rec.lang !== 'en'), citySlug: city.slug, provSlug: CODE_TO_PROVSLUG[city.province], metier: rec.metier, nom: rec.nom, lang: rec.lang, unsubUrl, postale })
           : renderPulse({ segment: 'prospect', city, lang: rec.lang, unsubUrl, macro, metier: rec.metier , postale,
           villeCouverte: couvertes ? couvertes.has(normVille(city.slug ?? key.slice(0, sep))) : null });
         report.prospects++; report.recipients.push({ to: rec.email, kind: 'prospect', city: rec.city, prov: city?.province, cat: 'secteur' });
-        if (top5K && ETALE) { etaleCompte++; etaleBouge = true; }
+        if (fomoK) { fomoCompte.total++; fomoCompte[fomoK] = (fomoCompte[fomoK] || 0) + 1; fomoBouge = true; report.recipients[report.recipients.length - 1].fomo = fomoK; }
+        else if (top5K && ETALE) { etaleCompte++; etaleBouge = true; }
         else if (top5K) { top5Compte.total++; top5Compte[top5K] = (top5Compte[top5K] || 0) + 1; top5Bouge = true; report.recipients[report.recipients.length - 1].top5 = top5K; }
         report.attempts++;
         done.add(idReel);                // servi pour ce cycle dès la mise en file
@@ -4900,6 +5088,7 @@ async function runBulletin(env, { dryRun = false, at = new Date() } = {}) {
        ⚠ Jamais en dry-run : une simulation ne doit pas déplacer la position réelle du
        programme. C'est la même règle que partout ailleurs ici. */
     if (top5Bouge && !dryRun && env.COUNTERS) await env.COUNTERS.put('top5:envois', JSON.stringify(top5Compte)).catch(() => {});
+    if (fomoBouge && !dryRun && env.COUNTERS) await env.COUNTERS.put('fomo:envois', JSON.stringify(fomoCompte)).catch(() => {});
     if (etaleBouge && !dryRun && env.COUNTERS) await env.COUNTERS.put(`etale:${dayKey}:${ETALE_H}`, String(etaleCompte), { expirationTtl: 400 * 86400 }).catch(() => {});
     if (env.SUBSCRIBERS && !dryRun && curseurFin) {
       ctr.kv++;
@@ -6500,6 +6689,18 @@ const WORKER_MAIN = {
       const citySlug = strip(q.get('city') || 'laval');
       const lang = q.get('lang') || 'fr';
       const market = await feed('/api/market.json').catch(() => ({ cities: [] }));
+      // FOMO (8 oct. 2026) : ?fomo=place|nommes|recente|avance&city=laval&metier=real-estate-broker&nom=Julie%20Roy&lang=fr
+      if (FOMO_ORDRE.includes(q.get('fomo'))) {
+        try { const vc = await feed('/api/villes-couvertes.json'); SECTEURS_VILLES = vc?.secteurs || {}; } catch { SECTEURS_VILLES = {}; }
+        FOMO_EXPERTS.clear();
+        const cz = (market.cities || []).find((c) => c.slug === q.get('city'));
+        const met = q.get('metier') || 'real-estate-broker', provS = cz ? CODE_TO_PROVSLUG[cz.province] : null;
+        const couverte = cz ? !!SECTEURS_VILLES[normVille(cz.slug)] : false;
+        const etat = cz && couverte ? await etatPlace((u) => feed(u), provS, cz.slug, met) : null;
+        const v = renderFomo({ k: q.get('fomo'), lieu: cz ? nomVilleBulletin(cz, lang !== 'en') : (q.get('ville') || 'Okotoks'), citySlug: cz?.slug ?? null, provSlug: provS,
+          prov: String(cz?.province || '').toUpperCase(), metier: met, nom: q.get('nom') || '', lang, unsubUrl: '#preview', etat, libre: !couverte });
+        return new Response(`<!--${v.subject}-->\n${v.html}`, { headers: { 'content-type': 'text/html; charset=utf-8' } });
+      }
       // Top 5 (7 oct. 2026) : ?top5=raisons|plateforme|2026|questions|promo&city=laval&metier=real-estate-broker&nom=Marie%20Tremblay&lang=fr
       if (TOP5_CLES.includes(q.get('top5'))) {
         const cz = (market.cities || []).find((c) => c.slug === q.get('city'));
@@ -6880,7 +7081,9 @@ const WORKER_MAIN = {
     // Dry-run du bulletin (aucun envoi) — rapport d'audience. Protégé par le jeton privé.
     if (request.method === 'GET' && url.pathname === '/bulletin-dryrun') {
       if (!env.CONTACTS_TOKEN || url.searchParams.get('key') !== env.CONTACTS_TOKEN) return json({ error: 'unauthorized' }, 401);
-      const report = await runBulletin(env, { dryRun: true });
+      // `?at=AAAA-MM-JJTHH:MM:SSZ` (8 oct. 2026) : simule un passage à une autre heure (modes datés, paliers de provinces).
+      const atQ = url.searchParams.get('at'), atD = atQ ? new Date(atQ) : null;
+      const report = await runBulletin(env, { dryRun: true, ...(atD && !isNaN(atD) ? { at: atD } : {}) });
       // `?mail=1` : envoie AUSSI le récapitulatif à REPORT_TO, pour voir le rendu réel du
       // courriel sans qu'un seul bulletin ne parte (dryRun bloque tous les envois en amont).
       if (url.searchParams.get('mail') === '1') await sendRunReport(env, report);
@@ -6918,6 +7121,11 @@ const WORKER_MAIN = {
       // `avant=AAAA-MM-JJTHH:MM` (UTC, 7 oct. 2026) : écarte les envois trop récents pour être jugés.
       const avant = String(url.searchParams.get('avant') || '').replace('T', ' ').slice(0, 16);
       const classer = (sub) => {
+        // FOMO (8 oct. 2026) : objets variables selon la ville, reconnus à leurs tournures fixes.
+        if (/(Elle est prise\.|Toutes prises\.|sont déjà prises\.|encore libre\. Pour combien de temps|qu’une place de .* par secteur|It’s taken\.|All taken\.|are already taken\.|still open\. For how long|spot per area)/.test(sub)) return '10 · fomo place';
+        if (/(l’IA a retenu|l’IA ne retient qu’une poignée|AI picked|AI only picks a handful)/.test(sub)) return '11 · fomo nommés';
+        if (/(De 65 à 94\/100|From 65 to 94\/100)/.test(sub)) return '12 · fomo récente';
+        if (/(94 % des cabinets sont invisibles|94% of real estate firms are invisible)/.test(sub)) return '13 · fomo avance';
         if (/^(Pourquoi l’IA ne vous recommande|Why doesn’t AI recommend you)/.test(sub)) return '5 · top5 raisons';
         if (/(plateforme immobilière IA|AI real estate platform)/.test(sub)) return '6 · top5 plateforme';
         if (/(s’occuper de son IA|take care of your AI presence)/.test(sub)) return '7 · top5 2026';
