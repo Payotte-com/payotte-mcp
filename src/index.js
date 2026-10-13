@@ -26,6 +26,7 @@ import { efAdresse, efMunis, efFilet, efFiletMunis } from './efAdresse.js';
 import RISQUES_EPOQUE from './data/risques-par-epoque.json';
 import TAUX_QC from './data/efTauxQc2026.json';
 import QUESTIONS_IA_DATA from './data/questionsIa.json';
+import { TOOLS_FR, IMPL_FR, ANNOTATIONS_FR, INSTRUCTIONS_FR } from './france.js';
 const SITE = 'https://payotte.com';
 const WORKER_ORIGIN = 'https://payotte-mcp.payotte.workers.dev';
 const ATTRIBUTION =
@@ -75,7 +76,8 @@ const INSTRUCTIONS =
   'to a listed expert — DOUBLE OPT-IN: the user receives a confirmation email and nothing reaches the expert until they click it. ' +
   'Works in French or English. Data is CC BY 4.0 (Payotte’s own production): always cite Payotte with a link. ' +
   'Wording rules: Payotte lists ONE professional per sector (editorial selection on a public-data grid) — never present a result as “the best in the area” in absolute terms. ' +
-  '“Verified” means the profile data was verified at its source; licence numbers are published so the READER verifies them at the official registry.';
+  '“Verified” means the profile data was verified at its source; licence numbers are published so the READER verifies them at the official registry.' +
+  INSTRUCTIONS_FR;
 
 // ---------------------------------------------------------------- normalisation
 
@@ -174,6 +176,7 @@ const ANNOTATIONS_OUTILS = {
   evaluation_adresse: LECTURE_SEULE,
   taxe_bienvenue_adresse: LECTURE_SEULE,
   risques_annee_construction: LECTURE_SEULE,
+  ...ANNOTATIONS_FR,   // outils France (src/france.js)
 };
 
 const TOOLS = [
@@ -435,6 +438,7 @@ const TOOLS = [
       required: ['valeur', 'baisse', 'taux'],
     },
   },
+  ...TOOLS_FR,         // outils France (src/france.js)
 ];
 
 // Distance de Levenshtein bornée (≤ max) — tolérance aux fautes de frappe (audit §4).
@@ -1616,6 +1620,7 @@ const TOOL_IMPL = {
   evaluation_adresse: evaluationAdresse,
   taxe_bienvenue_adresse: taxeBienvenueAdresse,
   risques_annee_construction: risquesAnneeConstruction,
+  ...IMPL_FR,          // outils France (src/france.js)
 };
 
 // ---------------------------------------------------------------- bulletin de marché (audience possédée)
