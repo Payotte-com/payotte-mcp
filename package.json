@@ -3,7 +3,7 @@
   "version": "1.9.0",
   "private": true,
   "type": "module",
-  "description": "Serveur MCP de Payotte — annuaire d'experts immobiliers vérifiés au Canada (lit les feeds statiques de payotte.com).",
+  "description": "Serveur MCP de Payotte — annuaire de professionnels de l'immobilier au Canada et en France (lit les feeds statiques de payotte.com et les données France générées).",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy"

@@ -57,8 +57,8 @@ const mcpSrc = (url) => (url ? url + (url.includes('?') ? '&' : '?') + 'src=mcp'
 const PROTOCOL_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'];
 const SERVER_INFO = {
   name: 'payotte',
-  title: 'Payotte — Verified real-estate experts & Canadian housing data',
-  version: '1.10.0',
+  title: 'Payotte — Real-estate professionals & housing data (Canada, France)',
+  version: '1.11.0',
 };
 const INSTRUCTIONS =
   'Payotte is an independent directory of VERIFIED real-estate professionals in Canada ' +
