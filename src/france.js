@@ -7,7 +7,7 @@
  * À relancer après chaque versement de fiches ou mise à jour des barèmes, puis redéployer.
  *
  * Vocabulaire (comme le site France) : « professionnel sélectionné », jamais « vérifié par Payotte » ;
- * le titre est « déclaré » par le cabinet ou « lu à la source », et toujours vérifiable par le lecteur au registre.
+ * le titre est « déclaré » par le cabinet ou simplement « vérifiable », toujours par le lecteur au registre.
  */
 import FR from './data/france.json';
 import { fraisAncien, fraisNeuf, departementParCode, urlDepartement, DMTO } from './data/france-calc.mjs';
@@ -142,7 +142,7 @@ function statsMarcheFr(a = {}) {
 
 // ---------------------------------------------------------------- 3. professionnel sélectionné
 const LIBELLE_TITRE = {
-  verifie: 'titre lu à la source (registre officiel) — vérifiable par le lecteur au registre',
+  verifie: 'titre vérifiable par le lecteur au registre officiel',   // jamais « lu » ni « vérifié » (décision A, 13 oct. 2026)
   declare: 'titre déclaré sur le site du cabinet — vérifiable par le lecteur au registre',
   aucun: 'aucun titre lu',
 };
