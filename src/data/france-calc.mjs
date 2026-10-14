@@ -1,4 +1,4 @@
-// GÉNÉRÉ par payotte-astro-france/scripts/france/export-mcp.mjs le 2026-10-13 — ne pas modifier à la main.
+// GÉNÉRÉ par payotte-astro-france/scripts/france/export-mcp.mjs le 2026-10-14 — ne pas modifier à la main.
 // src/data/fr/dmto.json
 var dmto_default = {
   source: "DGFiP \u2014 Droits d\u2019enregistrement et taxe de publicit\xE9 fonci\xE8re : taux applicables (PDF)",
