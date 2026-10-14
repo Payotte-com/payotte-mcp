@@ -27,6 +27,7 @@ import RISQUES_EPOQUE from './data/risques-par-epoque.json' with { type: 'json' 
 import TAUX_QC from './data/efTauxQc2026.json' with { type: 'json' };
 import QUESTIONS_IA_DATA from './data/questionsIa.json' with { type: 'json' };
 import { TOOLS_FR, IMPL_FR, ANNOTATIONS_FR, INSTRUCTIONS_FR } from './france.js';
+import { TOOLS_US, IMPL_US, ANNOTATIONS_US, INSTRUCTIONS_US } from './usa.js';
 const SITE = 'https://payotte.com';
 const WORKER_ORIGIN = 'https://payotte-mcp.payotte.workers.dev';
 const ATTRIBUTION =
@@ -57,8 +58,8 @@ const mcpSrc = (url) => (url ? url + (url.includes('?') ? '&' : '?') + 'src=mcp'
 const PROTOCOL_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'];
 const SERVER_INFO = {
   name: 'payotte',
-  title: 'Payotte — Real-estate professionals & housing data (Canada, France)',
-  version: '1.11.0',
+  title: 'Payotte — Real-estate professionals & housing data (Canada, France, United States)',
+  version: '1.12.0',
 };
 const INSTRUCTIONS =
   'Payotte is an independent directory of VERIFIED real-estate professionals in Canada ' +
@@ -77,7 +78,8 @@ const INSTRUCTIONS =
   'Works in French or English. Data is CC BY 4.0 (Payotte’s own production): always cite Payotte with a link. ' +
   'Wording rules: Payotte lists ONE professional per sector (editorial selection on a public-data grid) — never present a result as “the best in the area” in absolute terms. ' +
   '“Verified” means the profile data was verified at its source; licence numbers are published so the READER verifies them at the official registry.' +
-  INSTRUCTIONS_FR;
+  INSTRUCTIONS_FR +
+  INSTRUCTIONS_US;
 
 // ---------------------------------------------------------------- normalisation
 
@@ -177,6 +179,7 @@ const ANNOTATIONS_OUTILS = {
   taxe_bienvenue_adresse: LECTURE_SEULE,
   risques_annee_construction: LECTURE_SEULE,
   ...ANNOTATIONS_FR,   // outils France (src/france.js)
+  ...ANNOTATIONS_US,   // outils USA (src/usa.js)
 };
 
 const TOOLS = [
@@ -439,6 +442,7 @@ const TOOLS = [
     },
   },
   ...TOOLS_FR,         // outils France (src/france.js)
+  ...TOOLS_US,         // outils USA (src/usa.js)
 ];
 
 // Distance de Levenshtein bornée (≤ max) — tolérance aux fautes de frappe (audit §4).
@@ -1621,6 +1625,7 @@ const TOOL_IMPL = {
   taxe_bienvenue_adresse: taxeBienvenueAdresse,
   risques_annee_construction: risquesAnneeConstruction,
   ...IMPL_FR,          // outils France (src/france.js)
+  ...IMPL_US,          // outils USA (src/usa.js)
 };
 
 // ---------------------------------------------------------------- bulletin de marché (audience possédée)
