@@ -1,0 +1,3053 @@
+{
+ "_note": "Généré par payotte-astro-australie/scripts/au/export-mcp.mjs ; ne pas modifier à la main.",
+ "generated": "2026-10-14",
+ "taxes": {
+  "_note": "Frais d'achat d'un logement en Australie, par État/territoire (calculateur /australia). Chaque montant est relu le 14 oct. 2026 dans une page ou un document officiel (voir ~/Payotte/australie/rapports/phase-0/fiscalite.md). Contrôle : scripts/au/check-frais-achat.mjs. Un barème de ligne = base + taux % de la part du prix au-dessus de « de » (taux sur la totalité du prix : de = 0 et base = 0). « arrondi100 » : le texte officiel dit « per $100 or part of $100 ». Les montants non relus (page bloquée, formule non publiée) sont à null et expliqués dans « nonChiffre ».",
+  "releve": "2026-10-14",
+  "etats": {
+   "nsw": {
+    "nom": "New South Wales",
+    "impot": "Transfer duty",
+    "autorite": "Revenue NSW",
+    "standard": {
+     "arrondi100": true,
+     "minimum": 20,
+     "lignes": [
+      {
+       "jusqua": 18000,
+       "de": 0,
+       "base": 0,
+       "taux": 1.25
+      },
+      {
+       "jusqua": 38000,
+       "de": 18000,
+       "base": 225,
+       "taux": 1.5
+      },
+      {
+       "jusqua": 103000,
+       "de": 38000,
+       "base": 525,
+       "taux": 1.75
+      },
+      {
+       "jusqua": 387000,
+       "de": 103000,
+       "base": 1662,
+       "taux": 3.5
+      },
+      {
+       "jusqua": 1290000,
+       "de": 387000,
+       "base": 11602,
+       "taux": 4.5
+      },
+      {
+       "jusqua": 3870000,
+       "de": 1290000,
+       "base": 52237,
+       "taux": 5.5
+      },
+      {
+       "jusqua": null,
+       "de": 3870000,
+       "base": 194137,
+       "taux": 7
+      }
+     ],
+     "source": {
+      "url": "https://www.revenue.nsw.gov.au/_resources/duties-links/current-thresholds-and-rates",
+      "consulte": "2026-10-14",
+      "en_vigueur": "2026-07-01",
+      "note": "Barème « 2026/2027 financial year » (page mise à jour le 6 oct. 2026) ; l'année du barème est fixée par la date du contrat. Tranche > 3 870 000 $ = « premium duty » résidentiel."
+     }
+    },
+    "residencePrincipale": null,
+    "premierAcheteur": {
+     "type": "exoneration_plafond",
+     "exonereJusqua": 800000,
+     "concessionJusqua": 1000000,
+     "concessionFormule": null,
+     "terrainExonereJusqua": 350000,
+     "terrainConcessionJusqua": 450000,
+     "source": {
+      "url": "https://www.revenue.nsw.gov.au/grants-schemes/assistance-scheme",
+      "consulte": "2026-10-14",
+      "en_vigueur": "2023-07-01",
+      "note": "Contrats échangés à partir du 1er juillet 2023 : logement neuf ou existant exonéré jusqu'à 800 000 $, taux réduit au-dessus de 800 000 $ et sous 1 000 000 $. Le mode de calcul du taux réduit n'est pas publié sur les pages lues."
+     }
+    },
+    "etranger": {
+     "taux": 9,
+     "assiette": "prix (dutiable value), en plus du droit de mutation",
+     "source": {
+      "url": "https://www.revenue.nsw.gov.au/_resources/duties-links/current-thresholds-and-rates",
+      "consulte": "2026-10-14",
+      "en_vigueur": "2026-07-01",
+      "note": "« Flat rate of 9% of the dutiable value » (surcharge purchaser duty), barème 2026/2027."
+     }
+    },
+    "enregistrement": {
+     "transfert": {
+      "montantHT": 166.6,
+      "montantTTC": 182.73,
+      "libelle": "Transfer (pursuant to section 46 Real Property Act)"
+     },
+     "hypotheque": {
+      "montantHT": 166.6,
+      "montantTTC": 182.73,
+      "libelle": "Mortgage"
+     },
+     "source": {
+      "url": "https://nswlrs.com.au/assets/f/1129775276948026/x/5fed3e7cd6/2026-2027_nsw-lrs-fees_final.pdf",
+      "consulte": "2026-10-14",
+      "en_vigueur": "2026-07-01",
+      "note": "NSW Land Registry Services, Fees Update 2026/27 (émis juin 2026) ; colonnes Excl GST / Incl GST."
+     }
+    },
+    "fhog": {
+     "montant": 10000,
+     "plafondsLus": false,
+     "source": {
+      "url": "https://www.revenue.nsw.gov.au/grants-schemes/first-home-buyer",
+      "consulte": "2026-10-14",
+      "en_vigueur": null,
+      "note": "« $10,000 grant available for newly built or substantially renovated homes ». Plafonds de valeur non relus (document officiel illisible)."
+     }
+    }
+   },
+   "vic": {
+    "nom": "Victoria",
+    "impot": "Land transfer duty",
+    "autorite": "State Revenue Office Victoria",
+    "standard": {
+     "arrondi100": false,
+     "lignes": [
+      {
+       "jusqua": 25000,
+       "de": 0,
+       "base": 0,
+       "taux": 1.4
+      },
+      {
+       "jusqua": 130000,
+       "de": 25000,
+       "base": 350,
+       "taux": 2.4
+      },
+      {
+       "jusqua": 960000,
+       "de": 130000,
+       "base": 2870,
+       "taux": 6
+      },
+      {
+       "jusqua": 2000000,
+       "de": 0,
+       "base": 0,
+       "taux": 5.5
+      },
+      {
+       "jusqua": null,
+       "de": 2000000,
+       "base": 110000,
+       "taux": 6.5
+      }
+     ],
+     "source": {
+      "url": "https://www.sro.vic.gov.au/rates-taxes-duties-and-levies/general-land-transfer-duty-property-current-rates",
+      "consulte": "2026-10-14",
+      "en_vigueur": "2021-07-01",
+      "note": "Contrats conclus à partir du 1er juillet 2021 ; page mise à jour le 29 sept. 2026. De 960 000 $ à 2 M$ : 5,5 % de la valeur totale."
+     }
+    },
+    "residencePrincipale": {
+     "plafond": 550000,
+     "lignes": [
+      {
+       "jusqua": 25000,
+       "de": 0,
+       "base": 0,
+       "taux": 1.4
+      },
+      {
+       "jusqua": 130000,
+       "de": 25000,
+       "base": 350,
+       "taux": 2.4
+      },
+      {
+       "jusqua": 440000,
+       "de": 130000,
+       "base": 2870,
+       "taux": 5
+      },
+      {
+       "jusqua": 550000,
+       "de": 440000,
+       "base": 18370,
+       "taux": 6
+      }
+     ],
+     "source": {
+      "url": "https://www.sro.vic.gov.au/rates-taxes-duties-and-levies/principal-place-residence-current-rates",
+      "consulte": "2026-10-14",
+      "en_vigueur": "2008-05-06",
+      "note": "Taux PPR pour contrats à partir du 6 mai 2008, valeur ≤ 550 000 $ ; installation sous 12 mois et résidence 12 mois (page https://www.sro.vic.gov.au/buying-property/land-transfer-stamp-duty/concessions-exemptions-and-waivers/principal-place-residence-duty-concession, mise à jour 24 juin 2026)."
+     }
+    },
+    "premierAcheteur": {
+     "type": "exoneration_puis_concession_lineaire",
+     "exonereJusqua": 600000,
+     "concessionJusqua": 750000,
+     "formule": null,
+     "source": {
+      "url": "https://www.sro.vic.gov.au/buying-property/land-transfer-stamp-duty/concessions-exemptions-and-waivers/first-home-buyers/first-home-buyer-duty-exemption-or-concession",
+      "consulte": "2026-10-14",
+      "en_vigueur": "2023-07-01",
+      "note": "Page SRO (mise à jour 15 sept. 2026) : 0 $ jusqu'à 600 000 $, « reduced amount » de 600 001 à 750 000 $, sans formule. La formule ci-dessus est reconstituée depuis la Duties Act 2000 (Vic), s 57JA (version 141 du 24 juin 2026, PDF authentique https://content.legislation.vic.gov.au/sites/default/files/2026-06/00-79aa141-authorised.pdf) : seuls les symboles A, B, 600 000 $ et 150 000 $ de la formule sont lisibles dans le texte extrait. À confirmer au calculateur SRO. Formule RETIRÉE le 14 oct. 2026 (non publiée par le SRO, aucune formule reconstituée) : le calculateur affiche le droit général comme borne haute."
+     }
+    },
+    "etranger": {
+     "taux": 8,
+     "assiette": "prix, en plus du droit de mutation, avant toute concession",
+     "source": {
+      "url": "https://sro.vic.gov.au/buying-property/foreign-purchasers-property/calculating-foreign-purchaser-additional-duty",
+      "consulte": "2026-10-14",
+      "en_vigueur": null,
+      "note": "« The additional duty rate is 8% » ; la page ne donne pas de date d'entrée en vigueur (mise à jour 29 sept. 2026)."
+     }
+    },
+    "enregistrement": null,
+    "fhog": {
+     "montant": 10000,
+     "plafondBienNeuf": 750000,
+     "source": {
+      "url": "https://www.sro.vic.gov.au/first-home-owner-grant",
+      "consulte": "2026-10-14",
+      "en_vigueur": null,
+      "note": "« A $10,000 grant … newly constructed or never-occupied properties valued up to $750,000 »."
+     }
+    }
+   },
+   "qld": {
+    "nom": "Queensland",
+    "impot": "Transfer duty",
+    "autorite": "Queensland Revenue Office",
+    "standard": {
+     "arrondi100": true,
+     "lignes": [
+      {
+       "jusqua": 5000,
+       "de": 0,
+       "base": 0,
+       "taux": 0
+      },
+      {
+       "jusqua": 75000,
+       "de": 5000,
+       "base": 0,
+       "taux": 1.5
+      },
+      {
+       "jusqua": 540000,
+       "de": 75000,
+       "base": 1050,
+       "taux": 3.5
+      },
+      {
+       "jusqua": 1000000,
+       "de": 540000,
+       "base": 17325,
+       "taux": 4.5
+      },
+      {
+       "jusqua": null,
+       "de": 1000000,
+       "base": 38025,
+       "taux": 5.75
+      }
+     ],
+     "source": {
+      "url": "https://www.qro.qld.gov.au/duties/transfer-duty/calculate/rates/",
+      "consulte": "2026-10-14",
+      "en_vigueur": null,
+      "note": "Page mise à jour le 25 juin 2026 ; elle ne donne pas la date d'entrée en vigueur (elle renvoie à l'ancien barème pour les actes antérieurs au 21 sept. 2012). Exemple officiel : 850 000 $ (investissement) = 31 275 $."
+     }
+    },
+    "residencePrincipale": {
+     "plafond": null,
+     "lignes": [
+      {
+       "jusqua": 350000,
+       "de": 0,
+       "base": 0,
+       "taux": 1
+      },
+      {
+       "jusqua": 540000,
+       "de": 350000,
+       "base": 3500,
+       "taux": 3.5
+      },
+      {
+       "jusqua": 1000000,
+       "de": 540000,
+       "base": 10150,
+       "taux": 4.5
+      },
+      {
+       "jusqua": null,
+       "de": 1000000,
+       "base": 30850,
+       "taux": 5.75
+      }
+     ],
+     "source": {
+      "url": "https://qro.qld.gov.au/duties/transfer-duty/calculate/concession-rates/",
+      "consulte": "2026-10-14",
+      "en_vigueur": null,
+      "note": "Home concession rates. Exemple officiel : 950 000 $ = 28 600 $. Ne s'applique pas à la période du 1er août 2011 au 30 juin 2012."
+     }
+    },
+    "premierAcheteur": {
+     "type": "deduction_par_tranche_10000",
+     "deductions": [
+      [
+       709999.99,
+       17350
+      ],
+      [
+       719999.99,
+       15615
+      ],
+      [
+       729999.99,
+       13880
+      ],
+      [
+       739999.99,
+       12145
+      ],
+      [
+       749999.99,
+       10410
+      ],
+      [
+       759999.99,
+       8675
+      ],
+      [
+       769999.99,
+       6940
+      ],
+      [
+       779999.99,
+       5205
+      ],
+      [
+       789999.99,
+       3470
+      ],
+      [
+       799999.99,
+       1735
+      ],
+      [
+       null,
+       0
+      ]
+     ],
+     "neufNul": true,
+     "source": {
+      "url": "https://qro.qld.gov.au/duties/transfer-duty/calculate/concession-rates/",
+      "consulte": "2026-10-14",
+      "en_vigueur": "2024-06-09",
+      "note": "First home concession (contrats à partir du 9 juin 2024) : déduction du droit au taux home concession. Logement neuf (« first home (new home) ») et terrain nu : concession totale, sans plafond de prix, pour les contrats à partir du 1er mai 2025 (conditions détaillées non lues). Exemple officiel : 795 000 $ = 19 890 $. Annonce du budget 2026-27 (QRO, 23 juin 2026) : à partir du 1er août 2026, ces concessions seront réservées aux citoyens, résidents permanents ou retraités étrangers désignés ; la page précise que les détails suivront « once the legislation passes » : INTENTION, non modélisée. MISE À JOUR (passe de cohérence, 14 oct. 2026) : restriction EN VIGUEUR — projet adopté le 26 juin, sanction royale le 29 juin 2026, applicable aux transactions signées à partir du 1er août 2026 (qro.qld.gov.au/event/changes-to-home-concessions ; page first-home mise à jour le 31 juil. 2026). Le calculateur écarte déjà les concessions pour un acheteur étranger."
+     }
+    },
+    "etranger": {
+     "taux": 8,
+     "assiette": "prix, en plus du droit de mutation (AFAD)",
+     "source": {
+      "url": "https://www.qro.qld.gov.au/duties/transfer-duty/calculate/",
+      "consulte": "2026-10-14",
+      "en_vigueur": null,
+      "note": "« additional foreign acquirer duty (AFAD) of 8% on residential property, applied to the dutiable value »."
+     }
+    },
+    "enregistrement": {
+     "transfert": {
+      "base": 248.04,
+      "parTranche10000AuDessusDe180000": 46.56,
+      "libelle": "Lodging an instrument that changes the ownership of a lot (1 lot) + 46,56 $ par 10 000 $ ou fraction au-delà de 180 000 $"
+     },
+     "hypotheque": {
+      "montant": 248.04,
+      "libelle": "Poste (l) « any other instrument » : l'hypothèque n'est pas nommée dans le barème",
+      "incertain": true
+     },
+     "source": {
+      "url": "https://www.titlesqld.com.au/wp-content/uploads/2026/05/Titles-Registry-Fees_FY-2026-to-2027.pdf",
+      "consulte": "2026-10-14",
+      "en_vigueur": "2026-07-01",
+      "note": "Titles Queensland, Titles Registry Fees FY2026/27, Land Title Act 1994."
+     }
+    },
+    "fhog": {
+     "montant": 30000,
+     "plafondBienNeuf": 750000,
+     "source": {
+      "url": "https://www.qld.gov.au/housing/buying-owning-home/home-buyers-financial-help/first-home-owner-grant",
+      "consulte": "2026-10-14",
+      "en_vigueur": "2026-07-01",
+      "note": "« grant of $15,000 or $30,000 » ; « The increased $30,000 grant will continue for eligible contracts signed from 1 July 2026 going forward » ; « new homes valued at less than $750,000 (including land) » (page du 30 juin 2026)."
+     }
+    }
+   },
+   "wa": {
+    "nom": "Western Australia",
+    "impot": "Transfer duty",
+    "autorite": "RevenueWA (Department of Finance)",
+    "standard": {
+     "arrondi100": true,
+     "lignes": [
+      {
+       "jusqua": 120000,
+       "de": 0,
+       "base": 0,
+       "taux": 1.9
+      },
+      {
+       "jusqua": 150000,
+       "de": 120000,
+       "base": 2280,
+       "taux": 2.85
+      },
+      {
+       "jusqua": 360000,
+       "de": 150000,
+       "base": 3135,
+       "taux": 3.8
+      },
+      {
+       "jusqua": 725000,
+       "de": 360000,
+       "base": 11115,
+       "taux": 4.75
+      },
+      {
+       "jusqua": null,
+       "de": 725000,
+       "base": 28453,
+       "taux": 5.15
+      }
+     ],
+     "source": {
+      "url": "https://www.wa.gov.au/organisation/department-of-treasury-and-finance/transfer-duty-assessment",
+      "consulte": "2026-10-14",
+      "en_vigueur": null,
+      "note": "General rate, page mise à jour le 30 juil. 2026 ; pas de date d'entrée en vigueur sur la page."
+     }
+    },
+    "residencePrincipale": {
+     "plafond": 200000,
+     "lignes": [
+      {
+       "jusqua": 120000,
+       "de": 0,
+       "base": 0,
+       "taux": 1.5
+      },
+      {
+       "jusqua": 200000,
+       "de": 120000,
+       "base": 1800,
+       "taux": 4.04
+      }
+     ],
+     "source": {
+      "url": "https://www.wa.gov.au/organisation/department-of-treasury-and-finance/transfer-duty-assessment",
+      "consulte": "2026-10-14",
+      "en_vigueur": null,
+      "note": "Concessional rate : résidence principale ou actif commercial WA dont la valeur totale ne dépasse pas 200 000 $."
+     }
+    },
+    "premierAcheteur": {
+     "type": "exoneration_puis_taux_reduit",
+     "exonereJusqua": 600000,
+     "reduitJusqua": 800000,
+     "tauxReduit": 16.15,
+     "terrain": {
+      "exonereJusqua": 450000,
+      "reduitJusqua": 550000,
+      "tauxReduit": 20.14
+     },
+     "source": {
+      "url": "https://www.wa.gov.au/government/publications/first-home-owner-rate-of-duty",
+      "consulte": "2026-10-14",
+      "en_vigueur": "2026-05-07",
+      "note": "First home owner rate, transactions à partir du 7 mai 2026 : 0 $ jusqu'à 600 000 $ ; 16,15 $ par 100 $ (ou fraction) au-dessus de 600 000 $ jusqu'à 800 000 $ ; au-delà, barème général. Les seuils valent pour la valeur totale du bien."
+     }
+    },
+    "etranger": {
+     "taux": 7,
+     "assiette": "part du prix acquise par la personne étrangère, en plus du droit de mutation",
+     "source": {
+      "url": "https://www.wa.gov.au/government/publications/first-home-owner-rate-of-duty",
+      "consulte": "2026-10-14",
+      "en_vigueur": null,
+      "note": "Seul le taux de 7 % est lu, dans l'exemple officiel de cette page (200 000 $ × 7 % = 14 000 $). Date d'entrée en vigueur et page dédiée INTROUVABLES."
+     }
+    },
+    "enregistrement": {
+     "transfert": {
+      "bandes": [
+       [
+        85000,
+        225.1
+       ],
+       [
+        120000,
+        235.1
+       ],
+       [
+        200000,
+        255.1
+       ],
+       [
+        300000,
+        275.1
+       ],
+       [
+        400000,
+        295.1
+       ],
+       [
+        500000,
+        315.1
+       ],
+       [
+        600000,
+        335.1
+       ],
+       [
+        700000,
+        355.1
+       ],
+       [
+        800000,
+        375.1
+       ],
+       [
+        900000,
+        395.1
+       ],
+       [
+        1000000,
+        415.1
+       ],
+       [
+        1100000,
+        435.1
+       ],
+       [
+        1200000,
+        455.1
+       ],
+       [
+        1300000,
+        475.1
+       ],
+       [
+        1400000,
+        495.1
+       ],
+       [
+        1500000,
+        515.1
+       ],
+       [
+        1600000,
+        535.1
+       ],
+       [
+        1700000,
+        555.1
+       ],
+       [
+        1800000,
+        575.1
+       ],
+       [
+        1900000,
+        595.1
+       ],
+       [
+        2000000,
+        615.1
+       ]
+      ],
+      "auDela": {
+       "de": 2000000,
+       "base": 615.1,
+       "parTranche": 100000,
+       "montant": 20
+      }
+     },
+     "hypotheque": {
+      "montant": 225.1,
+      "libelle": "Mortgage (lodgement fee)"
+     },
+     "source": {
+      "url": "https://www.landgate.wa.gov.au/siteassets/documents/land-and-property/land-transaction-hub/land-transaction-fees/final-search-and-lodgement-fees-and-survey-fees-payable-2026-27.pdf",
+      "consulte": "2026-10-14",
+      "en_vigueur": "2026-07-01",
+      "note": "Landgate, Search and Lodgement Fees Payable as at 1 July 2026 ; frais non soumis à la GST."
+     }
+    },
+    "fhog": {
+     "montant": 10000,
+     "plafondBienNeufSud26": 800000,
+     "source": {
+      "url": "https://www.wa.gov.au/government/publications/about-the-first-home-owner-grant",
+      "consulte": "2026-10-14",
+      "en_vigueur": "2026-05-07",
+      "note": "« up to $10,000 » ; plafond de valeur 800 000 $ au sud du 26e parallèle (1 000 000 $ au nord) pour les transactions à partir du 7 mai 2026 (page du 29 juil. 2026)."
+     }
+    }
+   },
+   "sa": {
+    "nom": "South Australia",
+    "impot": "Stamp duty on conveyances",
+    "autorite": "RevenueSA",
+    "standard": null,
+    "residencePrincipale": null,
+    "premierAcheteur": {
+     "type": "neuf_seulement",
+     "source": {
+      "url": "https://homeseeker.sa.gov.au/resources/home-buyer-support",
+      "consulte": "2026-10-14",
+      "en_vigueur": null,
+      "note": "Page SA Government : « you'll pay zero stamp duty when you build or buy a new home » (logement neuf, appartement sur plan, terrain à bâtir), seuils de valeur supprimés. Le logement existant n'est pas couvert (texte RevenueSA illisible : 403)."
+     }
+    },
+    "etranger": null,
+    "enregistrement": null,
+    "fhog": {
+     "montant": 15000,
+     "source": {
+      "url": "https://homeseeker.sa.gov.au/resources/home-buyer-support",
+      "consulte": "2026-10-14",
+      "en_vigueur": null,
+      "note": "« You can receive up to $15,000 » pour un logement neuf."
+     }
+    },
+    "nonChiffre": "Barème des droits : revenuesa.sa.gov.au, legislation.sa.gov.au et dhud.sa.gov.au répondent 403 (non contourné). Aucune autre page officielle lisible : barème, surtaxe étrangère et frais d'enregistrement non chiffrés."
+   },
+   "tas": {
+    "nom": "Tasmania",
+    "impot": "Property transfer duty",
+    "autorite": "State Revenue Office Tasmania",
+    "standard": {
+     "arrondi100": true,
+     "lignes": [
+      {
+       "jusqua": 3000,
+       "de": 0,
+       "base": 50,
+       "taux": 0
+      },
+      {
+       "jusqua": 25000,
+       "de": 3000,
+       "base": 50,
+       "taux": 1.75
+      },
+      {
+       "jusqua": 75000,
+       "de": 25000,
+       "base": 435,
+       "taux": 2.25
+      },
+      {
+       "jusqua": 200000,
+       "de": 75000,
+       "base": 1560,
+       "taux": 3.5
+      },
+      {
+       "jusqua": 375000,
+       "de": 200000,
+       "base": 5935,
+       "taux": 4
+      },
+      {
+       "jusqua": 725000,
+       "de": 375000,
+       "base": 12935,
+       "taux": 4.25
+      },
+      {
+       "jusqua": null,
+       "de": 725000,
+       "base": 27810,
+       "taux": 4.5
+      }
+     ],
+     "source": {
+      "url": "https://www.sro.tas.gov.au/property-transfer-duties/rates-of-duty",
+      "consulte": "2026-10-14",
+      "en_vigueur": "2013-10-21",
+      "note": "« Rates for transfers on or after 21 October 2013 » ; page publiée le 14/06/2022. Le Taxation and Related Legislation (Miscellaneous Amendments) Act 2026 (en vigueur le 9 oct. 2026, SRO) modifie le droit de mutation : son contenu n'a pas été lu."
+     }
+    },
+    "residencePrincipale": null,
+    "premierAcheteur": {
+     "type": "expire",
+     "dernierReglementExonere": "2026-06-30",
+     "source": {
+      "url": "https://www.sro.tas.gov.au/property-transfer-duties/concessions-exemptions/first-home-buyers-of-established-homes-duty-relief",
+      "consulte": "2026-10-14",
+      "en_vigueur": "2024-02-18",
+      "note": "Exonération (logement existant ≤ 750 000 $) pour règlements du 18 févr. 2024 au 30 juin 2026 : « not available for transactions settling after 30 June 2026 ». Aucune prolongation sur la page (publiée le 16/07/2026)."
+     }
+    },
+    "etranger": {
+     "taux": 8,
+     "assiette": "part de la valeur imposable du bien résidentiel acquise par la personne étrangère, en plus du droit",
+     "source": {
+      "url": "https://www.sro.tas.gov.au/property-transfer-duties/foreign-investor-duty-surcharge/rates-of-surcharge",
+      "consulte": "2026-10-14",
+      "en_vigueur": "2020-04-01",
+      "note": "8 % pour les accords à partir du 1er avril 2020 (3 % avant) ; page publiée le 29/06/2022."
+     }
+    },
+    "enregistrement": {
+     "transfert": {
+      "montant": 256.76,
+      "libelle": "Transfer"
+     },
+     "hypotheque": {
+      "montant": 167.58,
+      "libelle": "Mortgage"
+     },
+     "source": {
+      "url": "https://nre.tas.gov.au/Documents/2026-2027%20Brief%20Fee%20Schedule.pdf",
+      "consulte": "2026-10-14",
+      "en_vigueur": "2026-07-01",
+      "note": "Land Titles Office, Brief Schedule of Fees."
+     }
+    },
+    "fhog": {
+     "montant": 20000,
+     "source": {
+      "url": "https://www.sro.tas.gov.au/",
+      "consulte": "2026-10-14",
+      "en_vigueur": "2026-07-01",
+      "note": "Accueil SRO (publié 12 oct. 2026) : « The $20,000 grant took effect from 1 July 2026 » ; conditions (logement neuf) non relues sur page dédiée."
+     }
+    }
+   },
+   "act": {
+    "nom": "Australian Capital Territory",
+    "impot": "Conveyance duty",
+    "autorite": "ACT Revenue Office",
+    "standard": {
+     "arrondi100": true,
+     "variantes": {
+      "autres": [
+       {
+        "jusqua": 200000,
+        "de": 0,
+        "base": 0,
+        "taux": 1.2
+       },
+       {
+        "jusqua": 260000,
+        "de": 200000,
+        "base": 2400,
+        "taux": 2.2
+       },
+       {
+        "jusqua": 300000,
+        "de": 260000,
+        "base": 3720,
+        "taux": 2.2
+       },
+       {
+        "jusqua": 500000,
+        "de": 300000,
+        "base": 4600,
+        "taux": 3.4
+       },
+       {
+        "jusqua": 750000,
+        "de": 500000,
+        "base": 11400,
+        "taux": 4.32
+       },
+       {
+        "jusqua": 1000000,
+        "de": 750000,
+        "base": 22200,
+        "taux": 5.9
+       },
+       {
+        "jusqua": 1455000,
+        "de": 1000000,
+        "base": 36950,
+        "taux": 6.4
+       },
+       {
+        "jusqua": null,
+        "de": 0,
+        "base": 0,
+        "taux": 4.54
+       }
+      ],
+      "occupant": [
+       {
+        "jusqua": 200000,
+        "de": 0,
+        "base": 0,
+        "taux": 0.28
+       },
+       {
+        "jusqua": 260000,
+        "de": 200000,
+        "base": 560,
+        "taux": 0.28
+       },
+       {
+        "jusqua": 300000,
+        "de": 260000,
+        "base": 728,
+        "taux": 2.2
+       },
+       {
+        "jusqua": 500000,
+        "de": 300000,
+        "base": 1608,
+        "taux": 3.4
+       },
+       {
+        "jusqua": 750000,
+        "de": 500000,
+        "base": 8408,
+        "taux": 4.32
+       },
+       {
+        "jusqua": 1000000,
+        "de": 750000,
+        "base": 19208,
+        "taux": 5.9
+       },
+       {
+        "jusqua": 1455000,
+        "de": 1000000,
+        "base": 33958,
+        "taux": 6.4
+       },
+       {
+        "jusqua": null,
+        "de": 0,
+        "base": 0,
+        "taux": 4.54
+       }
+      ]
+     },
+     "source": {
+      "url": "https://www.legislation.act.gov.au/DownloadFile/es/db_74757/current/PDF/db_74757.PDF",
+      "consulte": "2026-10-14",
+      "en_vigueur": "2026-07-01",
+      "note": "Explanatory statement du Taxation Administration (Amounts Payable—Duty) Determination 2026 (DI2026-155) : taux marginaux par 100 $ ou fraction, colonnes occupant (4) / autre (5) ; les bases cumulées sont recalculées à partir de ces taux (contrôle : 11 400 $ à 500 000 $ pour le non-occupant, 8 408 $ pour l'occupant, tels que publiés). Au-delà de 1 455 000 $ : taux plat sur toute la valeur. Exemple publié : 580 000 $ = 14 856 $ (autre) ; l'occupant y est imprimé 11 128 $, incohérent avec sa propre base de 8 408 $ (8 408 + 3 456 = 11 864 $)."
+     }
+    },
+    "residencePrincipale": {
+     "type": "taux_occupant",
+     "source": {
+      "url": "https://www.legislation.act.gov.au/DownloadFile/es/db_74757/current/PDF/db_74757.PDF",
+      "consulte": "2026-10-14",
+      "en_vigueur": "2026-07-01",
+      "note": "Eligible owner occupier transaction : personne physique, un acquéreur au moins occupe le bien comme résidence principale en continu pendant au moins un an, à partir de 12 mois après la remise des clés."
+     }
+    },
+    "premierAcheteur": {
+     "type": "taux_nul",
+     "source": {
+      "url": "https://legislation.act.gov.au/di/2026-157/",
+      "consulte": "2026-10-14",
+      "en_vigueur": "2026-07-01",
+      "note": "Taxation Administration (Amounts Payable—Home Buyer Concession Scheme) Determination 2026 (DI2026-157), s 7 : « nil rate of duty » pour une transaction éligible ; s 6 : date de transaction ≥ 1er juillet 2026, aucun intérêt foncier détenu par l'acheteur ni son partenaire dans les 5 dernières années, un acheteur occupe le bien (résidence, annexe 2) ; aucun plafond de prix ni de revenu dans ce texte (PDF https://legislation.act.gov.au/DownloadFile/di/2026-157/current/PDF/2026-157.PDF)."
+     }
+    },
+    "etranger": null,
+    "enregistrement": {
+     "transfert": {
+      "montant": 496,
+      "libelle": "Land Titles Act 1925 s 73, application to register a memorandum of transfer"
+     },
+     "hypotheque": {
+      "montant": 184,
+      "libelle": "Land Titles Act 1925 s 92, application to register a mortgage or encumbrance"
+     },
+     "source": {
+      "url": "https://www.legislation.act.gov.au/DownloadFile/di/2026-104/current/PDF/2026-104.PDF",
+      "consulte": "2026-10-14",
+      "en_vigueur": "2026-07-01",
+      "note": "Land Titles (Fees) Determination 2026 (No 2), DI2026-104 ; GST non applicable."
+     }
+    },
+    "fhog": null,
+    "nonChiffre": "Surtaxe acheteur étranger : aucune mention dans l'explanatory statement lu ; pages revenue.act.gov.au répondent 403 (non contourné) : INTROUVABLE, non chiffrée."
+   },
+   "nt": {
+    "nom": "Northern Territory",
+    "impot": "Stamp duty on conveyances",
+    "autorite": "Territory Revenue Office",
+    "standard": {
+     "arrondi100": false,
+     "borneExclue": true,
+     "quadratique": {
+      "jusqua": 525000,
+      "a": 0.06571441,
+      "b": 15,
+      "unite": 1000
+     },
+     "lignes": [
+      {
+       "jusqua": 3000000,
+       "de": 0,
+       "base": 0,
+       "taux": 4.95
+      },
+      {
+       "jusqua": 5000000,
+       "de": 0,
+       "base": 0,
+       "taux": 5.75
+      },
+      {
+       "jusqua": null,
+       "de": 0,
+       "base": 0,
+       "taux": 5.95
+      }
+     ],
+     "source": {
+      "url": "https://legislation.nt.gov.au/api/sitecore/Act/PDF?id=11906",
+      "consulte": "2026-10-14",
+      "en_vigueur": null,
+      "note": "Stamp Duty Act 1978, Schedule 1 clause 1(2), texte « as in force at 1 July 2025 » (reprint REPS013). D = 0,06571441 × V² + 15 × V, V = valeur / 1000, jusqu'à 525 000 $ ; 4,95 % de 525 001 $ à moins de 3 M$ ; 5,75 % de 3 M$ à moins de 5 M$ ; 5,95 % au-delà. Les pages treasury.nt.gov.au et nt.gov.au répondent 403 : modifications postérieures au 1er juillet 2025 non vérifiées."
+     }
+    },
+    "residencePrincipale": null,
+    "premierAcheteur": {
+     "type": "rabais_plafonne",
+     "rabaisMax": 18601,
+     "valeurMax": 650000,
+     "source": {
+      "url": "https://legislation.nt.gov.au/api/sitecore/Act/PDF?id=11906",
+      "consulte": "2026-10-14",
+      "en_vigueur": "2019-02-08",
+      "note": "Stamp Duty Act 1978 s 88 et 89AAB, « Territory home owner discount » : déduction égale au moindre du droit ou de 18 601 $, si la valeur imposable ne dépasse pas le seuil (650 000 $ sauf montant fixé par règlement), pour les actes à partir du 8 févr. 2019 ; conditions (citoyen ou résident permanent, 18 ans, pas d'intérêt résidentiel au NT dans les 24 mois, résidence). Texte « as in force at 1 July 2025 », règlement éventuel non lu."
+     }
+    },
+    "etranger": null,
+    "enregistrement": null,
+    "fhog": null,
+    "nonChiffre": "Aucune surtaxe acheteur étranger dans le Stamp Duty Act 1978 lu (le mot « foreign » n'y désigne que les assureurs). House and Land Package Exemption (contrats du 1er juil. 2022 au 30 juin 2027), HomeGrown Territory Grant et frais du Land Titles Office : pages officielles 403, INTROUVABLES, non chiffrés."
+   }
+  },
+  "federal": {
+   "rba": {
+    "tauxDirecteur": 4.6,
+    "depuis": "2026-09-30",
+    "source": {
+     "url": "https://www.rba.gov.au/statistics/cash-rate/",
+     "consulte": "2026-10-14",
+     "en_vigueur": "2026-09-30",
+     "note": "Cash rate target 4,60 % (+0,25) depuis le 30 sept. 2026 ; précédents : 4,35 % (6 mai 2026), 4,10 % (18 mars 2026), 3,85 % (4 févr. 2026), 3,60 % (13 août 2025)."
+    }
+   },
+   "apra": {
+    "margeServiceability": 3,
+    "unite": "points de pourcentage au-dessus du taux du prêt",
+    "limiteDTI": "au plus 20 % des nouveaux prêts avec un DTI de 6 ou plus, depuis février 2026",
+    "source": {
+     "url": "https://www.apra.gov.au/news-and-publications/apra-maintains-current-macroprudential-policy-settings-highly-uncertain",
+     "consulte": "2026-10-14",
+     "en_vigueur": "2026-05-28",
+     "note": "Communiqué du 28 mai 2026 : « the mortgage serviceability buffer will remain at 3 percentage points » ; limites DTI inchangées. Limite DTI : https://www.apra.gov.au/news-and-publications/activating-debt-income-limits-macroprudential-policy-tool (27 nov. 2025, « from February 2026 »)."
+    }
+   },
+   "depot5": {
+    "nom": "Australian Government 5% Deposit Scheme (ex-Home Guarantee Scheme)",
+    "depotMin": 5,
+    "depotMinParentSeul": 2,
+    "plafondRevenu": null,
+    "plafondsPrix": null,
+    "source": {
+     "url": "https://firsthomebuyers.gov.au/australian-government-5-percent-deposit-scheme",
+     "consulte": "2026-10-14",
+     "en_vigueur": "2025-10-01",
+     "note": "Dépôt minimum 5 % (2 % parents seuls), sans plafond de revenu, sans liste d'attente ; demande auprès d'un prêteur participant. Annonce : https://www.pm.gov.au/media/uncapped-5-cent-deposits-available-first-home-buyers-today (1er oct. 2025). Plafonds de prix par région : INTROUVABLES sur pages lues (housingaustralia.gov.au répond 403)."
+    }
+   },
+   "firb": {
+    "exerciceFiscal": "2026-27",
+    "neuf": [
+     [
+      75000,
+      4600
+     ],
+     [
+      1000000,
+      15600
+     ],
+     [
+      2000000,
+      31300
+     ],
+     [
+      3000000,
+      62600
+     ],
+     [
+      4000000,
+      93900
+     ],
+     [
+      5000000,
+      125200
+     ]
+    ],
+    "existant": [
+     [
+      75000,
+      13800
+     ],
+     [
+      1000000,
+      46800
+     ],
+     [
+      2000000,
+      93900
+     ],
+     [
+      3000000,
+      187800
+     ],
+     [
+      4000000,
+      281700
+     ],
+     [
+      5000000,
+      375600
+     ]
+    ],
+    "interdictionExistant": {
+     "debut": "2025-04-01",
+     "fin": "2029-06-30"
+    },
+    "source": {
+     "url": "https://foreigninvestment.gov.au/sites/foreigninvestment.gov.au/files/2026-06/schedule-of-fees-v8.pdf",
+     "consulte": "2026-10-14",
+     "en_vigueur": "2026-07-01",
+     "note": "Schedule of Fees v8, tables 2 et 3 (« Less than $75,000 » puis tranche d'un million) ; interdiction d'achat de logements existants par des étrangers : Australia's foreign investment policy, mai 2026 (https://foreigninvestment.gov.au/sites/foreigninvestment.gov.au/files/2026-05/australias-foreign-investment-policy-may-2026.pdf) : « commenced on 1 April 2025 and will be in place until 30 June 2029 »."
+    }
+   }
+  },
+  "nonChiffre": "Honoraires de conveyancer / solicitor, courtier et inspection : aucun barème officiel, non chiffrés. Frais d'enregistrement non relus : VIC (Land Services Victoria, 403), SA (Land Services SA, table au millésime ambigu), NT."
+ },
+ "prices": {
+  "source": "Australian Bureau of Statistics, Total Value of Dwellings (cat. 6432.0)",
+  "url": "https://www.abs.gov.au/statistics/economy/price-indexes-and-inflation/total-value-dwellings/latest-release",
+  "attribution": "Source: Australian Bureau of Statistics, Total Value of Dwellings, June Quarter 2026, licensed under CC BY 4.0.",
+  "licence": "Creative Commons Attribution 4.0 International (CC BY 4.0) : « Material obtained from this website is to be attributed to this department » (ABS, Copyright and Creative Commons).",
+  "latest_quarter": "2026-Q2",
+  "comparison_quarter": "2025-Q2",
+  "preliminary": true,
+  "sales_window": [
+   "2025-Q2",
+   "2026-Q1"
+  ],
+  "notes": {
+   "prix": "États : prix moyen de tous les logements (valeur du parc / nombre de logements). Villes (GCCSA) et rest of state : médiane non stratifiée des maisons existantes transférées pendant le trimestre ; prixAttache = idem pour les logements attachés. Les deux mesures ne sont pas comparables entre elles.",
+   "ventes": "ventes12m = transferts (changements de propriété) de maisons existantes + logements attachés sur les 4 derniers trimestres révisés ; pour un État, somme de sa capitale et de son rest of state.",
+   "preliminaire": "Le dernier trimestre est préliminaire (révisions possibles sur les 10 derniers trimestres)."
+  },
+  "australia": {
+   "price": 1100400,
+   "price_type": "mean-all-dwellings",
+   "change_12m_pct": 6.8,
+   "dwellings": 11531100
+  },
+  "zones": [
+   {
+    "slug": "australian-capital-territory",
+    "name": "Australian Capital Territory",
+    "type": "state",
+    "state": "ACT",
+    "price": 981700,
+    "price_type": "mean-all-dwellings",
+    "attached_median_price": null,
+    "change_12m_pct": 3,
+    "change_attached_12m_pct": null,
+    "period": "2026-Q2",
+    "preliminary": true,
+    "dwellings": 206800,
+    "sales_12m": 9706,
+    "url": "https://payotte.com/australia/states/australian-capital-territory",
+    "source": {
+     "titre": "ABS, Total Value of Dwellings, 2026-Q2 (cat. 6432.0), table 1 : mean price of residential dwellings",
+     "url": "https://www.abs.gov.au/statistics/economy/price-indexes-and-inflation/total-value-dwellings/latest-release",
+     "api": "https://data.api.abs.gov.au/rest/data/ABS,RES_DWELL_ST/all",
+     "licence": "CC BY 4.0 (ABS)",
+     "consulte": "2026-10-14"
+    }
+   },
+   {
+    "slug": "new-south-wales",
+    "name": "New South Wales",
+    "type": "state",
+    "state": "NSW",
+    "price": 1304900,
+    "price_type": "mean-all-dwellings",
+    "attached_median_price": null,
+    "change_12m_pct": 1.9,
+    "change_attached_12m_pct": null,
+    "period": "2026-Q2",
+    "preliminary": true,
+    "dwellings": 3550300,
+    "sales_12m": 177723,
+    "url": "https://payotte.com/australia/states/new-south-wales",
+    "source": {
+     "titre": "ABS, Total Value of Dwellings, 2026-Q2 (cat. 6432.0), table 1 : mean price of residential dwellings",
+     "url": "https://www.abs.gov.au/statistics/economy/price-indexes-and-inflation/total-value-dwellings/latest-release",
+     "api": "https://data.api.abs.gov.au/rest/data/ABS,RES_DWELL_ST/all",
+     "licence": "CC BY 4.0 (ABS)",
+     "consulte": "2026-10-14"
+    }
+   },
+   {
+    "slug": "northern-territory",
+    "name": "Northern Territory",
+    "type": "state",
+    "state": "NT",
+    "price": 614400,
+    "price_type": "mean-all-dwellings",
+    "attached_median_price": null,
+    "change_12m_pct": 14.7,
+    "change_attached_12m_pct": null,
+    "period": "2026-Q2",
+    "preliminary": true,
+    "dwellings": 91100,
+    "sales_12m": 4131,
+    "url": "https://payotte.com/australia/states/northern-territory",
+    "source": {
+     "titre": "ABS, Total Value of Dwellings, 2026-Q2 (cat. 6432.0), table 1 : mean price of residential dwellings",
+     "url": "https://www.abs.gov.au/statistics/economy/price-indexes-and-inflation/total-value-dwellings/latest-release",
+     "api": "https://data.api.abs.gov.au/rest/data/ABS,RES_DWELL_ST/all",
+     "licence": "CC BY 4.0 (ABS)",
+     "consulte": "2026-10-14"
+    }
+   },
+   {
+    "slug": "queensland",
+    "name": "Queensland",
+    "type": "state",
+    "state": "QLD",
+    "price": 1130600,
+    "price_type": "mean-all-dwellings",
+    "attached_median_price": null,
+    "change_12m_pct": 15.4,
+    "change_attached_12m_pct": null,
+    "period": "2026-Q2",
+    "preliminary": true,
+    "dwellings": 2319900,
+    "sales_12m": 129558,
+    "url": "https://payotte.com/australia/states/queensland",
+    "source": {
+     "titre": "ABS, Total Value of Dwellings, 2026-Q2 (cat. 6432.0), table 1 : mean price of residential dwellings",
+     "url": "https://www.abs.gov.au/statistics/economy/price-indexes-and-inflation/total-value-dwellings/latest-release",
+     "api": "https://data.api.abs.gov.au/rest/data/ABS,RES_DWELL_ST/all",
+     "licence": "CC BY 4.0 (ABS)",
+     "consulte": "2026-10-14"
+    }
+   },
+   {
+    "slug": "south-australia",
+    "name": "South Australia",
+    "type": "state",
+    "state": "SA",
+    "price": 979600,
+    "price_type": "mean-all-dwellings",
+    "attached_median_price": null,
+    "change_12m_pct": 12.9,
+    "change_attached_12m_pct": null,
+    "period": "2026-Q2",
+    "preliminary": true,
+    "dwellings": 846500,
+    "sales_12m": 37361,
+    "url": "https://payotte.com/australia/states/south-australia",
+    "source": {
+     "titre": "ABS, Total Value of Dwellings, 2026-Q2 (cat. 6432.0), table 1 : mean price of residential dwellings",
+     "url": "https://www.abs.gov.au/statistics/economy/price-indexes-and-inflation/total-value-dwellings/latest-release",
+     "api": "https://data.api.abs.gov.au/rest/data/ABS,RES_DWELL_ST/all",
+     "licence": "CC BY 4.0 (ABS)",
+     "consulte": "2026-10-14"
+    }
+   },
+   {
+    "slug": "tasmania",
+    "name": "Tasmania",
+    "type": "state",
+    "state": "TAS",
+    "price": 733200,
+    "price_type": "mean-all-dwellings",
+    "attached_median_price": null,
+    "change_12m_pct": 8.8,
+    "change_attached_12m_pct": null,
+    "period": "2026-Q2",
+    "preliminary": true,
+    "dwellings": 270300,
+    "sales_12m": 12379,
+    "url": "https://payotte.com/australia/states/tasmania",
+    "source": {
+     "titre": "ABS, Total Value of Dwellings, 2026-Q2 (cat. 6432.0), table 1 : mean price of residential dwellings",
+     "url": "https://www.abs.gov.au/statistics/economy/price-indexes-and-inflation/total-value-dwellings/latest-release",
+     "api": "https://data.api.abs.gov.au/rest/data/ABS,RES_DWELL_ST/all",
+     "licence": "CC BY 4.0 (ABS)",
+     "consulte": "2026-10-14"
+    }
+   },
+   {
+    "slug": "victoria",
+    "name": "Victoria",
+    "type": "state",
+    "state": "VIC",
+    "price": 918400,
+    "price_type": "mean-all-dwellings",
+    "attached_median_price": null,
+    "change_12m_pct": 0,
+    "change_attached_12m_pct": null,
+    "period": "2026-Q2",
+    "preliminary": true,
+    "dwellings": 3043000,
+    "sales_12m": 175603,
+    "url": "https://payotte.com/australia/states/victoria",
+    "source": {
+     "titre": "ABS, Total Value of Dwellings, 2026-Q2 (cat. 6432.0), table 1 : mean price of residential dwellings",
+     "url": "https://www.abs.gov.au/statistics/economy/price-indexes-and-inflation/total-value-dwellings/latest-release",
+     "api": "https://data.api.abs.gov.au/rest/data/ABS,RES_DWELL_ST/all",
+     "licence": "CC BY 4.0 (ABS)",
+     "consulte": "2026-10-14"
+    }
+   },
+   {
+    "slug": "western-australia",
+    "name": "Western Australia",
+    "type": "state",
+    "state": "WA",
+    "price": 1123700,
+    "price_type": "mean-all-dwellings",
+    "attached_median_price": null,
+    "change_12m_pct": 22.9,
+    "change_attached_12m_pct": null,
+    "period": "2026-Q2",
+    "preliminary": true,
+    "dwellings": 1203200,
+    "sales_12m": 49540,
+    "url": "https://payotte.com/australia/states/western-australia",
+    "source": {
+     "titre": "ABS, Total Value of Dwellings, 2026-Q2 (cat. 6432.0), table 1 : mean price of residential dwellings",
+     "url": "https://www.abs.gov.au/statistics/economy/price-indexes-and-inflation/total-value-dwellings/latest-release",
+     "api": "https://data.api.abs.gov.au/rest/data/ABS,RES_DWELL_ST/all",
+     "licence": "CC BY 4.0 (ABS)",
+     "consulte": "2026-10-14"
+    }
+   },
+   {
+    "slug": "adelaide",
+    "name": "Adelaide",
+    "type": "city",
+    "state": "SA",
+    "price": 975000,
+    "price_type": "median-established-house-transfers",
+    "attached_median_price": 725000,
+    "change_12m_pct": 13.2,
+    "change_attached_12m_pct": 9.8,
+    "period": "2026-Q2",
+    "preliminary": true,
+    "dwellings": null,
+    "sales_12m": 28929,
+    "url": "https://payotte.com/australia/areas/adelaide",
+    "source": {
+     "titre": "ABS, Total Value of Dwellings, 2026-Q2 (cat. 6432.0), table 2 : Median price and number of transfers (capital city and rest of state)",
+     "url": "https://www.abs.gov.au/statistics/economy/price-indexes-and-inflation/total-value-dwellings/latest-release",
+     "api": "https://data.api.abs.gov.au/rest/data/ABS,RES_DWELL/all",
+     "licence": "CC BY 4.0 (ABS ; données de transferts issues de CoreLogic, voir la note ABS)",
+     "consulte": "2026-10-14"
+    }
+   },
+   {
+    "slug": "brisbane",
+    "name": "Brisbane",
+    "type": "city",
+    "state": "QLD",
+    "price": 1155000,
+    "price_type": "median-established-house-transfers",
+    "attached_median_price": 830100,
+    "change_12m_pct": 18.8,
+    "change_attached_12m_pct": 17.2,
+    "period": "2026-Q2",
+    "preliminary": true,
+    "dwellings": null,
+    "sales_12m": 58506,
+    "url": "https://payotte.com/australia/areas/brisbane",
+    "source": {
+     "titre": "ABS, Total Value of Dwellings, 2026-Q2 (cat. 6432.0), table 2 : Median price and number of transfers (capital city and rest of state)",
+     "url": "https://www.abs.gov.au/statistics/economy/price-indexes-and-inflation/total-value-dwellings/latest-release",
+     "api": "https://data.api.abs.gov.au/rest/data/ABS,RES_DWELL/all",
+     "licence": "CC BY 4.0 (ABS ; données de transferts issues de CoreLogic, voir la note ABS)",
+     "consulte": "2026-10-14"
+    }
+   },
+   {
+    "slug": "canberra",
+    "name": "Canberra",
+    "type": "city",
+    "state": "ACT",
+    "price": 1030000,
+    "price_type": "median-established-house-transfers",
+    "attached_median_price": 615000,
+    "change_12m_pct": 3,
+    "change_attached_12m_pct": 1.7,
+    "period": "2026-Q2",
+    "preliminary": true,
+    "dwellings": null,
+    "sales_12m": 9706,
+    "url": "https://payotte.com/australia/areas/canberra",
+    "source": {
+     "titre": "ABS, Total Value of Dwellings, 2026-Q2 (cat. 6432.0), table 2 : Median price and number of transfers (capital city and rest of state)",
+     "url": "https://www.abs.gov.au/statistics/economy/price-indexes-and-inflation/total-value-dwellings/latest-release",
+     "api": "https://data.api.abs.gov.au/rest/data/ABS,RES_DWELL/all",
+     "licence": "CC BY 4.0 (ABS ; données de transferts issues de CoreLogic, voir la note ABS)",
+     "consulte": "2026-10-14"
+    }
+   },
+   {
+    "slug": "darwin",
+    "name": "Darwin",
+    "type": "city",
+    "state": "NT",
+    "price": 752500,
+    "price_type": "median-established-house-transfers",
+    "attached_median_price": 445500,
+    "change_12m_pct": 21.4,
+    "change_attached_12m_pct": 17.1,
+    "period": "2026-Q2",
+    "preliminary": true,
+    "dwellings": null,
+    "sales_12m": 3494,
+    "url": "https://payotte.com/australia/areas/darwin",
+    "source": {
+     "titre": "ABS, Total Value of Dwellings, 2026-Q2 (cat. 6432.0), table 2 : Median price and number of transfers (capital city and rest of state)",
+     "url": "https://www.abs.gov.au/statistics/economy/price-indexes-and-inflation/total-value-dwellings/latest-release",
+     "api": "https://data.api.abs.gov.au/rest/data/ABS,RES_DWELL/all",
+     "licence": "CC BY 4.0 (ABS ; données de transferts issues de CoreLogic, voir la note ABS)",
+     "consulte": "2026-10-14"
+    }
+   },
+   {
+    "slug": "hobart",
+    "name": "Hobart",
+    "type": "city",
+    "state": "TAS",
+    "price": 750000,
+    "price_type": "median-established-house-transfers",
+    "attached_median_price": 600000,
+    "change_12m_pct": 4.9,
+    "change_attached_12m_pct": 7.9,
+    "period": "2026-Q2",
+    "preliminary": true,
+    "dwellings": null,
+    "sales_12m": 5000,
+    "url": "https://payotte.com/australia/areas/hobart",
+    "source": {
+     "titre": "ABS, Total Value of Dwellings, 2026-Q2 (cat. 6432.0), table 2 : Median price and number of transfers (capital city and rest of state)",
+     "url": "https://www.abs.gov.au/statistics/economy/price-indexes-and-inflation/total-value-dwellings/latest-release",
+     "api": "https://data.api.abs.gov.au/rest/data/ABS,RES_DWELL/all",
+     "licence": "CC BY 4.0 (ABS ; données de transferts issues de CoreLogic, voir la note ABS)",
+     "consulte": "2026-10-14"
+    }
+   },
+   {
+    "slug": "melbourne",
+    "name": "Melbourne",
+    "type": "city",
+    "state": "VIC",
+    "price": 850000,
+    "price_type": "median-established-house-transfers",
+    "attached_median_price": 590000,
+    "change_12m_pct": 1.2,
+    "change_attached_12m_pct": -2.2,
+    "period": "2026-Q2",
+    "preliminary": true,
+    "dwellings": null,
+    "sales_12m": 137725,
+    "url": "https://payotte.com/australia/areas/melbourne",
+    "source": {
+     "titre": "ABS, Total Value of Dwellings, 2026-Q2 (cat. 6432.0), table 2 : Median price and number of transfers (capital city and rest of state)",
+     "url": "https://www.abs.gov.au/statistics/economy/price-indexes-and-inflation/total-value-dwellings/latest-release",
+     "api": "https://data.api.abs.gov.au/rest/data/ABS,RES_DWELL/all",
+     "licence": "CC BY 4.0 (ABS ; données de transferts issues de CoreLogic, voir la note ABS)",
+     "consulte": "2026-10-14"
+    }
+   },
+   {
+    "slug": "perth",
+    "name": "Perth",
+    "type": "city",
+    "state": "WA",
+    "price": 1010000,
+    "price_type": "median-established-house-transfers",
+    "attached_median_price": 730000,
+    "change_12m_pct": 18.8,
+    "change_attached_12m_pct": 21.7,
+    "period": "2026-Q2",
+    "preliminary": true,
+    "dwellings": null,
+    "sales_12m": 38987,
+    "url": "https://payotte.com/australia/areas/perth",
+    "source": {
+     "titre": "ABS, Total Value of Dwellings, 2026-Q2 (cat. 6432.0), table 2 : Median price and number of transfers (capital city and rest of state)",
+     "url": "https://www.abs.gov.au/statistics/economy/price-indexes-and-inflation/total-value-dwellings/latest-release",
+     "api": "https://data.api.abs.gov.au/rest/data/ABS,RES_DWELL/all",
+     "licence": "CC BY 4.0 (ABS ; données de transferts issues de CoreLogic, voir la note ABS)",
+     "consulte": "2026-10-14"
+    }
+   },
+   {
+    "slug": "sydney",
+    "name": "Sydney",
+    "type": "city",
+    "state": "NSW",
+    "price": 1487600,
+    "price_type": "median-established-house-transfers",
+    "attached_median_price": 840000,
+    "change_12m_pct": -2.1,
+    "change_attached_12m_pct": 1.2,
+    "period": "2026-Q2",
+    "preliminary": true,
+    "dwellings": null,
+    "sales_12m": 108904,
+    "url": "https://payotte.com/australia/areas/sydney",
+    "source": {
+     "titre": "ABS, Total Value of Dwellings, 2026-Q2 (cat. 6432.0), table 2 : Median price and number of transfers (capital city and rest of state)",
+     "url": "https://www.abs.gov.au/statistics/economy/price-indexes-and-inflation/total-value-dwellings/latest-release",
+     "api": "https://data.api.abs.gov.au/rest/data/ABS,RES_DWELL/all",
+     "licence": "CC BY 4.0 (ABS ; données de transferts issues de CoreLogic, voir la note ABS)",
+     "consulte": "2026-10-14"
+    }
+   },
+   {
+    "slug": "rest-of-nsw",
+    "name": "Rest of NSW",
+    "type": "rest",
+    "state": "NSW",
+    "price": 810000,
+    "price_type": "median-established-house-transfers",
+    "attached_median_price": 710000,
+    "change_12m_pct": 5.1,
+    "change_attached_12m_pct": 6,
+    "period": "2026-Q2",
+    "preliminary": true,
+    "dwellings": null,
+    "sales_12m": 68819,
+    "url": "https://payotte.com/australia/areas/rest-of-nsw",
+    "source": {
+     "titre": "ABS, Total Value of Dwellings, 2026-Q2 (cat. 6432.0), table 2 : Median price and number of transfers (capital city and rest of state)",
+     "url": "https://www.abs.gov.au/statistics/economy/price-indexes-and-inflation/total-value-dwellings/latest-release",
+     "api": "https://data.api.abs.gov.au/rest/data/ABS,RES_DWELL/all",
+     "licence": "CC BY 4.0 (ABS ; données de transferts issues de CoreLogic, voir la note ABS)",
+     "consulte": "2026-10-14"
+    }
+   },
+   {
+    "slug": "rest-of-northern-territory",
+    "name": "Rest of Northern Territory",
+    "type": "rest",
+    "state": "NT",
+    "price": 450000,
+    "price_type": "median-established-house-transfers",
+    "attached_median_price": 340000,
+    "change_12m_pct": 1.3,
+    "change_attached_12m_pct": 14.3,
+    "period": "2026-Q2",
+    "preliminary": true,
+    "dwellings": null,
+    "sales_12m": 637,
+    "url": "https://payotte.com/australia/areas/rest-of-northern-territory",
+    "source": {
+     "titre": "ABS, Total Value of Dwellings, 2026-Q2 (cat. 6432.0), table 2 : Median price and number of transfers (capital city and rest of state)",
+     "url": "https://www.abs.gov.au/statistics/economy/price-indexes-and-inflation/total-value-dwellings/latest-release",
+     "api": "https://data.api.abs.gov.au/rest/data/ABS,RES_DWELL/all",
+     "licence": "CC BY 4.0 (ABS ; données de transferts issues de CoreLogic, voir la note ABS)",
+     "consulte": "2026-10-14"
+    }
+   },
+   {
+    "slug": "rest-of-queensland",
+    "name": "Rest of Queensland",
+    "type": "rest",
+    "state": "QLD",
+    "price": 800000,
+    "price_type": "median-established-house-transfers",
+    "attached_median_price": 805000,
+    "change_12m_pct": 10.1,
+    "change_attached_12m_pct": 11.8,
+    "period": "2026-Q2",
+    "preliminary": true,
+    "dwellings": null,
+    "sales_12m": 71052,
+    "url": "https://payotte.com/australia/areas/rest-of-queensland",
+    "source": {
+     "titre": "ABS, Total Value of Dwellings, 2026-Q2 (cat. 6432.0), table 2 : Median price and number of transfers (capital city and rest of state)",
+     "url": "https://www.abs.gov.au/statistics/economy/price-indexes-and-inflation/total-value-dwellings/latest-release",
+     "api": "https://data.api.abs.gov.au/rest/data/ABS,RES_DWELL/all",
+     "licence": "CC BY 4.0 (ABS ; données de transferts issues de CoreLogic, voir la note ABS)",
+     "consulte": "2026-10-14"
+    }
+   },
+   {
+    "slug": "rest-of-south-australia",
+    "name": "Rest of South Australia",
+    "type": "rest",
+    "state": "SA",
+    "price": 584500,
+    "price_type": "median-established-house-transfers",
+    "attached_median_price": 378800,
+    "change_12m_pct": 15.7,
+    "change_attached_12m_pct": 20.9,
+    "period": "2026-Q2",
+    "preliminary": true,
+    "dwellings": null,
+    "sales_12m": 8432,
+    "url": "https://payotte.com/australia/areas/rest-of-south-australia",
+    "source": {
+     "titre": "ABS, Total Value of Dwellings, 2026-Q2 (cat. 6432.0), table 2 : Median price and number of transfers (capital city and rest of state)",
+     "url": "https://www.abs.gov.au/statistics/economy/price-indexes-and-inflation/total-value-dwellings/latest-release",
+     "api": "https://data.api.abs.gov.au/rest/data/ABS,RES_DWELL/all",
+     "licence": "CC BY 4.0 (ABS ; données de transferts issues de CoreLogic, voir la note ABS)",
+     "consulte": "2026-10-14"
+    }
+   },
+   {
+    "slug": "rest-of-tasmania",
+    "name": "Rest of Tasmania",
+    "type": "rest",
+    "state": "TAS",
+    "price": 625000,
+    "price_type": "median-established-house-transfers",
+    "attached_median_price": 500000,
+    "change_12m_pct": 13.6,
+    "change_attached_12m_pct": 11.1,
+    "period": "2026-Q2",
+    "preliminary": true,
+    "dwellings": null,
+    "sales_12m": 7379,
+    "url": "https://payotte.com/australia/areas/rest-of-tasmania",
+    "source": {
+     "titre": "ABS, Total Value of Dwellings, 2026-Q2 (cat. 6432.0), table 2 : Median price and number of transfers (capital city and rest of state)",
+     "url": "https://www.abs.gov.au/statistics/economy/price-indexes-and-inflation/total-value-dwellings/latest-release",
+     "api": "https://data.api.abs.gov.au/rest/data/ABS,RES_DWELL/all",
+     "licence": "CC BY 4.0 (ABS ; données de transferts issues de CoreLogic, voir la note ABS)",
+     "consulte": "2026-10-14"
+    }
+   },
+   {
+    "slug": "rest-of-victoria",
+    "name": "Rest of Victoria",
+    "type": "rest",
+    "state": "VIC",
+    "price": 625000,
+    "price_type": "median-established-house-transfers",
+    "attached_median_price": 467800,
+    "change_12m_pct": 8.7,
+    "change_attached_12m_pct": 7.3,
+    "period": "2026-Q2",
+    "preliminary": true,
+    "dwellings": null,
+    "sales_12m": 37878,
+    "url": "https://payotte.com/australia/areas/rest-of-victoria",
+    "source": {
+     "titre": "ABS, Total Value of Dwellings, 2026-Q2 (cat. 6432.0), table 2 : Median price and number of transfers (capital city and rest of state)",
+     "url": "https://www.abs.gov.au/statistics/economy/price-indexes-and-inflation/total-value-dwellings/latest-release",
+     "api": "https://data.api.abs.gov.au/rest/data/ABS,RES_DWELL/all",
+     "licence": "CC BY 4.0 (ABS ; données de transferts issues de CoreLogic, voir la note ABS)",
+     "consulte": "2026-10-14"
+    }
+   },
+   {
+    "slug": "rest-of-western-australia",
+    "name": "Rest of Western Australia",
+    "type": "rest",
+    "state": "WA",
+    "price": 665000,
+    "price_type": "median-established-house-transfers",
+    "attached_median_price": 520000,
+    "change_12m_pct": 20.9,
+    "change_attached_12m_pct": 26.8,
+    "period": "2026-Q2",
+    "preliminary": true,
+    "dwellings": null,
+    "sales_12m": 10553,
+    "url": "https://payotte.com/australia/areas/rest-of-western-australia",
+    "source": {
+     "titre": "ABS, Total Value of Dwellings, 2026-Q2 (cat. 6432.0), table 2 : Median price and number of transfers (capital city and rest of state)",
+     "url": "https://www.abs.gov.au/statistics/economy/price-indexes-and-inflation/total-value-dwellings/latest-release",
+     "api": "https://data.api.abs.gov.au/rest/data/ABS,RES_DWELL/all",
+     "licence": "CC BY 4.0 (ABS ; données de transferts issues de CoreLogic, voir la note ABS)",
+     "consulte": "2026-10-14"
+    }
+   }
+  ]
+ },
+ "tables": {
+  "cooling-off-period": {
+   "compiled": "2026-10-14",
+   "url": "https://payotte.com/australia/by-state/cooling-off-period",
+   "states": {
+    "nsw": {
+     "cooling_off": "yes",
+     "length": "5 business days (10 for off the plan)",
+     "cost_to_withdraw": "0.25% of the price",
+     "auction_excluded": "yes",
+     "answer": "In New South Wales, the cooling-off period is 5 business days from exchange of contracts (10 for off the plan), and withdrawing costs 0.25% of the price. There is none at auction.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Contracts and deposits when buying property in NSW (nsw.gov.au)",
+       "url": "https://www.nsw.gov.au/housing-and-construction/buying-and-selling-property/buying-property-nsw/contracts-and-deposits"
+      },
+      {
+       "title": "Buying property at an auction (nsw.gov.au)",
+       "url": "https://www.nsw.gov.au/housing-and-construction/buying-and-selling-property/buying-property-nsw/buying-property-at-an-auction"
+      }
+     ]
+    },
+    "vic": {
+     "cooling_off": "yes",
+     "length": "3 clear business days",
+     "cost_to_withdraw": "refund less the greater of $100 or 0.2% of the price",
+     "auction_excluded": "yes",
+     "answer": "In Victoria, the cooling-off period is 3 clear business days from signing a private sale contract. The buyer is refunded less the greater of $100 or 0.2% of the price, and there is none at auction.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Buying property by private sale (Consumer Affairs Victoria)",
+       "url": "https://www.consumer.vic.gov.au/housing/buying-and-selling-property/buying-property/buying-property-by-private-sale"
+      }
+     ]
+    },
+    "qld": {
+     "cooling_off": "yes",
+     "length": "5 business days",
+     "cost_to_withdraw": "up to 0.25% of the price",
+     "auction_excluded": "yes",
+     "answer": "In Queensland, the cooling-off period is 5 business days from receiving the contract signed by both parties, ending at 5pm. The seller may keep up to 0.25% of the price, and there is none at auction.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Cooling-off period for residential property contracts (qld.gov.au)",
+       "url": "https://www.qld.gov.au/community/fair-trading/regulated-industries-licensing-and-legislation/property-industry-regulation/legal-requirements-for-the-property-industry/cooling-off-period-for-residential-property-contracts"
+      },
+      {
+       "title": "Cooling-off period (qld.gov.au, buyer guide)",
+       "url": "https://www.qld.gov.au/law/housing-and-neighbours/buying-and-selling-a-property/buying-a-home/making-an-offer-on-a-home/cooling-off-period"
+      }
+     ]
+    },
+    "wa": {
+     "cooling_off": "no",
+     "length": "none required",
+     "cost_to_withdraw": null,
+     "auction_excluded": null,
+     "answer": "Western Australia has no mandatory cooling-off period for real estate contracts. The parties can agree to insert one in the contract, so a buyer who wants one must negotiate it before signing.",
+     "note": "Cost applies only if a clause is agreed; auctions not addressed in the guide.",
+     "sources": [
+      {
+       "title": "Sale by offer and acceptance (Consumer Protection WA)",
+       "url": "https://www.consumerprotection.wa.gov.au/publications/sale-offer-and-acceptance-publication"
+      }
+     ]
+    },
+    "sa": {
+     "cooling_off": "yes",
+     "length": "2 business days",
+     "cost_to_withdraw": null,
+     "auction_excluded": "yes",
+     "answer": "In South Australia, the cooling-off period is 2 business days from service of the Form 1, or from signing if the Form 1 came first. There is none at auction.",
+     "note": "Cost to withdraw not described in the guide; source page last revised December 2013.",
+     "sources": [
+      {
+       "title": "Cooling-off period (SA Law Handbook)",
+       "url": "https://www.lawhandbook.sa.gov.au/ch23s08s08s01.php"
+      }
+     ]
+    },
+    "tas": {
+     "cooling_off": "unknown",
+     "length": null,
+     "cost_to_withdraw": null,
+     "auction_excluded": null,
+     "answer": "Tasmania's Property Agents and Land Transactions Act 2016 (version of 1 July 2025) contains no cooling-off provision, so any cooling-off would come from the contract itself.",
+     "note": "No statutory period found; check the contract.",
+     "sources": [
+      {
+       "title": "Property Agents and Land Transactions Act 2016 (Tasmania), authorised version 1 July 2025",
+       "url": "https://www.legislation.tas.gov.au/view/whole/html/inforce/current/act-2016-058"
+      }
+     ]
+    },
+    "act": {
+     "cooling_off": "yes",
+     "length": "5 working days",
+     "cost_to_withdraw": "0.25% of the price",
+     "auction_excluded": "yes",
+     "answer": "In the ACT, the cooling-off period ends at 5pm on the 5th working day after it begins, and the buyer forfeits 0.25% of the price. There is none at auction or tender.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Civil Law (Sale of Residential Property) Act 2003 (ACT), republication 1 November 2025",
+       "url": "https://www.legislation.act.gov.au/DownloadFile/a/2003-40/current/PDF/2003-40.PDF"
+      }
+     ]
+    },
+    "nt": {
+     "cooling_off": "unknown",
+     "length": null,
+     "cost_to_withdraw": null,
+     "auction_excluded": null,
+     "answer": "For the Northern Territory, the guide could not read the NT Government pages, so the length and cost of any cooling-off period are not stated. Ask the NT Government or an NT conveyancer.",
+     "note": "Guide notes a rule exists for property not sold by auction; length and start not read.",
+     "sources": [
+      {
+       "title": "Contracts and deposits when buying property in NSW (nsw.gov.au)",
+       "url": "https://www.nsw.gov.au/housing-and-construction/buying-and-selling-property/buying-property-nsw/contracts-and-deposits"
+      }
+     ]
+    }
+   }
+  },
+  "first-home-buyer-concessions": {
+   "compiled": "2026-10-14",
+   "url": "https://payotte.com/australia/by-state/first-home-buyer-concessions",
+   "states": {
+    "nsw": {
+     "concession": "yes",
+     "no_duty_up_to": "$800,000",
+     "reduced_up_to": "$1,000,000",
+     "conditions": "contracts exchanged from 1 July 2023; move in within 12 months of settlement and live there for 12 continuous months; vacant land is nil up to $350,000 and reduced up to $450,000",
+     "answer": "In New South Wales, first home buyers pay no duty on a new or existing home up to $800,000, with a concessional rate from there up to $1,000,000. Vacant land is nil up to $350,000 and reduced below $450,000.",
+     "note": null,
+     "sources": [
+      {
+       "title": "First Home Buyers Assistance Scheme (Revenue NSW)",
+       "url": "https://www.revenue.nsw.gov.au/grants-schemes/assistance-scheme"
+      }
+     ]
+    },
+    "vic": {
+     "concession": "yes",
+     "no_duty_up_to": "$600,000",
+     "reduced_up_to": "$750,000",
+     "conditions": "individuals aged 18 or over; at least one an Australian citizen, New Zealand citizen or permanent resident; no prior grant or duty benefit, no home owned before 1 July 2000 or lived in for 6 months or more since (check the SRO wording); live there 12 continuous months starting within 12 months of settlement; all buyers on the Victorian electoral roll",
+     "answer": "In Victoria, first home buyers pay no duty on a home up to $600,000 and a reduced amount from $600,001 to $750,000. The buyer must live in the home for 12 continuous months, starting within 12 months of settlement.",
+     "note": null,
+     "sources": [
+      {
+       "title": "First home buyer duty exemption or concession (State Revenue Office Victoria)",
+       "url": "https://www.sro.vic.gov.au/buying-property/land-transfer-stamp-duty/concessions-exemptions-and-waivers/first-home-buyers/first-home-buyer-duty-exemption-or-concession"
+      }
+     ]
+    },
+    "qld": {
+     "concession": "yes",
+     "no_duty_up_to": "$700,000",
+     "reduced_up_to": "$800,000",
+     "conditions": "individual aged 18 or over; never held an interest in a residence anywhere in the world; move in within 1 year; from 1 August 2026 citizens, permanent residents or specified foreign retirees only; no value cap for a new first home or first home vacant land (from 1 May 2025)",
+     "answer": "In Queensland, a first home buyer pays no duty on a home up to $700,000 (contracts from 9 June 2024), and the concession fades to nil at $800,000. A new first home or first home vacant land has no value cap from 1 May 2025.",
+     "note": null,
+     "sources": [
+      {
+       "title": "First home concession (Queensland Revenue Office)",
+       "url": "https://qro.qld.gov.au/duties/transfer-duty/concessions/first-home/"
+      },
+      {
+       "title": "Transfer duty home concession rates (Queensland Revenue Office)",
+       "url": "https://qro.qld.gov.au/duties/transfer-duty/calculate/concession-rates/"
+      }
+     ]
+    },
+    "wa": {
+     "concession": "yes",
+     "no_duty_up_to": "$600,000",
+     "reduced_up_to": "$800,000",
+     "conditions": "qualify for the first home owner grant criteria (or the listed exceptions); tell the Commissioner within 30 days if a criterion will not be met; vacant land is nil up to $450,000 and reduced up to $550,000",
+     "answer": "In Western Australia, for agreements from 7 May 2026, a first home owner pays no duty on a home up to $600,000 and $16.15 per $100 above $600,000 up to $800,000. Vacant land is nil up to $450,000.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Duties Fact Sheet: First Home Owner Rate (Government of Western Australia)",
+       "url": "https://www.wa.gov.au/government/publications/duties-fact-sheet-first-home-owner-rate"
+      }
+     ]
+    },
+    "sa": {
+     "concession": "partial",
+     "no_duty_up_to": "no value threshold (new homes only)",
+     "reduced_up_to": null,
+     "conditions": "eligible first home buyers only; new home, off-the-plan apartment, house and land package or vacant land to build on; not an established home; dates and conditions published by RevenueSA",
+     "answer": "In South Australia, eligible first home buyers pay zero stamp duty on a new home, off-the-plan apartment, house and land package or vacant land to build on, with no value threshold. The relief does not cover an established home.",
+     "note": "Relief covers new homes only; no partial band.",
+     "sources": [
+      {
+       "title": "Home buyer support (HomeSeeker SA, Government of South Australia)",
+       "url": "https://homeseeker.sa.gov.au/resources/home-buyer-support"
+      },
+      {
+       "title": "FAQs (HomeSeeker SA, Government of South Australia)",
+       "url": "https://homeseeker.sa.gov.au/resources/faqs"
+      }
+     ]
+    },
+    "tas": {
+     "concession": "no",
+     "no_duty_up_to": null,
+     "reduced_up_to": null,
+     "conditions": "the 100% established-home exemption (homes up to $750,000) applied only to settlements from 18 February 2024 to 30 June 2026",
+     "answer": "In Tasmania, the first home buyer duty exemption for established homes is not available for settlements after 30 June 2026, and the State Revenue Office names no replacement. It was a 100% exemption for homes up to $750,000.",
+     "note": "Ended 30 June 2026, so no current threshold.",
+     "sources": [
+      {
+       "title": "First home buyers of established homes duty relief (State Revenue Office Tasmania)",
+       "url": "https://www.sro.tas.gov.au/property-transfer-duties/concessions-exemptions/first-home-buyers-of-established-homes-duty-relief"
+      },
+      {
+       "title": "Concessions and exemptions (State Revenue Office Tasmania)",
+       "url": "https://www.sro.tas.gov.au/property-transfer-duties/concessions-exemptions"
+      }
+     ]
+    },
+    "act": {
+     "concession": "yes",
+     "no_duty_up_to": "no value limit",
+     "reduced_up_to": null,
+     "conditions": "individuals aged 18 or over; no interest in land held by any buyer or domestic partner in the previous 5 years; occupy as principal residence for 1 continuous year; transaction date on or after 1 July 2026",
+     "answer": "In the ACT, an eligible home buyer pays nil duty on a home or vacant land for transactions on or after 1 July 2026, with no income or value limit in the determination. Buyers who do not meet the test pay the owner-occupier scale.",
+     "note": "No partial band; the determination sets no value limit.",
+     "sources": [
+      {
+       "title": "Taxation Administration (Amounts Payable—Home Buyer Concession Scheme) Determination 2026, DI2026-157 (ACT Legislation Register)",
+       "url": "https://legislation.act.gov.au/DownloadFile/di/2026-157/current/PDF/2026-157.PDF"
+      }
+     ]
+    },
+    "nt": {
+     "concession": "partial",
+     "no_duty_up_to": null,
+     "reduced_up_to": "$650,000",
+     "conditions": "citizen or permanent resident; no residential property in the Territory in the previous 24 months; value at most the threshold ($650,000 unless a regulation prescribes another); 6 months of residence",
+     "answer": "In the Northern Territory, the Territory home owner discount cuts duty by the lesser of the duty assessed and $18,601 for eligible buyers whose home is worth at most $650,000. It is not limited to first home buyers.",
+     "note": "Discount rather than an exemption; threshold is the default unless a regulation sets another.",
+     "sources": [
+      {
+       "title": "Stamp Duty Act 1978, as in force at 1 July 2025 (NT Legislation)",
+       "url": "https://legislation.nt.gov.au/en/Legislation/STAMP-DUTY-ACT-1978"
+      }
+     ]
+    }
+   }
+  },
+  "first-home-owner-grant": {
+   "compiled": "2026-10-14",
+   "url": "https://payotte.com/australia/by-state/first-home-owner-grant",
+   "states": {
+    "nsw": {
+     "amount": "$10,000",
+     "new_homes_only": "yes",
+     "price_cap": "$600,000 for a new or renovated home; $750,000 for land plus building contract combined",
+     "answer": "In New South Wales, the First Home Owner Grant is $10,000 for a new or substantially renovated home worth up to $600,000, or up to $750,000 for a land plus building contract. The buyer must live there for 12 continuous months.",
+     "note": null,
+     "sources": [
+      {
+       "title": "First Home Owner (New Homes) Grant (Revenue NSW)",
+       "url": "https://www.revenue.nsw.gov.au/grants-schemes/first-home-owner-new-homes-grant"
+      }
+     ]
+    },
+    "vic": {
+     "amount": "$10,000",
+     "new_homes_only": "yes",
+     "price_cap": "$750,000",
+     "answer": "In Victoria, the First Home Owner Grant is $10,000 for a new home worth up to $750,000 that has never been sold, occupied, leased or used for short-term accommodation. The buyer must live there 12 months.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Understanding the First Home Owner Grant (State Revenue Office Victoria)",
+       "url": "https://www.sro.vic.gov.au/buying-property/first-home-owner-grant/understanding-first-home-owner-grant"
+      }
+     ]
+    },
+    "qld": {
+     "amount": "$30,000",
+     "new_homes_only": "yes",
+     "price_cap": "less than $750,000",
+     "answer": "In Queensland, the First Home Owner Grant is $30,000 for a new home valued at less than $750,000, including land and contract variations, for contracts from 20 November 2023. The 2026 State Budget page says the grant is continued for contracts from 1 July 2026.",
+     "note": "Continuation from 1 July 2026 is announced; legislated position to be checked with the QRO.",
+     "sources": [
+      {
+       "title": "First home owner grant eligibility criteria (Queensland Revenue Office)",
+       "url": "https://qro.qld.gov.au/property-concessions-grants/first-home-grant/eligibility/"
+      },
+      {
+       "title": "State Budget 2026 (Queensland Revenue Office)",
+       "url": "https://qro.qld.gov.au/2026/06/state-budget-2026/"
+      }
+     ]
+    },
+    "wa": {
+     "amount": "up to $10,000",
+     "new_homes_only": "yes",
+     "price_cap": "$800,000 south of the 26th parallel; $1,000,000 north (transactions from 7 May 2026)",
+     "answer": "In Western Australia, the First Home Owner Grant is up to $10,000 for a new or substantially renovated home. For transactions from 7 May 2026 the value cap is $800,000 south of the 26th parallel and $1,000,000 north of it.",
+     "note": null,
+     "sources": [
+      {
+       "title": "About the first home owner grant (Government of Western Australia)",
+       "url": "https://www.wa.gov.au/government/publications/about-the-first-home-owner-grant"
+      }
+     ]
+    },
+    "sa": {
+     "amount": "up to $15,000",
+     "new_homes_only": "yes",
+     "price_cap": null,
+     "answer": "In South Australia, the First Home Owner Grant is up to $15,000 for buying or building a new home that will be the principal place of residence.",
+     "note": "Price cap not stated in the guide; check RevenueSA.",
+     "sources": [
+      {
+       "title": "Home buyer support (HomeSeeker SA, Government of South Australia)",
+       "url": "https://homeseeker.sa.gov.au/resources/home-buyer-support"
+      },
+      {
+       "title": "FAQs (HomeSeeker SA, Government of South Australia)",
+       "url": "https://homeseeker.sa.gov.au/resources/faqs"
+      }
+     ]
+    },
+    "tas": {
+     "amount": "$20,000",
+     "new_homes_only": "yes",
+     "price_cap": null,
+     "answer": "In Tasmania, the First Home Owner Grant is $20,000 for an eligible transaction commencing on or after 1 July 2026 and before 1 July 2027, completed within 24 months. It is for a newly built home or building a new residence.",
+     "note": "Price cap not stated in the guide.",
+     "sources": [
+      {
+       "title": "First Home Owner Grant Amendment Act 2026, No. 9 of 2026 (Tasmanian legislation)",
+       "url": "https://www.legislation.tas.gov.au/view/pdf/asmade/act-2026-009"
+      },
+      {
+       "title": "First Home Owner (State Revenue Office Tasmania)",
+       "url": "https://www.sro.tas.gov.au/first-home-owner"
+      }
+     ]
+    },
+    "act": {
+     "amount": "nil",
+     "new_homes_only": null,
+     "price_cap": null,
+     "answer": "In the ACT, the First Home Owner Grant amount has been a nil amount since 1 July 2019. ACT home buyers use the duty concession scheme instead.",
+     "note": "No grant, so no property rule or price cap.",
+     "sources": [
+      {
+       "title": "First Home Owner Grant (Amount) Determination 2019 (No 1), DI2019-138 (ACT Legislation Register)",
+       "url": "https://www.legislation.act.gov.au/DownloadFile/di/2019-138/current/PDF/2019-138.PDF"
+      }
+     ]
+    },
+    "nt": {
+     "amount": "$50,000",
+     "new_homes_only": "yes",
+     "price_cap": null,
+     "answer": "In the Northern Territory, the First Home Owner Grant is $50,000 for transactions commencing from 1 October 2025 to before 1 October 2027, and $10,000 from 1 October 2027. Only a new home qualifies for purchase contracts since 1 October 2025.",
+     "note": "No price threshold applies to current transactions.",
+     "sources": [
+      {
+       "title": "First Home Owner Grant Act 2000, as in force at 1 July 2026 (NT Legislation)",
+       "url": "https://legislation.nt.gov.au/en/Legislation/FIRST-HOME-OWNER-GRANT-ACT-2000"
+      }
+     ]
+    }
+   }
+  },
+  "foreign-purchaser-surcharge": {
+   "compiled": "2026-10-14",
+   "url": "https://payotte.com/australia/by-state/foreign-purchaser-surcharge",
+   "states": {
+    "nsw": {
+     "surcharge": "yes",
+     "rate": "9%",
+     "name": "Surcharge purchaser duty",
+     "answer": "In New South Wales, a foreign person buying residential land pays surcharge purchaser duty of 9% of the dutiable value on top of transfer duty. On a $1,000,000 purchase that is $90,000.",
+     "note": null,
+     "sources": [
+      {
+       "title": "What is surcharge purchaser duty (Revenue NSW)",
+       "url": "https://www.revenue.nsw.gov.au/taxes-duties-levies-royalties/transfer-duty/surcharge-purchaser-duty/what-is-surcharge-purchaser-duty"
+      }
+     ]
+    },
+    "vic": {
+     "surcharge": "yes",
+     "rate": "8%",
+     "name": "Foreign purchaser additional duty",
+     "answer": "In Victoria, foreign purchasers pay 8% additional duty on agreements entered into on or after 1 July 2019, calculated on the foreign purchaser's share of the dutiable value.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Foreign purchaser additional duty, current rates (State Revenue Office Victoria)",
+       "url": "https://www.sro.vic.gov.au/about-us/rates-and-statistics/current-rates/foreign-purchaser-additional-duty-current-rates"
+      },
+      {
+       "title": "Understanding foreign purchaser additional duty (State Revenue Office Victoria)",
+       "url": "https://www.sro.vic.gov.au/buying-property/foreign-purchasers-property/understanding-foreign-purchaser-additional-duty"
+      }
+     ]
+    },
+    "qld": {
+     "surcharge": "yes",
+     "rate": "8%",
+     "name": "Additional foreign acquirer duty (AFAD)",
+     "answer": "In Queensland, foreign acquirers of residential land pay 8% additional foreign acquirer duty. From 1 August 2026 temporary residents also lose home concessions.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Transfer duty rates (Queensland Revenue Office)",
+       "url": "https://qro.qld.gov.au/duties/transfer-duty/calculate/rates/"
+      },
+      {
+       "title": "First home concession (Queensland Revenue Office)",
+       "url": "https://qro.qld.gov.au/duties/transfer-duty/concessions/first-home/"
+      }
+     ]
+    },
+    "wa": {
+     "surcharge": "yes",
+     "rate": "7%",
+     "name": "Foreign transfer duty",
+     "answer": "In Western Australia, foreign persons buying residential property pay 7% foreign transfer duty, even where the first home owner rate applies. On a $400,000 joint purchase with a 50% foreign share it is $14,000.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Foreign transfer duty (Government of Western Australia)",
+       "url": "https://www.wa.gov.au/government/publications/foreign-transfer-duty"
+      },
+      {
+       "title": "2026-27 Housing Taxation Package (Government of Western Australia)",
+       "url": "https://www.wa.gov.au/government/announcements/2026-27-housing-taxation-package"
+      }
+     ]
+    },
+    "sa": {
+     "surcharge": "unknown",
+     "rate": null,
+     "name": null,
+     "answer": "Payotte could not read the RevenueSA pages, so whether South Australia charges a foreign purchaser surcharge, and at what rate, is not stated here. Ask RevenueSA before signing.",
+     "note": "RevenueSA pages blocked (HTTP 403); not stated.",
+     "sources": [
+      {
+       "title": "Foreign Investment (foreigninvestment.gov.au)",
+       "url": "https://foreigninvestment.gov.au/"
+      }
+     ]
+    },
+    "tas": {
+     "surcharge": "yes",
+     "rate": "8% (residential); 1.5% (primary production)",
+     "name": "Foreign investor duty surcharge",
+     "answer": "In Tasmania, the foreign investor duty surcharge is 8% on residential property from 1 April 2020 and 1.5% on primary production property, on the share acquired by the foreign person.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Rates of surcharge, foreign investor duty surcharge (State Revenue Office Tasmania)",
+       "url": "https://www.sro.tas.gov.au/property-transfer-duties/foreign-investor-duty-surcharge/rates-of-surcharge"
+      }
+     ]
+    },
+    "act": {
+     "surcharge": "no",
+     "rate": null,
+     "name": null,
+     "answer": "In the ACT, no residential foreign-purchaser surcharge was found in the Duties Act 1999 or the 2026 determinations. Federal approval is still required for foreign persons.",
+     "note": "Based on a text search of the Act.",
+     "sources": [
+      {
+       "title": "Duties Act 1999 (ACT Legislation Register)",
+       "url": "https://www.legislation.act.gov.au/a/1999-7/"
+      }
+     ]
+    },
+    "nt": {
+     "surcharge": "no",
+     "rate": null,
+     "name": null,
+     "answer": "In the Northern Territory, no residential foreign-purchaser surcharge was found in the Stamp Duty Act 1978 (version of 1 July 2025). Federal approval is still required for foreign persons.",
+     "note": "Based on a text search of the Act.",
+     "sources": [
+      {
+       "title": "Stamp Duty Act 1978, as in force at 1 July 2025 (NT Legislation)",
+       "url": "https://legislation.nt.gov.au/en/Legislation/STAMP-DUTY-ACT-1978"
+      }
+     ]
+    }
+   }
+  },
+  "land-tax": {
+   "compiled": "2026-10-14",
+   "url": "https://payotte.com/australia/by-state/land-tax",
+   "states": {
+    "nsw": {
+     "threshold": "$1,075,000",
+     "main_residence_exempt": "yes",
+     "absentee_surcharge": "5% (surcharge land tax for foreign persons, from 2025)",
+     "answer": "In New South Wales, land tax starts above a land value of $1,075,000 (frozen since 2025) and a foreign person pays a 5% surcharge. A principal place of residence is exempt if the occupants own at least 25%.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Land tax thresholds and rates (Revenue NSW)",
+       "url": "https://www.revenue.nsw.gov.au/taxes-duties-levies-royalties/land-tax/understanding-land-tax/thresholds-and-rates"
+      },
+      {
+       "title": "Land tax exemption for principal place of residence (Revenue NSW)",
+       "url": "https://www.revenue.nsw.gov.au/taxes-duties-levies-royalties/land-tax/exemptions-and-concessions/principal-place-of-residence"
+      },
+      {
+       "title": "What is surcharge land tax? (Revenue NSW)",
+       "url": "https://www.revenue.nsw.gov.au/taxes-duties-levies-royalties/land-tax/surcharge-land-tax/what-is-surcharge-land-tax"
+      }
+     ]
+    },
+    "vic": {
+     "threshold": "$50,000",
+     "main_residence_exempt": "yes",
+     "absentee_surcharge": "4% (absentee owner)",
+     "answer": "In Victoria, land tax starts at $50,000 of site value and absentee owners pay a 4% surcharge. A principal place of residence is not charged land tax.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Land tax, current rates (State Revenue Office Victoria)",
+       "url": "https://www.sro.vic.gov.au/about-us/rates-and-statistics/current-rates/land-tax-current-rates"
+      },
+      {
+       "title": "Principal place of residence exemption (State Revenue Office Victoria)",
+       "url": "https://www.sro.vic.gov.au/owning-property/land-tax/exemptions-and-concessions-land-tax/principal-place-residence/principal-place-residence-exemption"
+      }
+     ]
+    },
+    "qld": {
+     "threshold": "$600,000 (individuals)",
+     "main_residence_exempt": "yes",
+     "absentee_surcharge": "3% on value above $350,000 (absentee individuals)",
+     "answer": "In Queensland, land tax for individuals starts at $600,000, and absentee individuals pay a 3% surcharge on value above $350,000. The home exemption covers a principal place of residence on one parcel.",
+     "note": "Scale year not named on the QRO page (last updated 23 July 2024).",
+     "sources": [
+      {
+       "title": "Land tax, calculate for individuals (Queensland Revenue Office)",
+       "url": "https://qro.qld.gov.au/land-tax/calculate/individual/"
+      },
+      {
+       "title": "Land tax, calculate for absentees (Queensland Revenue Office)",
+       "url": "https://qro.qld.gov.au/land-tax/calculate/absentee/"
+      },
+      {
+       "title": "Land tax, home exemption test (Queensland Revenue Office)",
+       "url": "https://qro.qld.gov.au/land-tax/relief/home-exemption-test/"
+      }
+     ]
+    },
+    "wa": {
+     "threshold": "$300,000",
+     "main_residence_exempt": "yes",
+     "absentee_surcharge": null,
+     "answer": "In Western Australia, land tax starts at $300,000 of unimproved value, plus a Metropolitan Region Improvement Tax on Perth-area land above $300,000. A private residence used as primary residence is exempt.",
+     "note": "The page read does not mention a foreign land tax surcharge.",
+     "sources": [
+      {
+       "title": "Land tax (Government of Western Australia)",
+       "url": "https://www.wa.gov.au/organisation/department-of-treasury-and-finance/land-tax-assessment"
+      },
+      {
+       "title": "Land tax fact sheet, private residences (Government of Western Australia)",
+       "url": "https://www.wa.gov.au/government/publications/land-tax-fact-sheet-private-residences"
+      },
+      {
+       "title": "Overview of State Taxes and Royalties 2025-26 (WA Department of Treasury and Finance, November 2025)",
+       "url": "https://www.wa.gov.au/system/files/2025-11/ostr-2025-26.pdf"
+      }
+     ]
+    },
+    "sa": {
+     "threshold": "$833,001 in 2025-26 (indexed each year)",
+     "main_residence_exempt": "unknown",
+     "absentee_surcharge": null,
+     "answer": "In South Australia, land tax starts at $833,001 in 2025-26, indexed each year, at 0.5% up to 2.4% above $3.116m. For 2026-27 amounts and the home exemption, check Revenue SA.",
+     "note": "Home exemption and surcharge not covered by the guide.",
+     "sources": [
+      {
+       "title": "Overview of State Taxes and Royalties 2025-26 (WA Department of Treasury and Finance, November 2025)",
+       "url": "https://www.wa.gov.au/system/files/2025-11/ostr-2025-26.pdf"
+      }
+     ]
+    },
+    "tas": {
+     "threshold": "$125,000",
+     "main_residence_exempt": "yes",
+     "absentee_surcharge": "2% (foreign investor surcharge, land acquired from 1 July 2022)",
+     "answer": "In Tasmania, land tax starts at $125,000, and a 2% surcharge applies to foreign persons who acquired residential land from 1 July 2022. Principal residence land is not subject to land tax.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Rates of land tax (State Revenue Office Tasmania)",
+       "url": "https://www.sro.tas.gov.au/land-tax/rates-of-land-tax"
+      },
+      {
+       "title": "Land tax (State Revenue Office Tasmania)",
+       "url": "https://www.sro.tas.gov.au/land-tax"
+      },
+      {
+       "title": "Foreign investor land tax surcharge factsheet (State Revenue Office Tasmania)",
+       "url": "https://www.sro.tas.gov.au/Documents/foreign-investor-land-tax-surcharge-factsheet.pdf"
+      }
+     ]
+    },
+    "act": {
+     "threshold": "no threshold; fixed fee of $1,693 (2025-26)",
+     "main_residence_exempt": "unknown",
+     "absentee_surcharge": "0.75% (residential land owned by foreign non-residents)",
+     "answer": "In the ACT, land tax is a fixed fee ($1,693 in 2025-26) plus marginal rates, with a 0.75% surcharge on residential land owned by foreign non-residents. Check the ACT Revenue Office for 2026-27 amounts.",
+     "note": "Home exemption not covered by the guide.",
+     "sources": [
+      {
+       "title": "Overview of State Taxes and Royalties 2025-26 (WA Department of Treasury and Finance, November 2025)",
+       "url": "https://www.wa.gov.au/system/files/2025-11/ostr-2025-26.pdf"
+      }
+     ]
+    },
+    "nt": {
+     "threshold": "no land tax",
+     "main_residence_exempt": null,
+     "absentee_surcharge": null,
+     "answer": "The Northern Territory does not levy land tax, according to the 2025-26 Western Australian Treasury overview. Council rates are separate.",
+     "note": "No land tax, so no exemption or surcharge.",
+     "sources": [
+      {
+       "title": "Overview of State Taxes and Royalties 2025-26 (WA Department of Treasury and Finance, November 2025)",
+       "url": "https://www.wa.gov.au/system/files/2025-11/ostr-2025-26.pdf"
+      }
+     ]
+    }
+   }
+  },
+  "purchase-duty": {
+   "compiled": "2026-10-14",
+   "url": "https://payotte.com/australia/by-state/purchase-duty",
+   "states": {
+    "nsw": {
+     "duty": "Transfer duty",
+     "authority": "Revenue NSW",
+     "duty_600k": "$21,187",
+     "duty_800k": "$30,187",
+     "duty_1m": "$39,187",
+     "foreign_surcharge": "9%",
+     "answer": "In New South Wales, transfer duty is collected by Revenue NSW: at general rates it comes to $21,187 on a $600,000 home, $30,187 on $800,000 and $39,187 on $1,000,000, plus a 9% surcharge for foreign buyers.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Revenue NSW: current rates",
+       "url": "https://www.revenue.nsw.gov.au/_resources/duties-links/current-thresholds-and-rates"
+      },
+      {
+       "title": "Revenue NSW: foreign purchasers",
+       "url": "https://www.revenue.nsw.gov.au/_resources/duties-links/current-thresholds-and-rates"
+      }
+     ]
+    },
+    "vic": {
+     "duty": "Land transfer duty",
+     "authority": "State Revenue Office Victoria",
+     "duty_600k": "$31,070",
+     "duty_800k": "$43,070",
+     "duty_1m": "$55,000",
+     "foreign_surcharge": "8%",
+     "answer": "In Victoria, land transfer duty is collected by State Revenue Office Victoria: at general rates it comes to $31,070 on a $600,000 home, $43,070 on $800,000 and $55,000 on $1,000,000, plus a 8% surcharge for foreign buyers.",
+     "note": null,
+     "sources": [
+      {
+       "title": "State Revenue Office Victoria: current rates",
+       "url": "https://www.sro.vic.gov.au/rates-taxes-duties-and-levies/general-land-transfer-duty-property-current-rates"
+      },
+      {
+       "title": "State Revenue Office Victoria: foreign purchasers",
+       "url": "https://sro.vic.gov.au/buying-property/foreign-purchasers-property/calculating-foreign-purchaser-additional-duty"
+      }
+     ]
+    },
+    "qld": {
+     "duty": "Transfer duty",
+     "authority": "Queensland Revenue Office",
+     "duty_600k": "$20,025",
+     "duty_800k": "$29,025",
+     "duty_1m": "$38,025",
+     "foreign_surcharge": "8%",
+     "answer": "In Queensland, transfer duty is collected by Queensland Revenue Office: at general rates it comes to $20,025 on a $600,000 home, $29,025 on $800,000 and $38,025 on $1,000,000, plus a 8% surcharge for foreign buyers.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Queensland Revenue Office: current rates",
+       "url": "https://www.qro.qld.gov.au/duties/transfer-duty/calculate/rates/"
+      },
+      {
+       "title": "Queensland Revenue Office: foreign purchasers",
+       "url": "https://www.qro.qld.gov.au/duties/transfer-duty/calculate/"
+      }
+     ]
+    },
+    "wa": {
+     "duty": "Transfer duty",
+     "authority": "RevenueWA (Department of Finance)",
+     "duty_600k": "$22,515",
+     "duty_800k": "$32,315.50",
+     "duty_1m": "$42,615.50",
+     "foreign_surcharge": "7%",
+     "answer": "In Western Australia, transfer duty is collected by RevenueWA (Department of Finance): at general rates it comes to $22,515 on a $600,000 home, $32,315.50 on $800,000 and $42,615.50 on $1,000,000, plus a 7% surcharge for foreign buyers.",
+     "note": null,
+     "sources": [
+      {
+       "title": "RevenueWA (Department of Finance): current rates",
+       "url": "https://www.wa.gov.au/organisation/department-of-treasury-and-finance/transfer-duty-assessment"
+      },
+      {
+       "title": "RevenueWA (Department of Finance): foreign purchasers",
+       "url": "https://www.wa.gov.au/government/publications/first-home-owner-rate-of-duty"
+      }
+     ]
+    },
+    "sa": {
+     "duty": "Stamp duty on conveyances",
+     "authority": "RevenueSA",
+     "duty_600k": null,
+     "duty_800k": null,
+     "duty_1m": null,
+     "foreign_surcharge": null,
+     "answer": "In South Australia, the duty on a home purchase is stamp duty on conveyances, collected by RevenueSA; Payotte does not compute it because the official rate pages could not be read.",
+     "note": "RevenueSA rate pages blocked (HTTP 403).",
+     "sources": []
+    },
+    "tas": {
+     "duty": "Property transfer duty",
+     "authority": "State Revenue Office Tasmania",
+     "duty_600k": "$22,497.50",
+     "duty_800k": "$31,185",
+     "duty_1m": "$40,185",
+     "foreign_surcharge": "8%",
+     "answer": "In Tasmania, property transfer duty is collected by State Revenue Office Tasmania: at general rates it comes to $22,497.50 on a $600,000 home, $31,185 on $800,000 and $40,185 on $1,000,000, plus a 8% surcharge for foreign buyers.",
+     "note": null,
+     "sources": [
+      {
+       "title": "State Revenue Office Tasmania: current rates",
+       "url": "https://www.sro.tas.gov.au/property-transfer-duties/rates-of-duty"
+      },
+      {
+       "title": "State Revenue Office Tasmania: foreign purchasers",
+       "url": "https://www.sro.tas.gov.au/property-transfer-duties/foreign-investor-duty-surcharge/rates-of-surcharge"
+      }
+     ]
+    },
+    "act": {
+     "duty": "Conveyance duty",
+     "authority": "ACT Revenue Office",
+     "duty_600k": "$15,720",
+     "duty_800k": "$25,150",
+     "duty_1m": "$36,950",
+     "foreign_surcharge": null,
+     "answer": "In Australian Capital Territory, conveyance duty is collected by ACT Revenue Office: at general rates it comes to $15,720 on a $600,000 home, $25,150 on $800,000 and $36,950 on $1,000,000.",
+     "note": "Non owner-occupier rates; eligible owner-occupiers pay less.",
+     "sources": [
+      {
+       "title": "ACT Revenue Office: current rates",
+       "url": "https://www.legislation.act.gov.au/DownloadFile/es/db_74757/current/PDF/db_74757.PDF"
+      }
+     ]
+    },
+    "nt": {
+     "duty": "Stamp duty on conveyances",
+     "authority": "Territory Revenue Office",
+     "duty_600k": "$29,700",
+     "duty_800k": "$39,600",
+     "duty_1m": "$49,500",
+     "foreign_surcharge": null,
+     "answer": "In Northern Territory, stamp duty on conveyances is collected by Territory Revenue Office: at general rates it comes to $29,700 on a $600,000 home, $39,600 on $800,000 and $49,500 on $1,000,000.",
+     "note": "Stamp Duty Act as in force at 1 July 2025; later changes not checked.",
+     "sources": [
+      {
+       "title": "Territory Revenue Office: current rates",
+       "url": "https://legislation.nt.gov.au/api/sitecore/Act/PDF?id=11906"
+      }
+     ]
+    }
+   }
+  },
+  "rental-bonds": {
+   "compiled": "2026-10-14",
+   "url": "https://payotte.com/australia/by-state/rental-bonds",
+   "states": {
+    "nsw": {
+     "cap": "4 weeks' rent",
+     "lodge_within": null,
+     "authority": "NSW Fair Trading",
+     "answer": "In New South Wales, the rental bond is capped at 4 weeks' rent, with no separate pet bond, and is held by NSW Fair Trading.",
+     "note": "Lodgement deadline not stated on the pages the guide read.",
+     "sources": [
+      {
+       "title": "Costs at the start of a residential tenancy (NSW Government)",
+       "url": "https://www.nsw.gov.au/housing-and-construction/rules/costs-at-start-of-a-residential-tenancy"
+      },
+      {
+       "title": "Lodge a residential rental bond, landlords and agents (Service NSW)",
+       "url": "https://www.service.nsw.gov.au/transaction/lodge-a-residential-rental-bond-landlords-and-agents"
+      }
+     ]
+    },
+    "vic": {
+     "cap": "one month's rent (more if rent is over $900 a week, or VCAT sets it)",
+     "lodge_within": "14 days (not counting public holidays)",
+     "authority": "Residential Tenancies Bond Authority (RTBA)",
+     "answer": "In Victoria, the bond is generally capped at one month's rent, or more if rent exceeds $900 a week. The rental provider must lodge it with the RTBA within 14 days, not counting public holidays.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Bond amounts and payments (Consumer Affairs Victoria)",
+       "url": "https://www.consumer.vic.gov.au/housing/renting/rent-bond-bills-and-condition-reports/bond/bond-amounts-and-paying-a-bond"
+      },
+      {
+       "title": "Lodging the bond with the RTBA (Consumer Affairs Victoria)",
+       "url": "https://www.consumer.vic.gov.au/housing/renting/rent-bond-bills-and-condition-reports/bond/lodging-the-bond-with-the-rtba"
+      }
+     ]
+    },
+    "qld": {
+     "cap": "4 weeks' rent",
+     "lodge_within": "10 days",
+     "authority": "Residential Tenancies Authority (RTA)",
+     "answer": "In Queensland, the bond is capped at 4 weeks' rent for agreements signed on or after 30 September 2024, and must be lodged with the RTA within 10 days.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Rental bond (Residential Tenancies Authority, Queensland)",
+       "url": "https://www.rta.qld.gov.au/starting-a-tenancy/rental-bond"
+      },
+      {
+       "title": "Rental bonds fact sheet (Residential Tenancies Authority, Queensland)",
+       "url": "https://www.rta.qld.gov.au/forms-resources/factsheets/rental-bonds-fact-sheet"
+      }
+     ]
+    },
+    "wa": {
+     "cap": "4 weeks' rent (rent up to $1,200 a week)",
+     "lodge_within": "14 days",
+     "authority": "Bonds Administration",
+     "answer": "In Western Australia, the bond is capped at 4 weeks' rent where rent is $1,200 a week or less, and must be lodged with Bonds Administration within 14 days. A pet bond of up to $350 is allowed.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Rental bonds (Consumer Protection WA)",
+       "url": "https://www.consumerprotection.wa.gov.au/rental-bonds"
+      },
+      {
+       "title": "Lodging a bond (Consumer Protection WA)",
+       "url": "https://www.consumerprotection.wa.gov.au/lodging-bond"
+      }
+     ]
+    },
+    "sa": {
+     "cap": "4 weeks' rent if rent is $800 a week or less; 6 weeks above",
+     "lodge_within": "2 weeks (landlord); 4 weeks (registered agent)",
+     "authority": "Commissioner, via Consumer and Business Services",
+     "answer": "In South Australia, the bond cap is 4 weeks' rent where rent is $800 a week or less and 6 weeks above that. The landlord must lodge within 2 weeks and a registered agent within 4 weeks.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Residential Tenancies, chapter 23 (South Australia Law Handbook)",
+       "url": "https://www.lawhandbook.sa.gov.au/print/ch23s01.php"
+      }
+     ]
+    },
+    "tas": {
+     "cap": "4 weeks' rent",
+     "lodge_within": "10 working days (agent)",
+     "authority": "Rental Deposit Authority",
+     "answer": "In Tasmania, a landlord must not require a deposit above 4 weeks' rent. It is paid to the Rental Deposit Authority, or to a property agent who must pass it on within 10 working days.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Residential Tenancy Act 1997 (Tasmanian legislation)",
+       "url": "https://www.legislation.tas.gov.au/view/whole/html/inforce/current/act-1997-082"
+      }
+     ]
+    },
+    "act": {
+     "cap": "4 weeks' rent",
+     "lodge_within": "later of 2 weeks and the tenancy start (lessor); later of 4 weeks and the tenancy start (agent)",
+     "authority": "Office of Rental Bonds",
+     "answer": "In the ACT, a bond cannot exceed 4 weeks' rent and is lodged with the Office of Rental Bonds. The lessor's deadline is the later of 2 weeks and the start of the tenancy, or 4 weeks for an agent.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Residential Tenancies Act 1997, republication 84 effective 26 November 2025 (ACT legislation)",
+       "url": "https://www.legislation.act.gov.au/DownloadFile/a/1997-84/current/PDF/1997-84.PDF"
+      }
+     ]
+    },
+    "nt": {
+     "cap": "4 weeks' rent",
+     "lodge_within": null,
+     "authority": "Landlord, in trust (Act as at 1 August 2025)",
+     "answer": "In the Northern Territory, the bond cannot exceed 4 weeks' rent, worked out on the lowest weekly rent. On the Act as at 1 August 2025 the landlord holds it in a trust account.",
+     "note": "No lodgement deadline: the landlord holds the bond.",
+     "sources": [
+      {
+       "title": "Residential Tenancies Act 1999, as in force at 1 August 2025 (NT legislation)",
+       "url": "https://legislation.nt.gov.au/api/sitecore/Act/PDF?id=12173"
+      }
+     ]
+    }
+   }
+  },
+  "vendor-disclosure": {
+   "compiled": "2026-10-14",
+   "url": "https://payotte.com/australia/by-state/vendor-disclosure",
+   "states": {
+    "nsw": {
+     "statement_required": "yes",
+     "document": "Contract with attached documents",
+     "contents": "property certificate (title search), registered plan and recorded dealings, drainage diagram, section 10.7 zoning certificate, statement of cooling-off rights, pool certificate where applicable",
+     "answer": "In New South Wales, the seller must attach disclosure documents to the contract before exchange, such as a title search, drainage diagram and zoning certificate. If they are missing the buyer may withdraw within 14 days of exchange, unless settlement has occurred.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Steps to selling a property (nsw.gov.au)",
+       "url": "https://www.nsw.gov.au/housing-and-construction/buying-and-selling-property/selling-a-property/steps-to-selling-a-property"
+      },
+      {
+       "title": "Selling a property (nsw.gov.au)",
+       "url": "https://www.nsw.gov.au/housing-and-construction/buying-and-selling-property/selling-a-property"
+      }
+     ]
+    },
+    "vic": {
+     "statement_required": "yes",
+     "document": "Section 32 vendor's statement",
+     "contents": "title, mortgages, covenants, easements, zoning, outgoings, bushfire-prone declaration, owners corporation certificate for lots; not the condition of buildings",
+     "answer": "In Victoria, the seller must give the buyer a section 32 vendor's statement before the buyer signs. A contract is not binding on the buyer if it is missing, incomplete or inaccurate.",
+     "note": "A reform on timing is passed but not yet in force (latest start 1 June 2027).",
+     "sources": [
+      {
+       "title": "Conveyancing and contracts for sellers (Consumer Affairs Victoria)",
+       "url": "https://www.consumer.vic.gov.au/housing/buying-and-selling-property/selling-property/conveyancing-and-contracts-for-sellers"
+      },
+      {
+       "title": "Contracts and disclosure statements (Consumer Affairs Victoria)",
+       "url": "https://www.consumer.vic.gov.au/licensing-and-registration/estate-agents/running-your-business/authorities-commissions-and-contracts/contracts"
+      }
+     ]
+    },
+    "qld": {
+     "statement_required": "yes",
+     "document": "Form 2 seller disclosure statement",
+     "contents": "seller and property details, title and encumbrances, land use and planning, buildings and structures; prescribed certificates (title search, notices, pool safety, body corporate)",
+     "answer": "In Queensland, since 1 August 2025 the seller must give a Form 2 disclosure statement and prescribed certificates before the buyer signs. The buyer may terminate up to settlement if documents are not given.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Seller disclosure scheme (Queensland Government)",
+       "url": "https://www.qld.gov.au/housing/buying-owning-home/seller-disclosure-scheme"
+      },
+      {
+       "title": "Contract of sale for buying a home (Queensland Government)",
+       "url": "https://www.qld.gov.au/housing/buying-owning-home/advice-buying-home/making-an-offer-on-a-home/contract-of-sale"
+      }
+     ]
+    },
+    "wa": {
+     "statement_required": "partial",
+     "document": "None mandatory (strata lots: pre-contractual disclosure statement)",
+     "contents": null,
+     "answer": "In Western Australia there is no mandatory seller disclosure statement for ordinary homes, though the agent must disclose relevant facts. For a strata lot, the seller must give a pre-contractual disclosure statement before the buyer signs.",
+     "note": "Contents not listed in the guide.",
+     "sources": [
+      {
+       "title": "Real estate contracts: sale by offer and acceptance (Consumer Protection WA)",
+       "url": "https://www.consumerprotection.wa.gov.au/real-estate-contracts-sale-offer-and-acceptance"
+      },
+      {
+       "title": "Resources for strata sellers (Landgate)",
+       "url": "https://www.landgate.wa.gov.au/strata-and-community-titles/strata-titles/learn-about-strata/resources-for-strata-sellers/"
+      }
+     ]
+    },
+    "sa": {
+     "statement_required": "yes",
+     "document": "Form 1 vendor's statement",
+     "contents": null,
+     "answer": "In South Australia, the vendor must serve a Form 1 statement at least 10 days before settlement, with a fine of up to $10,000 for failing to serve a correct one. A defective Form 1 does not start cooling-off and the buyer may rescind until settlement.",
+     "note": "Contents of the Form 1 not described in the guide; source predates the 2025 regulations.",
+     "sources": [
+      {
+       "title": "Form 1 (SA Law Handbook)",
+       "url": "https://www.lawhandbook.sa.gov.au/ch23s09s01.php"
+      }
+     ]
+    },
+    "tas": {
+     "statement_required": "unknown",
+     "document": null,
+     "contents": null,
+     "answer": "For Tasmania, the Conveyancing and Law of Property Act 1884 imposes no pre-contract disclosure statement in the parts the guide read, and no other vendor disclosure rule could be confirmed.",
+     "note": "Not confirmed from an official source; ask CBOS or a conveyancer.",
+     "sources": [
+      {
+       "title": "Conveyancing and Law of Property Act 1884 (Tasmanian Legislation)",
+       "url": "https://www.legislation.tas.gov.au/view/whole/html/inforce/current/act-1884-019"
+      }
+     ]
+    },
+    "act": {
+     "statement_required": "yes",
+     "document": "Required documents under the Civil Law (Sale of Residential Property) Act 2003",
+     "contents": "proposed contract, Crown lease, certified land titles extract, deposited plan, encumbrances, building conveyancing inquiry documents, energy efficiency rating statement, building and compliance inspection report, pest inspection report if occupied",
+     "answer": "In the ACT, the seller must give the buyer a set of required documents before the contract, including an energy efficiency rating statement. A seller who omits the statement is liable to pay the buyer 0.5% of the price.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Civil Law (Sale of Residential Property) Act 2003, republication 32, effective 1 November 2025 (ACT legislation)",
+       "url": "https://www.legislation.act.gov.au/a/2003-40/current/pdf/2003-40.pdf"
+      }
+     ]
+    },
+    "nt": {
+     "statement_required": "unknown",
+     "document": "Particulars of title under the Law of Property Act 2000",
+     "contents": null,
+     "answer": "In the Northern Territory, the Law of Property Act 2000 entitles a purchaser of registered land to particulars of title at the vendor's cost, but the guide did not find a statutory disclosure statement.",
+     "note": "No NT disclosure statement read; ask the NT Government or a conveyancer.",
+     "sources": [
+      {
+       "title": "Law of Property Act 2000, as in force at 2 January 2024 (NT legislation)",
+       "url": "https://legislation.nt.gov.au/api/sitecore/Act/PDF?id=11933"
+      }
+     ]
+    }
+   }
+  }
+ },
+ "guides": [
+  {
+   "slug": "building-and-pest-inspection",
+   "title": "Building and pest inspection before you buy",
+   "description": "What a pre-purchase building and pest inspection covers and misses, who may do it (licensing varies by state) and when to book it, with state rules.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/australia/guides/building-and-pest-inspection",
+   "draft": false
+  },
+  {
+   "slug": "buying-a-home-in-australia",
+   "title": "Buying a home in Australia: the steps, state by state",
+   "description": "The steps to buy a home in Australia, and where they differ: contract, cooling-off, disclosure and settlement rules in NSW, VIC, QLD, WA, SA, TAS, ACT and NT.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/australia/guides/buying-a-home-in-australia",
+   "draft": false
+  },
+  {
+   "slug": "buying-at-auction",
+   "title": "Buying at auction in Australia: the rules by state",
+   "description": "How an auction works in Australia: bidder registration, vendor bids, reserve, deposit and no cooling-off, with the rules of NSW, VIC, QLD, WA, SA, TAS and ACT.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/australia/guides/buying-at-auction",
+   "draft": false
+  },
+  {
+   "slug": "capital-gains-tax-main-residence",
+   "title": "Capital gains tax and your main residence (CGT)",
+   "description": "When the main residence exemption removes CGT on selling your Australian home: the 6-year absence rule, partial exemption, 2 hectares, foreign residents.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/australia/guides/capital-gains-tax-main-residence",
+   "draft": false
+  },
+  {
+   "slug": "contract-of-sale-and-exchange",
+   "title": "Contract of sale and exchange: what you sign, by state",
+   "description": "What a contract of sale contains, how exchange works, and what each state makes the seller hand over: section 32 in VIC, Form 1 in SA, and more.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/australia/guides/contract-of-sale-and-exchange",
+   "draft": false
+  },
+  {
+   "slug": "conveyance-duty-act",
+   "title": "Conveyance duty in the ACT and the Home Buyer Concession",
+   "description": "ACT eligible home buyers pay no conveyance duty from 1 July 2026. Owner-occupier rates, the 5-year ownership test and the 1-year residence rule.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/australia/guides/conveyance-duty-act",
+   "draft": false
+  },
+  {
+   "slug": "cooling-off-period",
+   "title": "Cooling-off period when buying a home, by state",
+   "description": "How long you can back out of a home purchase in Australia, what it costs and when it does not apply (auctions) in NSW, VIC, QLD, WA, SA, TAS and the ACT.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/australia/guides/cooling-off-period",
+   "draft": false
+  },
+  {
+   "slug": "council-rates",
+   "title": "Council rates in Australia: how they work, by state",
+   "description": "Council rates are set locally on a state valuation. How they work by state and territory, Victoria's 2.75% cap for 2026-27, the NSW rate peg and how to object.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/australia/guides/council-rates",
+   "draft": false
+  },
+  {
+   "slug": "deposit-and-lenders-mortgage-insurance",
+   "title": "Home loan deposit and lenders mortgage insurance",
+   "description": "How the deposit, the loan-to-value ratio and lenders mortgage insurance (LMI) fit together in Australia, and the federal ways to buy with a smaller deposit.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/australia/guides/deposit-and-lenders-mortgage-insurance",
+   "draft": false
+  },
+  {
+   "slug": "duty-tasmania",
+   "title": "Property transfer duty in Tasmania: rates and relief",
+   "description": "Tasmanian property transfer duty: rates up to $4.50 per $100 above $725,000, the end of first home relief on 30 June 2026 and the new $20,000 grant.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/australia/guides/duty-tasmania",
+   "draft": false
+  },
+  {
+   "slug": "first-home-buyer-concessions",
+   "title": "First home buyer stamp duty concessions in each state",
+   "description": "Compare first home buyer duty relief across the eight states and territories: thresholds, conditions and what changed in 2026 in WA, QLD, ACT and TAS.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/australia/guides/first-home-buyer-concessions",
+   "draft": false
+  },
+  {
+   "slug": "first-home-owner-grant",
+   "title": "First home owner grants compared across the states",
+   "description": "The first home owner grant is a state payment, not a federal one. Amounts, price caps and dates in NSW, VIC, QLD, WA, TAS, NT and the ACT as at 14 October 2026.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/australia/guides/first-home-owner-grant",
+   "draft": false
+  },
+  {
+   "slug": "first-home-super-saver-scheme",
+   "title": "First Home Super Saver Scheme (FHSS): how it works",
+   "description": "Save for a first home through voluntary super: $15,000 a year, $50,000 in total. How the ATO release works, tax withheld, deadlines, eligibility.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/australia/guides/first-home-super-saver-scheme",
+   "draft": false
+  },
+  {
+   "slug": "foreign-buyers-firb",
+   "title": "Foreign buyers and FIRB approval for a home",
+   "description": "Federal rules for foreign persons buying a home: who needs approval, the ban on established dwellings to 30 June 2029, 2026-27 fees and the vacancy fee.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/australia/guides/foreign-buyers-firb",
+   "draft": false
+  },
+  {
+   "slug": "foreign-purchaser-surcharge-duty",
+   "title": "Foreign purchaser surcharge duty in each state",
+   "description": "Foreign buyers of homes pay an extra duty on top of stamp duty in most states: 9% in NSW, 8% in Victoria, Queensland and Tasmania, 7% in WA. State comparison.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/australia/guides/foreign-purchaser-surcharge-duty",
+   "draft": false
+  },
+  {
+   "slug": "foreign-resident-capital-gains-withholding",
+   "title": "Foreign resident capital gains withholding (15%)",
+   "description": "When buying Australian property from a foreign resident, 15% of the price must be paid to the ATO at settlement. How clearance certificates and variations work.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/australia/guides/foreign-resident-capital-gains-withholding",
+   "draft": false
+  },
+  {
+   "slug": "home-guarantee-scheme",
+   "title": "Australian Government 5% Deposit Scheme (Home Guarantee)",
+   "description": "Buy with a 5% deposit (2% for single parents) and no LMI under the federal scheme run by Housing Australia: eligibility, price caps by state and how to apply.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/australia/guides/home-guarantee-scheme",
+   "draft": false
+  },
+  {
+   "slug": "home-loan-pre-approval",
+   "title": "Home loan pre-approval in Australia: what it is and isn't",
+   "description": "Pre-approval (conditional approval) shows what a lender may lend you. How long it lasts, why it is no guarantee, and how it fits with auctions and cooling-off.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/australia/guides/home-loan-pre-approval",
+   "draft": false
+  },
+  {
+   "slug": "home-loan-serviceability-buffer",
+   "title": "Home loan serviceability buffer: APRA's 3-point test",
+   "description": "Lenders must test your repayments at least 3 percentage points above the loan rate. How APRA's buffer, the debt-to-income limit and ASIC's rules work.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/australia/guides/home-loan-serviceability-buffer",
+   "draft": false
+  },
+  {
+   "slug": "land-tax-by-state",
+   "title": "Land tax by state: thresholds, home exemption, surcharges",
+   "description": "Land tax thresholds and rates in each state and territory, the main residence exemption and foreign or absentee surcharges. The NT has no land tax.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/australia/guides/land-tax-by-state",
+   "draft": false
+  },
+  {
+   "slug": "land-titles-torrens-register",
+   "title": "Land titles register and title search in Australia",
+   "description": "What the land titles register shows, how to run a title search in each state, and the fees published in Queensland and Western Australia (2026-27).",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/australia/guides/land-titles-torrens-register",
+   "draft": false
+  },
+  {
+   "slug": "land-transfer-duty-victoria",
+   "title": "Land transfer duty in Victoria: rates and concessions",
+   "description": "Victoria's land transfer duty runs from 1.4% to 6.5%. Rates, the principal place of residence concession up to $550,000, first home buyers and off-the-plan.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/australia/guides/land-transfer-duty-victoria",
+   "draft": false
+  },
+  {
+   "slug": "rental-bonds-by-state",
+   "title": "Rental bonds by state: caps, deadlines and who holds them",
+   "description": "Rental bond caps and lodgement deadlines in each state and territory: 4 weeks in most, one month in Victoria, and which authority holds the bond in each.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/australia/guides/rental-bonds-by-state",
+   "draft": false
+  },
+  {
+   "slug": "renting-in-new-south-wales",
+   "title": "Renting in NSW: bond, rent rises and notice periods",
+   "description": "NSW renting rules at 14 October 2026: bond up to 4 weeks' rent, one rent rise a year with 60 days' notice, a valid reason to end a lease, entry and pets.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/australia/guides/renting-in-new-south-wales",
+   "draft": false
+  },
+  {
+   "slug": "renting-in-queensland",
+   "title": "Renting in Queensland: bond, rent rises and notice",
+   "description": "Queensland renting rules at 14 October 2026: bond of 4 weeks' rent, one rent rise every 12 months with 2 months' notice, entry, housing standards and pets.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/australia/guides/renting-in-queensland",
+   "draft": false
+  },
+  {
+   "slug": "renting-in-south-australia-tasmania-act-nt",
+   "title": "Renting in SA, Tasmania, the ACT and the NT",
+   "description": "Renting rules in South Australia, Tasmania, the ACT and the Northern Territory compared: rent increases, notice to end a tenancy, entry, pets and tribunals.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/australia/guides/renting-in-south-australia-tasmania-act-nt",
+   "draft": false
+  },
+  {
+   "slug": "renting-in-victoria",
+   "title": "Renting in Victoria: bond, rent rises and notice",
+   "description": "Victorian renting rules at 14 October 2026: bond of one month's rent, 90 days' notice of a rent rise, a valid reason for a notice to vacate, entry and pets.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/australia/guides/renting-in-victoria",
+   "draft": false
+  },
+  {
+   "slug": "renting-in-western-australia",
+   "title": "Renting in Western Australia: bond, rent and notice",
+   "description": "Western Australian renting rules at 14 October 2026: bond of 4 weeks' rent, one rent rise a year with 60 days' notice, termination, entry and pets.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/australia/guides/renting-in-western-australia",
+   "draft": false
+  },
+  {
+   "slug": "selling-a-home-costs",
+   "title": "Selling a home in Australia: what it costs, by state",
+   "description": "Agent commission is negotiable, not set by law, in the states checked. Selling cost items, a commission formula and the rules by state.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/australia/guides/selling-a-home-costs",
+   "draft": false
+  },
+  {
+   "slug": "settlement-and-electronic-conveyancing",
+   "title": "Settlement and electronic conveyancing in Australia",
+   "description": "What happens at settlement when you buy a home, how long it takes, what is adjusted, and how electronic conveyancing works, by state.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/australia/guides/settlement-and-electronic-conveyancing",
+   "draft": false
+  },
+  {
+   "slug": "stamp-duty-northern-territory",
+   "title": "Stamp duty in the Northern Territory: formula and discount",
+   "description": "NT stamp duty is a formula up to $525,000, then 4.95%. The Territory home owner discount, the $50,000 new home grant and the 60-day lodgement deadline.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/australia/guides/stamp-duty-northern-territory",
+   "draft": false
+  },
+  {
+   "slug": "stamp-duty-nsw",
+   "title": "Transfer duty in NSW: 2026/27 rates and first home buyers",
+   "description": "NSW transfer duty is a sliding scale from $1.25 to $5.50 per $100 above $1.29 million. 2026/27 rates, premium duty, payment deadline and first home buyers.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/australia/guides/stamp-duty-nsw",
+   "draft": false
+  },
+  {
+   "slug": "stamp-duty-south-australia",
+   "title": "Stamp duty in South Australia: how to find your figure",
+   "description": "South Australia's stamp duty is set by RevenueSA. Stamp duty relief for first home buyers of new homes, the $15,000 grant, and what to check before you sign.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/australia/guides/stamp-duty-south-australia",
+   "draft": false
+  },
+  {
+   "slug": "strata-title-and-body-corporate",
+   "title": "Strata title and body corporate: what to check by state",
+   "description": "Buying an apartment in Australia: owners corporation, body corporate or strata company, levies, by-laws and the certificates to ask for, by state.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/australia/guides/strata-title-and-body-corporate",
+   "draft": false
+  },
+  {
+   "slug": "transfer-duty-queensland",
+   "title": "Transfer duty in Queensland: rates and home concessions",
+   "description": "Queensland transfer duty runs from nil to $5.75 per $100 over $1 million. Rates, home and first home concessions and the August 2026 citizenship rule.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/australia/guides/transfer-duty-queensland",
+   "draft": false
+  },
+  {
+   "slug": "transfer-duty-western-australia",
+   "title": "Transfer duty in Western Australia: rates and first home",
+   "description": "WA transfer duty runs from $1.90 per $100 to $5.15 per $100 above $725,000. Rates, the first home owner rate from 7 May 2026 and the 7% foreign surcharge.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/australia/guides/transfer-duty-western-australia",
+   "draft": false
+  },
+  {
+   "slug": "vendor-disclosure-by-state",
+   "title": "Vendor disclosure when selling a home, by state",
+   "description": "What a seller must give the buyer: Section 32 in Victoria, NSW contract documents, Queensland Form 2, SA Form 1, ACT documents, WA, NT and Tasmania.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/australia/guides/vendor-disclosure-by-state",
+   "draft": false
+  }
+ ],
+ "professions": [
+  {
+   "slug": "building-inspector",
+   "title": "Building inspectors in Australia: pre-purchase rules",
+   "description": "Only Queensland licenses pre-purchase building inspectors among the states we could read. What NSW, SA and others say, how to check, and what to ask.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/australia/professions/building-inspector",
+   "draft": false
+  },
+  {
+   "slug": "conveyancer",
+   "title": "Conveyancers in Australia: licences by state",
+   "description": "Who can do conveyancing in each state, where a licence is required (NSW, Victoria, WA, NT), which register to check, and what we could not confirm.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/australia/professions/conveyancer",
+   "draft": false
+  },
+  {
+   "slug": "mortgage-broker",
+   "title": "Mortgage brokers in Australia: ASIC licence and register",
+   "description": "Mortgage brokers are regulated federally by ASIC. What the credit licence and best interests duty mean, how to check a broker, and what to ask.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/australia/professions/mortgage-broker",
+   "draft": false
+  },
+  {
+   "slug": "property-valuer",
+   "title": "Property valuers in Australia: who is licensed where",
+   "description": "Valuer rules differ by state: registration in Queensland, a licence in WA, a qualification rule in Tasmania, none in NSW. Registers and questions to ask.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/australia/professions/property-valuer",
+   "draft": false
+  },
+  {
+   "slug": "real-estate-agent",
+   "title": "Real estate agents in Australia: licences and registers",
+   "description": "Who licenses real estate agents in each state and territory, which register to check before you sign, and what each register's published terms say.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/australia/professions/real-estate-agent",
+   "draft": false
+  }
+ ]
+}

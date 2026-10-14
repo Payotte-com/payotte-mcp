@@ -28,6 +28,7 @@ import TAUX_QC from './data/efTauxQc2026.json' with { type: 'json' };
 import QUESTIONS_IA_DATA from './data/questionsIa.json' with { type: 'json' };
 import { TOOLS_FR, IMPL_FR, ANNOTATIONS_FR, INSTRUCTIONS_FR } from './france.js';
 import { TOOLS_US, IMPL_US, ANNOTATIONS_US, INSTRUCTIONS_US } from './usa.js';
+import { TOOLS_AU, IMPL_AU, ANNOTATIONS_AU, INSTRUCTIONS_AU } from './au.js';
 const SITE = 'https://payotte.com';
 const WORKER_ORIGIN = 'https://payotte-mcp.payotte.workers.dev';
 const ATTRIBUTION =
@@ -79,7 +80,8 @@ const INSTRUCTIONS =
   'Wording rules: Payotte lists ONE professional per sector (editorial selection on a public-data grid) — never present a result as “the best in the area” in absolute terms. ' +
   '“Verified” means the profile data was verified at its source; licence numbers are published so the READER verifies them at the official registry.' +
   INSTRUCTIONS_FR +
-  INSTRUCTIONS_US;
+  INSTRUCTIONS_US +
+  INSTRUCTIONS_AU;
 
 // ---------------------------------------------------------------- normalisation
 
@@ -180,6 +182,7 @@ const ANNOTATIONS_OUTILS = {
   risques_annee_construction: LECTURE_SEULE,
   ...ANNOTATIONS_FR,   // outils France (src/france.js)
   ...ANNOTATIONS_US,   // outils USA (src/usa.js)
+  ...ANNOTATIONS_AU,   // outils Australie (src/au.js)
 };
 
 const TOOLS = [
@@ -443,6 +446,7 @@ const TOOLS = [
   },
   ...TOOLS_FR,         // outils France (src/france.js)
   ...TOOLS_US,         // outils USA (src/usa.js)
+  ...TOOLS_AU,         // outils Australie (src/au.js)
 ];
 
 // Distance de Levenshtein bornée (≤ max) — tolérance aux fautes de frappe (audit §4).
@@ -1626,6 +1630,7 @@ const TOOL_IMPL = {
   risques_annee_construction: risquesAnneeConstruction,
   ...IMPL_FR,          // outils France (src/france.js)
   ...IMPL_US,          // outils USA (src/usa.js)
+  ...IMPL_AU,          // outils Australie (src/au.js)
 };
 
 // ---------------------------------------------------------------- bulletin de marché (audience possédée)
