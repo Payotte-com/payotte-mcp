@@ -9,7 +9,7 @@
  * Vocabulaire (comme le site France) : « professionnel sélectionné », jamais « vérifié par Payotte » ;
  * le titre est « déclaré » par le cabinet ou simplement « vérifiable », toujours par le lecteur au registre.
  */
-import FR from './data/france.json';
+import FR from './data/france.json' with { type: 'json' };
 import { fraisAncien, fraisNeuf, departementParCode, urlDepartement, DMTO } from './data/france-calc.mjs';
 
 const SITE_FR = 'https://payotte.com/france';

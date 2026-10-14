@@ -23,9 +23,9 @@
 import { handleInscription, handlePresence, handleSuivi, handleDesabonnement, handleStats, handleVisite, handlePrecalcul, handleCompte, passerSuivi } from './visibiliteIa.js';
 import { handleDossierRevision } from './dossierRevision.js';
 import { efAdresse, efMunis, efFilet, efFiletMunis } from './efAdresse.js';
-import RISQUES_EPOQUE from './data/risques-par-epoque.json';
-import TAUX_QC from './data/efTauxQc2026.json';
-import QUESTIONS_IA_DATA from './data/questionsIa.json';
+import RISQUES_EPOQUE from './data/risques-par-epoque.json' with { type: 'json' };
+import TAUX_QC from './data/efTauxQc2026.json' with { type: 'json' };
+import QUESTIONS_IA_DATA from './data/questionsIa.json' with { type: 'json' };
 import { TOOLS_FR, IMPL_FR, ANNOTATIONS_FR, INSTRUCTIONS_FR } from './france.js';
 const SITE = 'https://payotte.com';
 const WORKER_ORIGIN = 'https://payotte-mcp.payotte.workers.dev';

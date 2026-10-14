@@ -1,4 +1,4 @@
-import QUESTIONS_IA from './data/questionsIa.json';
+import QUESTIONS_IA from './data/questionsIa.json' with { type: 'json' };
 /**
  * visibiliteIa.js — service « Visibilité IA » (page /visibilite-ia-professionnels-immobilier).
  *
