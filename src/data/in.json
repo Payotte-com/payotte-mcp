@@ -1,0 +1,1395 @@
+{
+ "_note": "Généré par payotte-astro-inde/scripts/in/export-mcp.mjs ; ne pas modifier à la main.",
+ "generated": "2026-10-14",
+ "taxes": {
+  "_note": "Barème des droits d'achat d'un logement en Inde, État par État. Chaque taux est lu à la source officielle citée (rapport ~/Payotte/inde/rapports/phase-0/fiscalite-etats.md). Les États absents ou dans nonCalcules n'ont pas de taux lisible depuis l'extérieur de l'Inde (portails en connexion refusée) : aucun chiffre n'est inventé ni repris d'un agrégateur.",
+  "releve": "2026-10-14",
+  "etats": {
+   "kl": {
+    "nom": "Kerala",
+    "autorite": "Registration Department, Government of Kerala",
+    "valeurRef": "fair value",
+    "droit": {
+     "taux": 8,
+     "parCent": true
+    },
+    "enregistrement": {
+     "taux": 2
+    },
+    "source": {
+     "titre": "Existing rates of stamp duty and registration fees for ready reference (as on 01.04.2023)",
+     "url": "https://registration.kerala.gov.in/wp-content/uploads/2022/07/Stamp-Duty-Fees-Ready-reckoner-2023.xlsx-Table-1.pdf",
+     "consulte": "2026-10-14",
+     "en_vigueur": "2023-04-01"
+    },
+    "notes": [
+     "The table says it is \"for informational purposes only\"; no surcharge or cess appears in it."
+    ]
+   },
+   "ch": {
+    "nom": "Chandigarh",
+    "autorite": "Deputy Commissioner, Chandigarh Administration",
+    "valeurRef": "collector rate",
+    "droit": {
+     "taux": 5
+    },
+    "enregistrement": {
+     "taux": 1,
+     "plafond": 10000
+    },
+    "fixes": [
+     {
+      "libelle": "Pasting fee",
+      "montant": 20
+     }
+    ],
+    "source": {
+     "titre": "Rates of stamp duty and registration fees (Chandigarh Administration)",
+     "url": "https://chandigarh.gov.in/files/2021updoc/dc19-stampduty.pdf",
+     "consulte": "2026-10-14"
+    },
+    "notes": [
+     "The rate sheet is undated."
+    ]
+   },
+   "or": {
+    "nom": "Odisha",
+    "autorite": "Inspector General of Registration, Odisha",
+    "valeurRef": "market value",
+    "droit": {
+     "taux": 5
+    },
+    "enregistrement": {
+     "taux": 2
+    },
+    "source": {
+     "titre": "IGR Odisha, fees for documents (sale of immovable property)",
+     "url": "https://www.igrodisha.gov.in/FeeDetails.aspx?fee=DOCF",
+     "consulte": "2026-10-14"
+    },
+    "notes": [
+     "The fee page is undated; a concession for women buyers was not read and is not applied."
+    ]
+   },
+   "py": {
+    "nom": "Puducherry",
+    "autorite": "Registration Department, Government of Puducherry",
+    "valeurRef": "guideline land rate (GLR)",
+    "droit": {
+     "taux": 10,
+     "tauxFemme": 5,
+     "conditionFemme": "woman buyer permanently residing in the territory"
+    },
+    "enregistrement": {
+     "taux": 1.5
+    },
+    "source": {
+     "titre": "Registration Department, Puducherry: table of fees for all kinds of documents",
+     "url": "https://regn.py.gov.in/services.html",
+     "consulte": "2026-10-14"
+    },
+    "notes": [
+     "The page is undated."
+    ]
+   },
+   "ut": {
+    "nom": "Uttarakhand",
+    "autorite": "Stamp and Registration Department, Uttarakhand",
+    "valeurRef": "circle rate",
+    "droit": {
+     "taux": 5,
+     "tauxFemme": 3.75,
+     "femmeJusqua": 2500000
+    },
+    "enregistrement": {
+     "taux": 2,
+     "plafond": 25000
+    },
+    "source": {
+     "titre": "Stamp and Registration Department, Uttarakhand: stamp duty and registration fees (March 2025)",
+     "url": "https://cdnbbsr.s3waas.gov.in/s32d579dc29360d8bbfbb4aa541de5afa9/uploads/2025/03/202503221356169495.pdf",
+     "consulte": "2026-10-14",
+     "en_vigueur": "2025-03-22"
+    },
+    "notes": [
+     "For a woman buyer above ₹25 lakh the text reads \"upto 25 lakh there after 5 %\": whether the reduced rate covers the first ₹25 lakh only is not settled; the general 5% is shown as an upper limit."
+    ]
+   },
+   "rj": {
+    "nom": "Rajasthan",
+    "autorite": "Department of Registration and Stamps, Rajasthan",
+    "valeurRef": "market value (DLC rate)",
+    "droit": {
+     "taux": 6,
+     "tauxFemme": 5
+    },
+    "enregistrement": {
+     "taux": 1
+    },
+    "fixes": [
+     {
+      "libelle": "Scanning fee",
+      "montant": 300
+     }
+    ],
+    "surtaxeNonTranchee": "The rate sheet announces a surcharge on stamp duty (\"10+20 = 30%\"; 20% in the 2019 version) without confirming that it applies to a sale deed: it is not included.",
+    "source": {
+     "titre": "Stamp duty and registration fee detail, Rajasthan (as applicable on 01-05-2024)",
+     "url": "https://rajnivesh.rajasthan.gov.in/Uploads/3fc839e7-2e7f-44c0-8e19-9c539e5b7f7b.pdf",
+     "consulte": "2026-10-14",
+     "en_vigueur": "2024-05-01"
+    },
+    "notes": []
+   },
+   "mh": {
+    "nom": "Maharashtra",
+    "autorite": "Inspector General of Registration and Controller of Stamps, Maharashtra",
+    "valeurRef": "Annual Statement of Rates (ready reckoner)",
+    "droit": {
+     "zones": {
+      "corporation": 5,
+      "council": 5,
+      "gram-panchayat": 4
+     }
+    },
+    "enregistrement": null,
+    "metro": {
+     "taux": 1,
+     "zone": "Brihanmumbai Municipal Corporation (Mumbai)",
+     "source": {
+      "titre": "Mumbai Municipal Corporation (Second Amendment) Act 2018, section 144F",
+      "url": "https://grievanceigr.maharashtra.gov.in/pdf/4.Mumbai_Muncipal_Corporation_(Second_Amendment)_Act_2018.pdf",
+      "consulte": "2026-10-14"
+     },
+     "avertissement": "Mumbai metro surcharge: section 144F applies it from a date set by notification, which was not read; the 1% is applied as enacted."
+    },
+    "source": {
+     "titre": "Maharashtra Stamp Act 1958, Schedule I, Article 25 (as modified up to 1 June 2022)",
+     "url": "https://ipindia.gov.in/storage/uploads/reference/AN5hvWq67hNPCYJHoo0pRTK5Y65qVagMexZo726B.pdf",
+     "consulte": "2026-10-14",
+     "en_vigueur": "2017-09-07"
+    },
+    "notes": [
+     "Registration fee not computed: no official table of fees could be read (the IGR portal refuses connections from outside India).",
+     "A 1% reduction for women buyers (order of 31 March 2021) was read only in an editor's note: it is not applied."
+    ]
+   }
+  },
+  "nonCalcules": {
+   "dl": "Delhi",
+   "ka": "Karnataka",
+   "tn": "Tamil Nadu",
+   "tg": "Telangana",
+   "up": "Uttar Pradesh",
+   "wb": "West Bengal",
+   "gj": "Gujarat",
+   "hr": "Haryana",
+   "ap": "Andhra Pradesh",
+   "mp": "Madhya Pradesh",
+   "pb": "Punjab",
+   "br": "Bihar",
+   "ga": "Goa"
+  }
+ },
+ "loans": {
+  "_note": "Taux de référence du calculateur de prêt /india/home-loan-calculator. Chaque chiffre est lu à la source citée ; aucun n'est une offre de prêt.",
+  "releve": "2026-10-14",
+  "repo": {
+   "taux": 5.5,
+   "depuis": "2026-10-07",
+   "source": {
+    "titre": "RBI, Monetary Policy Statement 2026-27, Resolution of the Monetary Policy Committee, October 5 to 7, 2026",
+    "url": "https://www.rbi.org.in/scripts/BS_PressReleaseDisplay.aspx?prid=63742"
+   }
+  },
+  "walrLogement": {
+   "nouveaux": 7.61,
+   "encours": 7.7,
+   "mois": "2026-08",
+   "provisoire": true,
+   "source": {
+    "titre": "RBI, Lending and Deposit Rates of Scheduled Commercial Banks – September 2026, Table 9 (Sector-wise WALR, fresh rupee loans sanctioned, Housing)",
+    "url": "https://www.rbi.org.in/Scripts/BS_PressReleaseDisplay.aspx?prid=63702",
+    "fichier": "https://rbidocs.rbi.org.in/rdocs/content/docs/MLDRSCB30092026ENG.xlsx"
+   }
+  }
+ },
+ "prices": {
+  "residex": {
+   "source": "National Housing Bank, NHB RESIDEX press release, Q1 FY 2026-27 (April-June 2026)",
+   "url": "https://www.nhb.org.in/wp-content/uploads/2026/09/National-Press-Release-RESIDEX-Jun26_v1.pdf",
+   "licence": "NHB copyright policy: material may be reproduced free of charge, the source being prominently acknowledged (https://www.nhb.org.in/copyright-policy/)",
+   "mesure": "HPI at assessment prices (valuation prices collected from banks and housing finance companies), year-on-year change",
+   "periode": "April-June 2026",
+   "composite50": 7
+  },
+  "rbi": {
+   "source": "Reserve Bank of India, press release 2026-2027/958, All-India House Price Index for Q1:2026-27 (24 August 2026)",
+   "url": "https://www.rbi.org.in/Scripts/BS_PressReleaseDisplay.aspx?prid=63436",
+   "indice": 117.5,
+   "base": "2022-23 = 100",
+   "trimestre": 1.1,
+   "annuel": 3.6,
+   "periode": "Q1:2026-27 (April-June 2026)",
+   "villes": 18
+  },
+  "cities": [
+   {
+    "slug": "ahmedabad",
+    "name": "Ahmedabad",
+    "state": "Gujarat",
+    "state_code": "GJ",
+    "rbi_hpi_city": true,
+    "residex_change_12m_pct": 7.9,
+    "url": "https://payotte.com/india/cities/ahmedabad"
+   },
+   {
+    "slug": "bengaluru",
+    "name": "Bengaluru",
+    "state": "Karnataka",
+    "state_code": "KA",
+    "rbi_hpi_city": true,
+    "residex_change_12m_pct": 21.5,
+    "url": "https://payotte.com/india/cities/bengaluru"
+   },
+   {
+    "slug": "bhopal",
+    "name": "Bhopal",
+    "state": "Madhya Pradesh",
+    "state_code": "MP",
+    "rbi_hpi_city": false,
+    "residex_change_12m_pct": null,
+    "url": "https://payotte.com/india/cities/bhopal"
+   },
+   {
+    "slug": "bhubaneswar",
+    "name": "Bhubaneswar",
+    "state": "Odisha",
+    "state_code": "OR",
+    "rbi_hpi_city": false,
+    "residex_change_12m_pct": null,
+    "url": "https://payotte.com/india/cities/bhubaneswar"
+   },
+   {
+    "slug": "chandigarh",
+    "name": "Chandigarh",
+    "state": "Chandigarh",
+    "state_code": "CH",
+    "rbi_hpi_city": true,
+    "residex_change_12m_pct": null,
+    "url": "https://payotte.com/india/cities/chandigarh"
+   },
+   {
+    "slug": "chennai",
+    "name": "Chennai",
+    "state": "Tamil Nadu",
+    "state_code": "TN",
+    "rbi_hpi_city": true,
+    "residex_change_12m_pct": 10.8,
+    "url": "https://payotte.com/india/cities/chennai"
+   },
+   {
+    "slug": "coimbatore",
+    "name": "Coimbatore",
+    "state": "Tamil Nadu",
+    "state_code": "TN",
+    "rbi_hpi_city": false,
+    "residex_change_12m_pct": null,
+    "url": "https://payotte.com/india/cities/coimbatore"
+   },
+   {
+    "slug": "delhi",
+    "name": "Delhi",
+    "state": "Delhi",
+    "state_code": "DL",
+    "rbi_hpi_city": true,
+    "residex_change_12m_pct": null,
+    "url": "https://payotte.com/india/cities/delhi"
+   },
+   {
+    "slug": "faridabad",
+    "name": "Faridabad",
+    "state": "Haryana",
+    "state_code": "HR",
+    "rbi_hpi_city": false,
+    "residex_change_12m_pct": 24.4,
+    "url": "https://payotte.com/india/cities/faridabad"
+   },
+   {
+    "slug": "ghaziabad",
+    "name": "Ghaziabad",
+    "state": "Uttar Pradesh",
+    "state_code": "UP",
+    "rbi_hpi_city": true,
+    "residex_change_12m_pct": null,
+    "url": "https://payotte.com/india/cities/ghaziabad"
+   },
+   {
+    "slug": "gurugram",
+    "name": "Gurugram",
+    "state": "Haryana",
+    "state_code": "HR",
+    "rbi_hpi_city": false,
+    "residex_change_12m_pct": null,
+    "url": "https://payotte.com/india/cities/gurugram"
+   },
+   {
+    "slug": "guwahati",
+    "name": "Guwahati",
+    "state": "Assam",
+    "state_code": "AS",
+    "rbi_hpi_city": false,
+    "residex_change_12m_pct": null,
+    "url": "https://payotte.com/india/cities/guwahati"
+   },
+   {
+    "slug": "hyderabad",
+    "name": "Hyderabad",
+    "state": "Telangana",
+    "state_code": "TG",
+    "rbi_hpi_city": true,
+    "residex_change_12m_pct": 5.2,
+    "url": "https://payotte.com/india/cities/hyderabad"
+   },
+   {
+    "slug": "indore",
+    "name": "Indore",
+    "state": "Madhya Pradesh",
+    "state_code": "MP",
+    "rbi_hpi_city": false,
+    "residex_change_12m_pct": null,
+    "url": "https://payotte.com/india/cities/indore"
+   },
+   {
+    "slug": "jaipur",
+    "name": "Jaipur",
+    "state": "Rajasthan",
+    "state_code": "RJ",
+    "rbi_hpi_city": true,
+    "residex_change_12m_pct": null,
+    "url": "https://payotte.com/india/cities/jaipur"
+   },
+   {
+    "slug": "kalyan-dombivli",
+    "name": "Kalyan-Dombivli",
+    "state": "Maharashtra",
+    "state_code": "MH",
+    "rbi_hpi_city": false,
+    "residex_change_12m_pct": -1.7,
+    "url": "https://payotte.com/india/cities/kalyan-dombivli"
+   },
+   {
+    "slug": "kanpur",
+    "name": "Kanpur",
+    "state": "Uttar Pradesh",
+    "state_code": "UP",
+    "rbi_hpi_city": true,
+    "residex_change_12m_pct": null,
+    "url": "https://payotte.com/india/cities/kanpur"
+   },
+   {
+    "slug": "kochi",
+    "name": "Kochi",
+    "state": "Kerala",
+    "state_code": "KL",
+    "rbi_hpi_city": true,
+    "residex_change_12m_pct": null,
+    "url": "https://payotte.com/india/cities/kochi"
+   },
+   {
+    "slug": "kolkata",
+    "name": "Kolkata",
+    "state": "West Bengal",
+    "state_code": "WB",
+    "rbi_hpi_city": true,
+    "residex_change_12m_pct": 6.9,
+    "url": "https://payotte.com/india/cities/kolkata"
+   },
+   {
+    "slug": "lucknow",
+    "name": "Lucknow",
+    "state": "Uttar Pradesh",
+    "state_code": "UP",
+    "rbi_hpi_city": true,
+    "residex_change_12m_pct": null,
+    "url": "https://payotte.com/india/cities/lucknow"
+   },
+   {
+    "slug": "mumbai",
+    "name": "Mumbai",
+    "state": "Maharashtra",
+    "state_code": "MH",
+    "rbi_hpi_city": true,
+    "residex_change_12m_pct": 6.2,
+    "url": "https://payotte.com/india/cities/mumbai"
+   },
+   {
+    "slug": "nagpur",
+    "name": "Nagpur",
+    "state": "Maharashtra",
+    "state_code": "MH",
+    "rbi_hpi_city": true,
+    "residex_change_12m_pct": null,
+    "url": "https://payotte.com/india/cities/nagpur"
+   },
+   {
+    "slug": "navi-mumbai",
+    "name": "Navi Mumbai",
+    "state": "Maharashtra",
+    "state_code": "MH",
+    "rbi_hpi_city": false,
+    "residex_change_12m_pct": null,
+    "url": "https://payotte.com/india/cities/navi-mumbai"
+   },
+   {
+    "slug": "noida",
+    "name": "Noida",
+    "state": "Uttar Pradesh",
+    "state_code": "UP",
+    "rbi_hpi_city": true,
+    "residex_change_12m_pct": null,
+    "url": "https://payotte.com/india/cities/noida"
+   },
+   {
+    "slug": "patna",
+    "name": "Patna",
+    "state": "Bihar",
+    "state_code": "BR",
+    "rbi_hpi_city": false,
+    "residex_change_12m_pct": null,
+    "url": "https://payotte.com/india/cities/patna"
+   },
+   {
+    "slug": "pune",
+    "name": "Pune",
+    "state": "Maharashtra",
+    "state_code": "MH",
+    "rbi_hpi_city": true,
+    "residex_change_12m_pct": 3.7,
+    "url": "https://payotte.com/india/cities/pune"
+   },
+   {
+    "slug": "surat",
+    "name": "Surat",
+    "state": "Gujarat",
+    "state_code": "GJ",
+    "rbi_hpi_city": false,
+    "residex_change_12m_pct": null,
+    "url": "https://payotte.com/india/cities/surat"
+   },
+   {
+    "slug": "thane",
+    "name": "Thane",
+    "state": "Maharashtra",
+    "state_code": "MH",
+    "rbi_hpi_city": true,
+    "residex_change_12m_pct": null,
+    "url": "https://payotte.com/india/cities/thane"
+   },
+   {
+    "slug": "thiruvananthapuram",
+    "name": "Thiruvananthapuram",
+    "state": "Kerala",
+    "state_code": "KL",
+    "rbi_hpi_city": true,
+    "residex_change_12m_pct": null,
+    "url": "https://payotte.com/india/cities/thiruvananthapuram"
+   },
+   {
+    "slug": "visakhapatnam",
+    "name": "Visakhapatnam",
+    "state": "Andhra Pradesh",
+    "state_code": "AP",
+    "rbi_hpi_city": false,
+    "residex_change_12m_pct": null,
+    "url": "https://payotte.com/india/cities/visakhapatnam"
+   }
+  ],
+  "states": [
+   {
+    "slug": "andaman-and-nicobar-islands",
+    "name": "Andaman and Nicobar Islands",
+    "state_code": "AN"
+   },
+   {
+    "slug": "andhra-pradesh",
+    "name": "Andhra Pradesh",
+    "state_code": "AP"
+   },
+   {
+    "slug": "arunachal-pradesh",
+    "name": "Arunachal Pradesh",
+    "state_code": "AR"
+   },
+   {
+    "slug": "assam",
+    "name": "Assam",
+    "state_code": "AS"
+   },
+   {
+    "slug": "bihar",
+    "name": "Bihar",
+    "state_code": "BR"
+   },
+   {
+    "slug": "chandigarh",
+    "name": "Chandigarh",
+    "state_code": "CH"
+   },
+   {
+    "slug": "chhattisgarh",
+    "name": "Chhattisgarh",
+    "state_code": "CT"
+   },
+   {
+    "slug": "dadra-and-nagar-haveli-and-daman-and-diu",
+    "name": "Dadra and Nagar Haveli and Daman and Diu",
+    "state_code": "DH"
+   },
+   {
+    "slug": "delhi",
+    "name": "Delhi",
+    "state_code": "DL"
+   },
+   {
+    "slug": "goa",
+    "name": "Goa",
+    "state_code": "GA"
+   },
+   {
+    "slug": "gujarat",
+    "name": "Gujarat",
+    "state_code": "GJ"
+   },
+   {
+    "slug": "haryana",
+    "name": "Haryana",
+    "state_code": "HR"
+   },
+   {
+    "slug": "himachal-pradesh",
+    "name": "Himachal Pradesh",
+    "state_code": "HP"
+   },
+   {
+    "slug": "jammu-and-kashmir",
+    "name": "Jammu and Kashmir",
+    "state_code": "JK"
+   },
+   {
+    "slug": "jharkhand",
+    "name": "Jharkhand",
+    "state_code": "JH"
+   },
+   {
+    "slug": "karnataka",
+    "name": "Karnataka",
+    "state_code": "KA"
+   },
+   {
+    "slug": "kerala",
+    "name": "Kerala",
+    "state_code": "KL"
+   },
+   {
+    "slug": "ladakh",
+    "name": "Ladakh",
+    "state_code": "LA"
+   },
+   {
+    "slug": "lakshadweep",
+    "name": "Lakshadweep",
+    "state_code": "LD"
+   },
+   {
+    "slug": "madhya-pradesh",
+    "name": "Madhya Pradesh",
+    "state_code": "MP"
+   },
+   {
+    "slug": "maharashtra",
+    "name": "Maharashtra",
+    "state_code": "MH"
+   },
+   {
+    "slug": "manipur",
+    "name": "Manipur",
+    "state_code": "MN"
+   },
+   {
+    "slug": "meghalaya",
+    "name": "Meghalaya",
+    "state_code": "ML"
+   },
+   {
+    "slug": "mizoram",
+    "name": "Mizoram",
+    "state_code": "MZ"
+   },
+   {
+    "slug": "nagaland",
+    "name": "Nagaland",
+    "state_code": "NL"
+   },
+   {
+    "slug": "odisha",
+    "name": "Odisha",
+    "state_code": "OR"
+   },
+   {
+    "slug": "puducherry",
+    "name": "Puducherry",
+    "state_code": "PY"
+   },
+   {
+    "slug": "punjab",
+    "name": "Punjab",
+    "state_code": "PB"
+   },
+   {
+    "slug": "rajasthan",
+    "name": "Rajasthan",
+    "state_code": "RJ"
+   },
+   {
+    "slug": "sikkim",
+    "name": "Sikkim",
+    "state_code": "SK"
+   },
+   {
+    "slug": "tamil-nadu",
+    "name": "Tamil Nadu",
+    "state_code": "TN"
+   },
+   {
+    "slug": "telangana",
+    "name": "Telangana",
+    "state_code": "TG"
+   },
+   {
+    "slug": "tripura",
+    "name": "Tripura",
+    "state_code": "TR"
+   },
+   {
+    "slug": "uttar-pradesh",
+    "name": "Uttar Pradesh",
+    "state_code": "UP"
+   },
+   {
+    "slug": "uttarakhand",
+    "name": "Uttarakhand",
+    "state_code": "UT"
+   },
+   {
+    "slug": "west-bengal",
+    "name": "West Bengal",
+    "state_code": "WB"
+   }
+  ]
+ },
+ "tables": {
+  "purchase-duty": {
+   "compiled": "2026-10-14",
+   "url": "https://payotte.com/india/by-state/purchase-duty",
+   "states": {
+    "ch": {
+     "stamp_duty": "5%",
+     "registration": "1%, max ₹10,000",
+     "reference_value": "collector rate",
+     "total_25l": "₹1,35,020",
+     "total_50l": "₹2,60,020",
+     "total_1cr": "₹5,10,020",
+     "answer": "In Chandigarh, stamp duty on a home is 5% and the registration fee 1%, max ₹10,000, on the higher of the price and the collector rate: ₹2,60,020 on a ₹50 lakh home (Deputy Commissioner, Chandigarh Administration).",
+     "note": "The rate sheet is undated.",
+     "sources": [
+      {
+       "title": "Rates of stamp duty and registration fees (Chandigarh Administration)",
+       "url": "https://chandigarh.gov.in/files/2021updoc/dc19-stampduty.pdf"
+      }
+     ]
+    },
+    "kl": {
+     "stamp_duty": "8%",
+     "registration": "2%",
+     "reference_value": "fair value",
+     "total_25l": "₹2,50,000",
+     "total_50l": "₹5,00,000",
+     "total_1cr": "₹10,00,000",
+     "answer": "In Kerala, stamp duty on a home is 8% and the registration fee 2%, on the higher of the price and the fair value: ₹5,00,000 on a ₹50 lakh home (Registration Department, Government of Kerala).",
+     "note": "The table says it is \"for informational purposes only\"; no surcharge or cess appears in it.",
+     "sources": [
+      {
+       "title": "Existing rates of stamp duty and registration fees for ready reference (as on 01.04.2023)",
+       "url": "https://registration.kerala.gov.in/wp-content/uploads/2022/07/Stamp-Duty-Fees-Ready-reckoner-2023.xlsx-Table-1.pdf"
+      }
+     ]
+    },
+    "mh": {
+     "stamp_duty": "5% (4% in a Gram Panchayat area) + 1% in Mumbai",
+     "registration": null,
+     "reference_value": "Annual Statement of Rates (ready reckoner)",
+     "total_25l": "at least ₹1,50,000",
+     "total_50l": "at least ₹3,00,000",
+     "total_1cr": "at least ₹6,00,000",
+     "answer": "In Maharashtra, stamp duty on a home is 5% (4% in a Gram Panchayat area) + 1% in Mumbai, on the higher of the price and the Annual Statement of Rates (ready reckoner): at least ₹3,00,000 on a ₹50 lakh home in Mumbai (Inspector General of Registration and Controller of Stamps, Maharashtra).",
+     "note": "Registration fee not computed: no official table of fees could be read (the IGR portal refuses connections from outside India). A 1% reduction for women buyers (order of 31 March 2021) was read only in an editor's note: it is not applied.",
+     "sources": [
+      {
+       "title": "Maharashtra Stamp Act 1958, Schedule I, Article 25 (as modified up to 1 June 2022)",
+       "url": "https://ipindia.gov.in/storage/uploads/reference/AN5hvWq67hNPCYJHoo0pRTK5Y65qVagMexZo726B.pdf"
+      },
+      {
+       "title": "Mumbai Municipal Corporation (Second Amendment) Act 2018, section 144F",
+       "url": "https://grievanceigr.maharashtra.gov.in/pdf/4.Mumbai_Muncipal_Corporation_(Second_Amendment)_Act_2018.pdf"
+      }
+     ]
+    },
+    "or": {
+     "stamp_duty": "5%",
+     "registration": "2%",
+     "reference_value": "market value",
+     "total_25l": "₹1,75,000",
+     "total_50l": "₹3,50,000",
+     "total_1cr": "₹7,00,000",
+     "answer": "In Odisha, stamp duty on a home is 5% and the registration fee 2%, on the higher of the price and the market value: ₹3,50,000 on a ₹50 lakh home (Inspector General of Registration, Odisha).",
+     "note": "The fee page is undated; a concession for women buyers was not read and is not applied.",
+     "sources": [
+      {
+       "title": "IGR Odisha, fees for documents (sale of immovable property)",
+       "url": "https://www.igrodisha.gov.in/FeeDetails.aspx?fee=DOCF"
+      }
+     ]
+    },
+    "py": {
+     "stamp_duty": "10%",
+     "registration": "1.5%",
+     "reference_value": "guideline land rate (GLR)",
+     "total_25l": "₹2,87,500",
+     "total_50l": "₹5,75,000",
+     "total_1cr": "₹11,50,000",
+     "answer": "In Puducherry, stamp duty on a home is 10% and the registration fee 1.5%, on the higher of the price and the guideline land rate (GLR): ₹5,75,000 on a ₹50 lakh home (Registration Department, Government of Puducherry).",
+     "note": "The page is undated.",
+     "sources": [
+      {
+       "title": "Registration Department, Puducherry: table of fees for all kinds of documents",
+       "url": "https://regn.py.gov.in/services.html"
+      }
+     ]
+    },
+    "rj": {
+     "stamp_duty": "6%",
+     "registration": "1%",
+     "reference_value": "market value (DLC rate)",
+     "total_25l": "at least ₹1,75,300",
+     "total_50l": "at least ₹3,50,300",
+     "total_1cr": "at least ₹7,00,300",
+     "answer": "In Rajasthan, stamp duty on a home is 6% and the registration fee 1%, on the higher of the price and the market value (DLC rate): at least ₹3,50,300 on a ₹50 lakh home (Department of Registration and Stamps, Rajasthan).",
+     "note": "The rate sheet announces a surcharge on stamp duty (\"10+20 = 30%\"; 20% in the 2019 version) without confirming that it applies to a sale deed: it is not included.",
+     "sources": [
+      {
+       "title": "Stamp duty and registration fee detail, Rajasthan (as applicable on 01-05-2024)",
+       "url": "https://rajnivesh.rajasthan.gov.in/Uploads/3fc839e7-2e7f-44c0-8e19-9c539e5b7f7b.pdf"
+      }
+     ]
+    },
+    "ut": {
+     "stamp_duty": "5%",
+     "registration": "2%, max ₹25,000",
+     "reference_value": "circle rate",
+     "total_25l": "₹1,50,000",
+     "total_50l": "₹2,75,000",
+     "total_1cr": "₹5,25,000",
+     "answer": "In Uttarakhand, stamp duty on a home is 5% and the registration fee 2%, max ₹25,000, on the higher of the price and the circle rate: ₹2,75,000 on a ₹50 lakh home (Stamp and Registration Department, Uttarakhand).",
+     "note": "For a woman buyer above ₹25 lakh the text reads \"upto 25 lakh there after 5 %\": whether the reduced rate covers the first ₹25 lakh only is not settled; the general 5% is shown as an upper limit.",
+     "sources": [
+      {
+       "title": "Stamp and Registration Department, Uttarakhand: stamp duty and registration fees (March 2025)",
+       "url": "https://cdnbbsr.s3waas.gov.in/s32d579dc29360d8bbfbb4aa541de5afa9/uploads/2025/03/202503221356169495.pdf"
+      }
+     ]
+    }
+   }
+  },
+  "women-buyer-rates": {
+   "compiled": "2026-10-14",
+   "url": "https://payotte.com/india/by-state/women-buyer-rates",
+   "states": {
+    "ch": {
+     "reduced_rate": "not_read",
+     "women_rate": null,
+     "general_rate": "5%",
+     "condition": null,
+     "answer": "In Chandigarh, no reduced stamp duty rate for women buyers was read at the official source.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Rates of stamp duty and registration fees (Chandigarh Administration)",
+       "url": "https://chandigarh.gov.in/files/2021updoc/dc19-stampduty.pdf"
+      }
+     ]
+    },
+    "kl": {
+     "reduced_rate": "not_read",
+     "women_rate": null,
+     "general_rate": "8%",
+     "condition": null,
+     "answer": "In Kerala, no reduced stamp duty rate for women buyers was read at the official source.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Existing rates of stamp duty and registration fees for ready reference (as on 01.04.2023)",
+       "url": "https://registration.kerala.gov.in/wp-content/uploads/2022/07/Stamp-Duty-Fees-Ready-reckoner-2023.xlsx-Table-1.pdf"
+      }
+     ]
+    },
+    "mh": {
+     "reduced_rate": "not_read",
+     "women_rate": null,
+     "general_rate": "5%",
+     "condition": null,
+     "answer": "In Maharashtra, no reduced stamp duty rate for women buyers was read at the official source (a 1% reduction from 1 April 2021 appears only in an editor's note, not confirmed).",
+     "note": null,
+     "sources": [
+      {
+       "title": "Maharashtra Stamp Act 1958, Schedule I, Article 25 (as modified up to 1 June 2022)",
+       "url": "https://ipindia.gov.in/storage/uploads/reference/AN5hvWq67hNPCYJHoo0pRTK5Y65qVagMexZo726B.pdf"
+      },
+      {
+       "title": "Mumbai Municipal Corporation (Second Amendment) Act 2018, section 144F",
+       "url": "https://grievanceigr.maharashtra.gov.in/pdf/4.Mumbai_Muncipal_Corporation_(Second_Amendment)_Act_2018.pdf"
+      }
+     ]
+    },
+    "or": {
+     "reduced_rate": "not_read",
+     "women_rate": null,
+     "general_rate": "5%",
+     "condition": null,
+     "answer": "In Odisha, no reduced stamp duty rate for women buyers was read at the official source.",
+     "note": null,
+     "sources": [
+      {
+       "title": "IGR Odisha, fees for documents (sale of immovable property)",
+       "url": "https://www.igrodisha.gov.in/FeeDetails.aspx?fee=DOCF"
+      }
+     ]
+    },
+    "py": {
+     "reduced_rate": "yes",
+     "women_rate": "5%",
+     "general_rate": "10%",
+     "condition": "woman buyer permanently residing in the territory",
+     "answer": "In Puducherry, a woman buyer pays 5% stamp duty instead of 10%, as a woman buyer permanently residing in the territory.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Registration Department, Puducherry: table of fees for all kinds of documents",
+       "url": "https://regn.py.gov.in/services.html"
+      }
+     ]
+    },
+    "rj": {
+     "reduced_rate": "yes",
+     "women_rate": "5%",
+     "general_rate": "6%",
+     "condition": null,
+     "answer": "In Rajasthan, a woman buyer pays 5% stamp duty instead of 6%.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Stamp duty and registration fee detail, Rajasthan (as applicable on 01-05-2024)",
+       "url": "https://rajnivesh.rajasthan.gov.in/Uploads/3fc839e7-2e7f-44c0-8e19-9c539e5b7f7b.pdf"
+      }
+     ]
+    },
+    "ut": {
+     "reduced_rate": "yes",
+     "women_rate": "3.75%",
+     "general_rate": "5%",
+     "condition": "up to ₹25 lakh",
+     "answer": "In Uttarakhand, a woman buyer pays 3.75% stamp duty instead of 5% (up to ₹25 lakh).",
+     "note": null,
+     "sources": [
+      {
+       "title": "Stamp and Registration Department, Uttarakhand: stamp duty and registration fees (March 2025)",
+       "url": "https://cdnbbsr.s3waas.gov.in/s32d579dc29360d8bbfbb4aa541de5afa9/uploads/2025/03/202503221356169495.pdf"
+      }
+     ]
+    }
+   }
+  }
+ },
+ "guides": [
+  {
+   "slug": "agreement-for-sale-vs-sale-deed",
+   "title": "Agreement for sale vs sale deed in India",
+   "description": "An agreement for sale promises a sale; only a registered sale deed transfers ownership. What the law says, the 10% RERA cap and what to check in each.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/guides/agreement-for-sale-vs-sale-deed",
+   "draft": false
+  },
+  {
+   "slug": "buying-a-home-in-india",
+   "title": "Buying a home in India: the steps, state by state",
+   "description": "From budget to registered sale deed and mutation: RERA, agreement for sale, 1% TDS, GST on under-construction flats, and what changes from state to state.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/guides/buying-a-home-in-india",
+   "draft": false
+  },
+  {
+   "slug": "buying-under-construction-property-gst",
+   "title": "GST on an under-construction flat in India",
+   "description": "The central GST rates on under-construction flats (1% affordable, 5% other), what counts as affordable, when no GST applies and why you cannot claim credit.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/guides/buying-under-construction-property-gst",
+   "draft": false
+  },
+  {
+   "slug": "capital-gains-exemptions-section-54-54ec",
+   "title": "Capital gains: sections 82, 85, 86 (ex 54, 54EC, 54F)",
+   "description": "Reinvest a long-term gain in a house or in NHAI/REC bonds under the Income-tax Act 2025: deadlines, ₹2 crore, ₹10 crore and ₹50 lakh limits, and the lock-ins.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/guides/capital-gains-exemptions-section-54-54ec",
+   "draft": false
+  },
+  {
+   "slug": "capital-gains-tax-on-property",
+   "title": "Capital gains tax on selling property in India (2025 Act)",
+   "description": "Gains on land and buildings under the Income-tax Act 2025: 24-month test, 12.5% rate, indexation option before 23 July 2024, stamp duty value rule.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/guides/capital-gains-tax-on-property",
+   "draft": false
+  },
+  {
+   "slug": "carpet-area-vs-built-up-area",
+   "title": "Carpet area vs built-up area: what RERA defines",
+   "description": "RERA defines only carpet area. How it differs from built-up and super built-up area, why it matters for price, GST and subsidy limits, and what to ask for.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/guides/carpet-area-vs-built-up-area",
+   "draft": false
+  },
+  {
+   "slug": "circle-rate-and-guidance-value",
+   "title": "Circle rate and guidance value: what the official texts say",
+   "description": "What circle rate, guidance value, fair value, collector rate and ready reckoner mean in the states Payotte could read, and how they change the stamp duty base.",
+   "answer": "A circle rate (the term varies by state: guidance value, fair value, collector rate, ready reckoner, guideline land rate) is the minimum value per area or plot that the state uses to charge stamp duty and registration fee. Where the sheets Payotte read say so, the charge is on the higher of the price in your deed and the reference value. The name, the way it is fixed and the lookup page differ in every state; there is no central list. This guide gives only what the official texts read say.",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/guides/circle-rate-and-guidance-value",
+   "draft": false
+  },
+  {
+   "slug": "gift-deed-for-property",
+   "title": "Gift deed for property in India: stamp duty and tax",
+   "description": "A gift of a house or land needs a registered gift deed. Stamp duty to family differs by state; the recipient's tax under the Income-tax Act 2025 and NRI limits.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/guides/gift-deed-for-property",
+   "draft": false
+  },
+  {
+   "slug": "home-loan-down-payment-and-ltv",
+   "title": "Home loan down payment and LTV in India",
+   "description": "RBI loan-to-value caps for bank home loans (90%, 80%, 75%), the minimum down payment they imply, and the stamp duty, registration and GST on top.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/guides/home-loan-down-payment-and-ltv",
+   "draft": false
+  },
+  {
+   "slug": "home-loan-eligibility-and-emi",
+   "title": "Home loan eligibility and EMI in India: the formula",
+   "description": "How a home loan EMI is calculated, a worked calculation at the RBI's published lending rate, what lenders look at, and what the RBI does and does not fix.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/guides/home-loan-eligibility-and-emi",
+   "draft": false
+  },
+  {
+   "slug": "home-loan-prepayment-charges",
+   "title": "Home loan prepayment charges in India: the RBI rule",
+   "description": "From 1 January 2026 banks cannot charge prepayment fees on floating-rate loans to individuals for non-business purposes. Scope, exceptions and how to check.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/guides/home-loan-prepayment-charges",
+   "draft": false
+  },
+  {
+   "slug": "home-loan-tax-benefits",
+   "title": "Home loan tax benefits under the Income-tax Act 2025",
+   "description": "Interest (section 22) and principal (section 123) deductions on a home loan, the ₹2 lakh and ₹1.5 lakh limits, and why the default new regime allows neither.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/guides/home-loan-tax-benefits",
+   "draft": false
+  },
+  {
+   "slug": "india-canada-tax-treaty-property",
+   "title": "India-Canada tax treaty and Indian property",
+   "description": "How the 1996 India-Canada tax treaty treats rent and sale gains on Indian property, the foreign tax credit in Canada, and what India requires for treaty relief.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/guides/india-canada-tax-treaty-property",
+   "draft": false
+  },
+  {
+   "slug": "inheriting-property-in-india",
+   "title": "Inheriting property in India: succession, will, mutation",
+   "description": "Who inherits under the Hindu Succession Act, when probate is needed after section 213 was omitted in 2025, how to mutate the title, and tax on inheritance.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/guides/inheriting-property-in-india",
+   "draft": false
+  },
+  {
+   "slug": "joint-home-loan-and-co-ownership",
+   "title": "Joint home loan and co-ownership in India: tax and rules",
+   "description": "How tax treats co-owners and co-borrowers under the Income-tax Act 2025 (sections 22, 24, 123), the PMAY family rule, and what to settle in writing.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/guides/joint-home-loan-and-co-ownership",
+   "draft": false
+  },
+  {
+   "slug": "model-tenancy-act",
+   "title": "Model Tenancy Act India: what it says, who applies it",
+   "description": "The Model Tenancy Act is a template for states, not a law that binds a tenant. What the text provides, and how a territory's regulation follows it.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/guides/model-tenancy-act",
+   "draft": false
+  },
+  {
+   "slug": "mutation-of-property-records",
+   "title": "Mutation of property records: khata, jamabandi, 7/12",
+   "description": "What mutation is, why registration alone does not change the revenue record, the local names (khata, jamabandi, 7/12, patta) and timelines by state.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/guides/mutation-of-property-records",
+   "draft": false
+  },
+  {
+   "slug": "nri-buying-property-in-india",
+   "title": "NRIs buying property in India: what is allowed",
+   "description": "What an NRI or OCI may buy, receive or sell under the RBI's FEMA rules, how to pay, and what stays state-specific, with notes for buyers living in Canada.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/guides/nri-buying-property-in-india",
+   "draft": false
+  },
+  {
+   "slug": "nri-home-loan",
+   "title": "Home loans for NRIs and OCIs: the RBI rules",
+   "description": "What the RBI allows for a rupee home loan to an NRI or PIO: who can lend, security, how it is repaid, the repo-linked rate, prepayment and tax on the interest.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/guides/nri-home-loan",
+   "draft": false
+  },
+  {
+   "slug": "nri-paying-for-property-nre-nro",
+   "title": "Paying for property from NRE, NRO or FCNR(B) accounts",
+   "description": "How an NRI or OCI may pay for a home in India: inward remittance, NRE, FCNR(B) or NRO account, what each allows, and why the source of funds matters later.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/guides/nri-paying-for-property-nre-nro",
+   "draft": false
+  },
+  {
+   "slug": "nri-power-of-attorney-from-abroad",
+   "title": "Power of attorney from Canada for property in India",
+   "description": "How an NRI in Canada executes a power of attorney for Indian property: notary, apostille since 11 January 2024, Indian mission, stamping in India.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/guides/nri-power-of-attorney-from-abroad",
+   "draft": false
+  },
+  {
+   "slug": "nri-rental-income-tax",
+   "title": "Rental income from India: tax for NRIs and OCIs",
+   "description": "How rent from an Indian property is taxed for an NRI or OCI: annual value, 30% deduction, slab rates, the tenant's TDS, NRE and NRO credit, and tax residence.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/guides/nri-rental-income-tax",
+   "draft": false
+  },
+  {
+   "slug": "nri-repatriation-of-sale-proceeds",
+   "title": "Sending sale proceeds abroad: NRI repatriation rules",
+   "description": "How an NRI or PIO sends money abroad after selling Indian property: the two-residential-property rule, the USD 1 million yearly facility, undertakings and tax.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/guides/nri-repatriation-of-sale-proceeds",
+   "draft": false
+  },
+  {
+   "slug": "nri-selling-property-tds",
+   "title": "NRI selling property in India: capital gains and TDS",
+   "description": "Selling an Indian property as an NRI: 12.5% long-term gains tax, TDS at rates in force under section 393(2), lower deduction certificate, Form 141 Schedule E.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/guides/nri-selling-property-tds",
+   "draft": false
+  },
+  {
+   "slug": "occupancy-and-completion-certificate",
+   "title": "Occupancy and completion certificate in India",
+   "description": "What the occupancy certificate (OC) and completion certificate (CC) certify, who issues them, what RERA requires and how to check them before possession.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/guides/occupancy-and-completion-certificate",
+   "draft": false
+  },
+  {
+   "slug": "oci-and-foreign-nationals-property-rules",
+   "title": "OCI cardholders and foreigners: property rules",
+   "description": "What an OCI cardholder, a foreign citizen or an NRI's spouse may buy, lease or inherit in India under RBI rules, and which countries need prior RBI permission.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/guides/oci-and-foreign-nationals-property-rules",
+   "draft": false
+  },
+  {
+   "slug": "pmay-urban-2",
+   "title": "PMAY-Urban 2.0 interest subsidy: who qualifies",
+   "description": "The central interest subsidy for home loans under PMAY-Urban 2.0: income limits, ₹25 lakh loan, ₹35 lakh house, 4% on ₹8 lakh, how it is paid.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/guides/pmay-urban-2",
+   "draft": false
+  },
+  {
+   "slug": "property-registration-process",
+   "title": "Property registration in India: sub-registrar steps",
+   "description": "How a sale deed is registered at the Sub-Registrar's office: central rules, state portals, who must attend, the four-month deadline and the limits of registration.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/guides/property-registration-process",
+   "draft": false
+  },
+  {
+   "slug": "property-tax-in-indian-cities",
+   "title": "Property tax in Indian cities: how it is set and paid",
+   "description": "Property tax is municipal, not central. How Bengaluru, Chennai, Kolkata, Ahmedabad and Delhi calculate and collect it, with rebates, from their own pages.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/guides/property-tax-in-indian-cities",
+   "draft": false
+  },
+  {
+   "slug": "rbi-repo-rate-and-home-loan-rates",
+   "title": "RBI repo rate and home loan rates in India (Oct. 2026)",
+   "description": "The repo rate rose to 5.50% on 7 October 2026. How repo-linked and external-benchmark home loans reset, what the RBI says, and what it means for your EMI.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/guides/rbi-repo-rate-and-home-loan-rates",
+   "draft": false
+  },
+  {
+   "slug": "rent-agreement-registration",
+   "title": "Rent agreement registration and stamp duty in India",
+   "description": "When a rent agreement must be registered, what the 11-month practice rests on, and how stamp duty on rent works in Maharashtra and other states.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/guides/rent-agreement-registration",
+   "draft": false
+  },
+  {
+   "slug": "rera-project-registration-check",
+   "title": "How to check a RERA project registration in India",
+   "description": "What RERA registration means, where to look the project up on your state authority's portal, what to read there, and which projects are exempt.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/guides/rera-project-registration-check",
+   "draft": false
+  },
+  {
+   "slug": "resale-flat-housing-society-transfer",
+   "title": "Buying a resale flat in a housing society: transfer",
+   "description": "Share certificate, notice, NOC, transfer fee and premium when buying a resale flat in a co-operative housing society, with the published Maharashtra rules.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/guides/resale-flat-housing-society-transfer",
+   "draft": false
+  },
+  {
+   "slug": "security-deposit-and-rent-rules",
+   "title": "Security deposit and rent rules for tenants in India",
+   "description": "Is there a cap on a rental deposit in India? The model rule of two months, what Maharashtra's Act says, receipts, rent revision and refund on exit.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/guides/security-deposit-and-rent-rules",
+   "draft": false
+  },
+  {
+   "slug": "selling-a-property-costs",
+   "title": "Selling a property in India: costs, TDS and tax",
+   "description": "What a seller in India pays or loses: tax on the gain, the buyer's 1% TDS from ₹50 lakh, transfer expenses, loan closure, and what depends on your state.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/guides/selling-a-property-costs",
+   "draft": false
+  },
+  {
+   "slug": "stamp-duty-and-registration-charges-in-india",
+   "title": "Stamp duty and registration charges in India, by state",
+   "description": "How stamp duty and registration fees work when you buy a home in India, the states whose rates Payotte could read, and where to check the rest.",
+   "answer": "Buying a home in India triggers two separate charges, stamp duty and a registration fee, and both are set by the state or union territory, not by the Centre. Each is a percentage of the price or of the state's reference value, usually whichever is higher. Payotte could read the official rate for only seven jurisdictions (Maharashtra, Kerala, Rajasthan, Uttarakhand, Odisha, Chandigarh and Puducherry); stamp duty on a sale runs from 4% to 10% among them. For every other state, check the state's own registration portal, named below.",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/guides/stamp-duty-and-registration-charges-in-india",
+   "draft": false
+  },
+  {
+   "slug": "stamp-duty-chandigarh",
+   "title": "Stamp duty in Chandigarh: 5% duty, fee capped at ₹10,000",
+   "description": "Chandigarh charges 5% stamp duty and a 1% registration fee capped at ₹10,000 on a sale deed, with the other deeds and the documents the sub-registrar asks for.",
+   "answer": "In the union territory of Chandigarh, the administration's rate sheet gives 5% stamp duty on a sale, gift or conveyance, \"on value or amount of consideration (whichever is higher)\", and a registration fee of 1% of the value, subject to a maximum of ₹10,000, plus a ₹20 pasting fee. The sheet is undated and shows no surcharge and no difference between men and women. The reference value, the \"collector rate\", is a separate schedule that Payotte did not read.",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/guides/stamp-duty-chandigarh",
+   "draft": false
+  },
+  {
+   "slug": "stamp-duty-concession-for-women",
+   "title": "Stamp duty concession for women buyers: states compared",
+   "description": "Which states give women a lower stamp duty rate on the official sheets Payotte read: Puducherry, Uttarakhand, Rajasthan. Rates, conditions, unconfirmed points.",
+   "answer": "There is no national stamp duty concession for women: it is a state or union territory matter. On the official sheets Payotte could read, three have a lower rate for a woman buyer: Puducherry (5% instead of 10%, for a woman permanently resident in the territory), Uttarakhand (3.75% instead of 5%, \"upto 25 lakh\") and Rajasthan (5% instead of 6%, or 4% for a woman in the SC, ST or BPL categories). Maharashtra's 1% reduction appears only in an editor's note and is not confirmed at the source. For other states, read the state's own sheet.",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/guides/stamp-duty-concession-for-women",
+   "draft": false
+  },
+  {
+   "slug": "stamp-duty-kerala",
+   "title": "Stamp duty and registration fee in Kerala: 8% and 2%",
+   "description": "Kerala charges 8% stamp duty and 2% registration on the higher of fair value and price. Sale, gift, partition and power of attorney rates from the sheet.",
+   "answer": "In Kerala a sale deed pays 8% stamp duty and a 2% registration fee, both on the fair value or the price in the deed, whichever is higher. That is the Registration Department's ready-reference sheet \"as on 01.04.2023\"; the 2019 version carried the same two rates, and no surcharge or cess appears in either. The sheet says it is \"for informational purposes only\", so check the current position at the sub-registrar's office before signing.",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/guides/stamp-duty-kerala",
+   "draft": false
+  },
+  {
+   "slug": "stamp-duty-maharashtra",
+   "title": "Stamp duty in Maharashtra: Article 25 rates and Mumbai cess",
+   "description": "Stamp duty on a home sale in Maharashtra: 5% or 4% by area under Article 25, the Mumbai metro surcharge, the women's reduction and what is not confirmed.",
+   "answer": "In Maharashtra, stamp duty on the sale of a home is 5% of the market value inside a municipal corporation, a municipal council, a Nagar Panchayat or the Mumbai Metropolitan Region's rural areas, and 4% inside a gram panchayat area (Article 25(b), Maharashtra Stamp Act 1958, rates in force since 7 September 2017). Mumbai adds a 1% metro surcharge under section 144F of the Mumbai Municipal Corporation Act (the start date is set by notification, which Payotte did not read). Payotte could not read a registration fee schedule, so no registration fee figure is given here.",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/guides/stamp-duty-maharashtra",
+   "draft": false
+  },
+  {
+   "slug": "stamp-duty-odisha",
+   "title": "Stamp duty and registration fee in Odisha: 5% and 2%",
+   "description": "Odisha charges 5% stamp duty and 2% registration on the sale of immovable property. The official fee table, other deeds, small fees and what is not read.",
+   "answer": "Odisha's Inspector General of Registration publishes a fee table on which \"SALE IMMOVABLE\" carries 5% stamp duty and a 2% registration fee. Both are percentages of the value; the table shows no minimum stamp amount for a sale and no ceiling on the fee. The page is undated, the base value is not named on it, and a concession for women buyers was not found, so none is applied.",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/guides/stamp-duty-odisha",
+   "draft": false
+  },
+  {
+   "slug": "stamp-duty-puducherry",
+   "title": "Stamp duty in Puducherry: 10%, or 5% for women residents",
+   "description": "Puducherry charges 10% stamp duty and 1.5% registration on the higher of price and guideline land rate; 5% for a woman buyer resident in the territory.",
+   "answer": "The Registration Department of the union territory of Puducherry lists a sale (\"Conveyance (Sale)\") at 10% stamp duty and 1.5% registration fee, both \"on the sale value of the property or the G.L.R. value whichever is higher\". A woman purchaser pays 5% stamp duty and the same 1.5% fee. The department's FAQ calls this a \"50 % stamp duty concession\" for women permanently residing in the territory, with a list of address proofs. The page is undated, so confirm the rates at the sub-registrar's office before signing.",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/guides/stamp-duty-puducherry",
+   "draft": false
+  },
+  {
+   "slug": "stamp-duty-rajasthan",
+   "title": "Stamp duty in Rajasthan: 6%, women's rate and the surcharge",
+   "description": "Rajasthan sale deed stamp duty of 6% on market value, 1% registration, the rebates on the official sheet and the surcharge question that is not settled.",
+   "answer": "On Rajasthan's official fee sheet \"as applicable on 01-05-2024\", a general sale deed pays 6% stamp duty on market value and a 1% registration fee, plus a ₹300 copying, scanning and indexing fee. The same sheet gives women 5% (or 4% for a woman in the SC, ST or BPL categories). The sheet also announces a surcharge on stamp duty (\"10+20 = 30%\"), but its application to a sale deed is not confirmed in the text Payotte could read, so it is not included in any figure below.",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/guides/stamp-duty-rajasthan",
+   "draft": false
+  },
+  {
+   "slug": "stamp-duty-uttarakhand",
+   "title": "Stamp duty in Uttarakhand: 5%, 3.75% for women, fee cap",
+   "description": "Uttarakhand stamp duty on a home sale is 5%, 3.75% for a woman buyer, with a 2% registration fee capped at ₹25,000. Rates, rebates and the ₹25 lakh point.",
+   "answer": "In Uttarakhand, the Stamp and Registration Department's sheet published in March 2025 puts stamp duty on a sale deed of immovable property at 5%, and 3.75% for a female buyer, \"upto 25 lakh there after 5 %\". The registration fee is 2% of the value, with a maximum of ₹25,000. The wording on the ₹25 lakh limit is ambiguous, so the reduced rate is shown here as applying at most up to ₹25 lakh.",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/guides/stamp-duty-uttarakhand",
+   "draft": false
+  },
+  {
+   "slug": "tds-on-property-purchase",
+   "title": "TDS on buying property in India: 1% and Form 141",
+   "description": "When a buyer must deduct 1% TDS on a property purchase under the Income-tax Act 2025: ₹50 lakh threshold, Form 141 Schedule B, deadlines, NRI sellers.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/guides/tds-on-property-purchase",
+   "draft": false
+  },
+  {
+   "slug": "tds-on-rent",
+   "title": "TDS on rent in India: 2% above ₹50,000 a month",
+   "description": "When a tenant must deduct tax at source on rent under the Income-tax Act 2025, section 393, at what rate, how Form 141 works, and rent to an NRI landlord.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/guides/tds-on-rent",
+   "draft": false
+  },
+  {
+   "slug": "title-search-and-encumbrance-certificate",
+   "title": "Title search and encumbrance certificate in India",
+   "description": "What a title search covers, what an encumbrance certificate shows and does not show, and how to apply for one on a state registration portal.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/guides/title-search-and-encumbrance-certificate",
+   "draft": false
+  }
+ ],
+ "professions": [
+  {
+   "slug": "architect",
+   "title": "Architects in India: Council of Architecture register",
+   "description": "In India the title 'architect' is reserved to architects registered under the Architects Act, 1972. How to check a registration number and what to ask.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/professions/architect",
+   "draft": false
+  },
+  {
+   "slug": "home-loan-lender",
+   "title": "Home loan lenders in India: banks, HFCs and the RBI",
+   "description": "Who may lend for a home in India, how to check that a bank or housing finance company is regulated by the RBI, and why no register exists for loan agents.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/professions/home-loan-lender",
+   "draft": false
+  },
+  {
+   "slug": "property-lawyer",
+   "title": "Property lawyers in India: Bar Council enrolment",
+   "description": "How to check that a property lawyer is an advocate enrolled with a State Bar Council, and why Payotte lists no advocates in India.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/professions/property-lawyer",
+   "draft": false
+  },
+  {
+   "slug": "real-estate-agent",
+   "title": "Real estate agents in India: RERA registration",
+   "description": "Real estate agents must register with the RERA authority of the State. What the central Act requires, how to check an agent, and what the portals' terms say.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/professions/real-estate-agent",
+   "draft": false
+  },
+  {
+   "slug": "registered-valuer",
+   "title": "Registered valuers in India: the IBBI register",
+   "description": "Who is a registered valuer for land and building, what the Companies Rules require, how to check the IBBI register, and what its page says about use.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/india/professions/registered-valuer",
+   "draft": false
+  }
+ ]
+}
