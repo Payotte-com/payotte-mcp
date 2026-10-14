@@ -1,0 +1,1806 @@
+{
+ "_note": "Généré par payotte-astro-uk/scripts/uk/export-mcp.mjs ; ne pas modifier à la main.",
+ "generated": "2026-10-14",
+ "taxes": {
+  "_note": "Taxes d'achat d'un logement au Royaume-Uni, par nation (calculateur /uk/stamp-duty-calculator). Chaque taux relu dans le texte brut de la page officielle le 14 oct. 2026 (~/Payotte/royaume-uni/rapports/phase-0/fiscalite.md). Contrôle : scripts/uk/check-frais-achat.mjs, qui recalcule les exemples officiels et bloque si le calcul dérive.",
+  "releve": "2026-10-14",
+  "nations": {
+   "england": {
+    "nom": "England",
+    "impot": "Stamp Duty Land Tax (SDLT)",
+    "autorite": "HMRC",
+    "standard": [
+     [
+      125000,
+      0
+     ],
+     [
+      250000,
+      2
+     ],
+     [
+      925000,
+      5
+     ],
+     [
+      1500000,
+      10
+     ],
+     [
+      null,
+      12
+     ]
+    ],
+    "primoAccedant": {
+     "bandes": [
+      [
+       300000,
+       0
+      ],
+      [
+       500000,
+       5
+      ]
+     ],
+     "prixMax": 500000
+    },
+    "supplementaire": {
+     "type": "surtaxe",
+     "points": 5,
+     "seuil": 40000,
+     "depuis": "2024-10-31"
+    },
+    "nonResident": {
+     "points": 2,
+     "depuis": "2021-04-01"
+    },
+    "depuis": "2025-04-01",
+    "delaiJours": 14,
+    "source": "GOV.UK, Stamp Duty Land Tax: residential property rates (HMRC); Higher rates of Stamp Duty Land Tax (HMRC, last updated 1 April 2025)",
+    "url": "https://www.gov.uk/stamp-duty-land-tax/residential-property-rates",
+    "urlSupplementaire": "https://www.gov.uk/guidance/stamp-duty-land-tax-buying-an-additional-residential-property",
+    "enregistrement": "hmlr"
+   },
+   "northern-ireland": {
+    "nom": "Northern Ireland",
+    "impot": "Stamp Duty Land Tax (SDLT)",
+    "autorite": "HMRC",
+    "memeQue": "england",
+    "enregistrement": null
+   },
+   "scotland": {
+    "nom": "Scotland",
+    "impot": "Land and Buildings Transaction Tax (LBTT)",
+    "autorite": "Revenue Scotland",
+    "standard": [
+     [
+      145000,
+      0
+     ],
+     [
+      250000,
+      2
+     ],
+     [
+      325000,
+      5
+     ],
+     [
+      750000,
+      10
+     ],
+     [
+      null,
+      12
+     ]
+    ],
+    "primoAccedant": {
+     "bandeNulle": 175000,
+     "reductionMax": 600
+    },
+    "supplementaire": {
+     "type": "ads",
+     "taux": 8,
+     "seuil": 40000,
+     "depuis": "2024-12-05"
+    },
+    "nonResident": null,
+    "depuis": "2021-04-01",
+    "delaiJours": 30,
+    "source": "Revenue Scotland, LBTT residential property (rates and bands as of 1 April 2021, first-time buyer relief); Scottish Budget 2025-2026: ADS rate 8% for contracts on or after 5 December 2024",
+    "url": "https://www.revenue.scot/taxes/land-buildings-transaction-tax/residential-property",
+    "urlSupplementaire": "https://www.revenue.scot/news-publications/news/scottish-budget-2025-2026-changes-land-buildings",
+    "enregistrement": null
+   },
+   "wales": {
+    "nom": "Wales",
+    "impot": "Land Transaction Tax (LTT)",
+    "autorite": "Welsh Revenue Authority",
+    "standard": [
+     [
+      225000,
+      0
+     ],
+     [
+      400000,
+      6
+     ],
+     [
+      750000,
+      7.5
+     ],
+     [
+      1500000,
+      10
+     ],
+     [
+      null,
+      12
+     ]
+    ],
+    "primoAccedant": null,
+    "supplementaire": {
+     "type": "bareme",
+     "bandes": [
+      [
+       180000,
+       5
+      ],
+      [
+       250000,
+       8.5
+      ],
+      [
+       400000,
+       10
+      ],
+      [
+       750000,
+       12.5
+      ],
+      [
+       1500000,
+       15
+      ],
+      [
+       null,
+       17
+      ]
+     ],
+     "depuis": "2024-12-11"
+    },
+    "nonResident": null,
+    "depuis": "2022-10-10",
+    "delaiJours": 30,
+    "source": "Welsh Government, Land Transaction Tax rates and bands (main residential rates from 10 October 2022, higher residential rates from 11 December 2024)",
+    "url": "https://www.gov.wales/land-transaction-tax-rates-and-bands",
+    "urlSupplementaire": "https://www.gov.wales/land-transaction-tax-rates-and-bands",
+    "enregistrement": "hmlr"
+   }
+  },
+  "hmlr": {
+   "nom": "HM Land Registry registration fee (Scale 1, transfer of a whole registered title, applied for online by the conveyancer)",
+   "bandes": [
+    [
+     80000,
+     20
+    ],
+    [
+     100000,
+     40
+    ],
+    [
+     200000,
+     100
+    ],
+    [
+     500000,
+     150
+    ],
+    [
+     1000000,
+     295
+    ],
+    [
+     null,
+     500
+    ]
+   ],
+   "bandesCourrier": [
+    [
+     80000,
+     45
+    ],
+    [
+     100000,
+     95
+    ],
+    [
+     200000,
+     230
+    ],
+    [
+     500000,
+     330
+    ],
+    [
+     1000000,
+     655
+    ],
+    [
+     null,
+     1105
+    ]
+   ],
+   "source": "HM Land Registry, Registration Services fees (Land Registration Fee Order 2024, in effect since 9 December 2024; applies to England and Wales)",
+   "url": "https://www.gov.uk/guidance/land-registry-registration-services-fees"
+  },
+  "nonChiffre": "Les honoraires du conveyancer, du surveyor et du courtier ne suivent aucun barème officiel : le calculateur ne les chiffre pas. Registers of Scotland (ros.gov.uk répond 403) et Land & Property Services (NI) : frais d'enregistrement non relus, donc non chiffrés."
+ },
+ "prices": {
+  "source": "UK House Price Index (HM Land Registry, Registers of Scotland, Land & Property Services Northern Ireland, ONS)",
+  "attribution": "Contains HM Land Registry data © Crown copyright and database right 2020. This data is licensed under the Open Government Licence v3.0.",
+  "month": "2026-07",
+  "sales_window": [
+   "2025-05",
+   "2026-04"
+  ],
+  "nations": {
+   "england": {
+    "name": "England",
+    "month": "2026-07",
+    "average_price": 293479,
+    "change_12m_pct": 1.1,
+    "first_time_buyer_price": 245515,
+    "by_type": {
+     "detached": 474626,
+     "semi": 292024,
+     "terraced": 247081,
+     "flat": 217362
+    },
+    "sales_12m": 685291,
+    "url": "https://payotte.com/uk/nations/england"
+   },
+   "northern-ireland": {
+    "name": "Northern Ireland",
+    "month": "2026-07",
+    "average_price": 202487,
+    "change_12m_pct": 9.2,
+    "first_time_buyer_price": null,
+    "by_type": {
+     "detached": 312624,
+     "semi": 204283,
+     "terraced": 145980,
+     "flat": 148475
+    },
+    "sales_12m": 23547,
+    "url": "https://payotte.com/uk/nations/northern-ireland"
+   },
+   "scotland": {
+    "name": "Scotland",
+    "month": "2026-07",
+    "average_price": 196349,
+    "change_12m_pct": 2.3,
+    "first_time_buyer_price": 160341,
+    "by_type": {
+     "detached": 362765,
+     "semi": 225166,
+     "terraced": 182762,
+     "flat": 136950
+    },
+    "sales_12m": 103356,
+    "url": "https://payotte.com/uk/nations/scotland"
+   },
+   "uk": {
+    "name": "United Kingdom",
+    "month": "2026-07",
+    "average_price": 272611,
+    "change_12m_pct": 1.4,
+    "first_time_buyer_price": null,
+    "by_type": {
+     "detached": 444936,
+     "semi": 278555,
+     "terraced": 231945,
+     "flat": 192704
+    },
+    "sales_12m": 851191,
+    "url": "https://payotte.com/uk/areas"
+   },
+   "wales": {
+    "name": "Wales",
+    "month": "2026-07",
+    "average_price": 215037,
+    "change_12m_pct": 2.6,
+    "first_time_buyer_price": 184649,
+    "by_type": {
+     "detached": 336301,
+     "semi": 215065,
+     "terraced": 172261,
+     "flat": 128586
+    },
+    "sales_12m": 38997,
+    "url": "https://payotte.com/uk/nations/wales"
+   }
+  },
+  "regions": [
+   {
+    "name": "East Midlands",
+    "month": "2026-07",
+    "average_price": 242274,
+    "change_12m_pct": 1.9,
+    "first_time_buyer_price": 207106,
+    "by_type": {
+     "detached": 356404,
+     "semi": 231305,
+     "terraced": 187714,
+     "flat": 124624
+    },
+    "sales_12m": 65128,
+    "url": "https://payotte.com/uk/regions/east-midlands"
+   },
+   {
+    "name": "East of England",
+    "month": "2026-07",
+    "average_price": 337518,
+    "change_12m_pct": 0.5,
+    "first_time_buyer_price": 277733,
+    "by_type": {
+     "detached": 524064,
+     "semi": 351513,
+     "terraced": 288951,
+     "flat": 190128
+    },
+    "sales_12m": 81923,
+    "url": "https://payotte.com/uk/regions/east-of-england"
+   },
+   {
+    "name": "London",
+    "month": "2026-07",
+    "average_price": 550037,
+    "change_12m_pct": -3.3,
+    "first_time_buyer_price": 466851,
+    "by_type": {
+     "detached": 1167718,
+     "semi": 724106,
+     "terraced": 642452,
+     "flat": 424013
+    },
+    "sales_12m": 73854,
+    "url": "https://payotte.com/uk/regions/london"
+   },
+   {
+    "name": "North East",
+    "month": "2026-07",
+    "average_price": 166943,
+    "change_12m_pct": 4.9,
+    "first_time_buyer_price": 145895,
+    "by_type": {
+     "detached": 293903,
+     "semi": 174474,
+     "terraced": 141404,
+     "flat": 103288
+    },
+    "sales_12m": 34947,
+    "url": "https://payotte.com/uk/regions/north-east"
+   },
+   {
+    "name": "North West",
+    "month": "2026-07",
+    "average_price": 221445,
+    "change_12m_pct": 4.4,
+    "first_time_buyer_price": 192206,
+    "by_type": {
+     "detached": 391389,
+     "semi": 243630,
+     "terraced": 178738,
+     "flat": 140666
+    },
+    "sales_12m": 94057,
+    "url": "https://payotte.com/uk/regions/north-west"
+   },
+   {
+    "name": "South East",
+    "month": "2026-07",
+    "average_price": 380878,
+    "change_12m_pct": 0.2,
+    "first_time_buyer_price": 300075,
+    "by_type": {
+     "detached": 687877,
+     "semi": 416447,
+     "terraced": 325681,
+     "flat": 207581
+    },
+    "sales_12m": 118577,
+    "url": "https://payotte.com/uk/regions/south-east"
+   },
+   {
+    "name": "South West",
+    "month": "2026-07",
+    "average_price": 302298,
+    "change_12m_pct": -0.2,
+    "first_time_buyer_price": 249123,
+    "by_type": {
+     "detached": 495113,
+     "semi": 323872,
+     "terraced": 264734,
+     "flat": 171240
+    },
+    "sales_12m": 79625,
+    "url": "https://payotte.com/uk/regions/south-west"
+   },
+   {
+    "name": "West Midlands",
+    "month": "2026-07",
+    "average_price": 250880,
+    "change_12m_pct": 1.5,
+    "first_time_buyer_price": 212902,
+    "by_type": {
+     "detached": 420731,
+     "semi": 255222,
+     "terraced": 205555,
+     "flat": 138812
+    },
+    "sales_12m": 66765,
+    "url": "https://payotte.com/uk/regions/west-midlands"
+   },
+   {
+    "name": "Yorkshire and The Humber",
+    "month": "2026-07",
+    "average_price": 209116,
+    "change_12m_pct": 3,
+    "first_time_buyer_price": 181158,
+    "by_type": {
+     "detached": 347690,
+     "semi": 216081,
+     "terraced": 169808,
+     "flat": 127578
+    },
+    "sales_12m": 70415,
+    "url": "https://payotte.com/uk/regions/yorkshire-and-the-humber"
+   }
+  ],
+  "areas": [
+   {
+    "name": "Belfast",
+    "month": "2026-07",
+    "average_price": 184768,
+    "change_12m_pct": 7.7,
+    "first_time_buyer_price": null,
+    "by_type": {
+     "detached": null,
+     "semi": null,
+     "terraced": null,
+     "flat": null
+    },
+    "sales_12m": 4655,
+    "url": "https://payotte.com/uk/areas/belfast",
+    "nation": "northern-ireland",
+    "region": null
+   },
+   {
+    "name": "Birmingham",
+    "month": "2026-07",
+    "average_price": 234257,
+    "change_12m_pct": 2.5,
+    "first_time_buyer_price": 211998,
+    "by_type": {
+     "detached": 443346,
+     "semi": 275144,
+     "terraced": 221903,
+     "flat": 144814
+    },
+    "sales_12m": 8963,
+    "url": "https://payotte.com/uk/areas/birmingham",
+    "nation": "england",
+    "region": "West Midlands"
+   },
+   {
+    "name": "Bradford",
+    "month": "2026-07",
+    "average_price": 182766,
+    "change_12m_pct": 2.5,
+    "first_time_buyer_price": 164397,
+    "by_type": {
+     "detached": 327395,
+     "semi": 203605,
+     "terraced": 153556,
+     "flat": 108466
+    },
+    "sales_12m": 6400,
+    "url": "https://payotte.com/uk/areas/bradford",
+    "nation": "england",
+    "region": "Yorkshire and The Humber"
+   },
+   {
+    "name": "Buckinghamshire",
+    "month": "2026-07",
+    "average_price": 479736,
+    "change_12m_pct": 1.1,
+    "first_time_buyer_price": 355164,
+    "by_type": {
+     "detached": 858673,
+     "semi": 472407,
+     "terraced": 378389,
+     "flat": 234615
+    },
+    "sales_12m": 6910,
+    "url": "https://payotte.com/uk/areas/buckinghamshire",
+    "nation": "england",
+    "region": "South East"
+   },
+   {
+    "name": "Cardiff",
+    "month": "2026-07",
+    "average_price": 272252,
+    "change_12m_pct": 2.7,
+    "first_time_buyer_price": 234155,
+    "by_type": {
+     "detached": 519113,
+     "semi": 324859,
+     "terraced": 262241,
+     "flat": 160574
+    },
+    "sales_12m": 4368,
+    "url": "https://payotte.com/uk/areas/cardiff",
+    "nation": "wales",
+    "region": null
+   },
+   {
+    "name": "Cheshire East",
+    "month": "2026-07",
+    "average_price": 309121,
+    "change_12m_pct": 5,
+    "first_time_buyer_price": 250343,
+    "by_type": {
+     "detached": 501839,
+     "semi": 296274,
+     "terraced": 228419,
+     "flat": 155474
+    },
+    "sales_12m": 6552,
+    "url": "https://payotte.com/uk/areas/cheshire-east",
+    "nation": "england",
+    "region": "North West"
+   },
+   {
+    "name": "City of Edinburgh",
+    "month": "2026-07",
+    "average_price": 303965,
+    "change_12m_pct": 4,
+    "first_time_buyer_price": 254542,
+    "by_type": {
+     "detached": 705469,
+     "semi": 460502,
+     "terraced": 384727,
+     "flat": 246563
+    },
+    "sales_12m": 11001,
+    "url": "https://payotte.com/uk/areas/city-of-edinburgh",
+    "nation": "scotland",
+    "region": null
+   },
+   {
+    "name": "City of Glasgow",
+    "month": "2026-07",
+    "average_price": 193675,
+    "change_12m_pct": 2.6,
+    "first_time_buyer_price": 174386,
+    "by_type": {
+     "detached": 501979,
+     "semi": 304524,
+     "terraced": 249421,
+     "flat": 162766
+    },
+    "sales_12m": 11159,
+    "url": "https://payotte.com/uk/areas/city-of-glasgow",
+    "nation": "scotland",
+    "region": null
+   },
+   {
+    "name": "Cornwall",
+    "month": "2026-07",
+    "average_price": 275642,
+    "change_12m_pct": -0.7,
+    "first_time_buyer_price": 227324,
+    "by_type": {
+     "detached": 421751,
+     "semi": 276890,
+     "terraced": 228014,
+     "flat": 144632
+    },
+    "sales_12m": 7831,
+    "url": "https://payotte.com/uk/areas/cornwall",
+    "nation": "england",
+    "region": "South West"
+   },
+   {
+    "name": "County Durham",
+    "month": "2026-07",
+    "average_price": 140447,
+    "change_12m_pct": 4.7,
+    "first_time_buyer_price": 125124,
+    "by_type": {
+     "detached": 239098,
+     "semi": 141233,
+     "terraced": 116586,
+     "flat": 78510
+    },
+    "sales_12m": 7369,
+    "url": "https://payotte.com/uk/areas/county-durham",
+    "nation": "england",
+    "region": "North East"
+   },
+   {
+    "name": "Dorset",
+    "month": "2026-07",
+    "average_price": 325154,
+    "change_12m_pct": -0.1,
+    "first_time_buyer_price": 254490,
+    "by_type": {
+     "detached": 515191,
+     "semi": 329926,
+     "terraced": 264878,
+     "flat": 167282
+    },
+    "sales_12m": 5820,
+    "url": "https://payotte.com/uk/areas/dorset",
+    "nation": "england",
+    "region": "South West"
+   },
+   {
+    "name": "Fife",
+    "month": "2026-07",
+    "average_price": 179134,
+    "change_12m_pct": 5.4,
+    "first_time_buyer_price": 149399,
+    "by_type": {
+     "detached": 346998,
+     "semi": 205947,
+     "terraced": 163356,
+     "flat": 110150
+    },
+    "sales_12m": 6868,
+    "url": "https://payotte.com/uk/areas/fife",
+    "nation": "scotland",
+    "region": null
+   },
+   {
+    "name": "Leeds",
+    "month": "2026-07",
+    "average_price": 247695,
+    "change_12m_pct": 3.8,
+    "first_time_buyer_price": 216085,
+    "by_type": {
+     "detached": 454505,
+     "semi": 271022,
+     "terraced": 206148,
+     "flat": 151734
+    },
+    "sales_12m": 9455,
+    "url": "https://payotte.com/uk/areas/leeds",
+    "nation": "england",
+    "region": "Yorkshire and The Humber"
+   },
+   {
+    "name": "North Lanarkshire",
+    "month": "2026-07",
+    "average_price": 158591,
+    "change_12m_pct": 3.6,
+    "first_time_buyer_price": 134614,
+    "by_type": {
+     "detached": 323497,
+     "semi": 188002,
+     "terraced": 147414,
+     "flat": 92382
+    },
+    "sales_12m": 5432,
+    "url": "https://payotte.com/uk/areas/north-lanarkshire",
+    "nation": "scotland",
+    "region": null
+   },
+   {
+    "name": "North Yorkshire",
+    "month": "2026-07",
+    "average_price": 270463,
+    "change_12m_pct": 2.5,
+    "first_time_buyer_price": 218387,
+    "by_type": {
+     "detached": 433208,
+     "semi": 269971,
+     "terraced": 219349,
+     "flat": 142516
+    },
+    "sales_12m": 9371,
+    "url": "https://payotte.com/uk/areas/north-yorkshire",
+    "nation": "england",
+    "region": "Yorkshire and The Humber"
+   },
+   {
+    "name": "Sheffield",
+    "month": "2026-07",
+    "average_price": 219713,
+    "change_12m_pct": 2.8,
+    "first_time_buyer_price": 194060,
+    "by_type": {
+     "detached": 383581,
+     "semi": 239678,
+     "terraced": 198875,
+     "flat": 133576
+    },
+    "sales_12m": 6032,
+    "url": "https://payotte.com/uk/areas/sheffield",
+    "nation": "england",
+    "region": "Yorkshire and The Humber"
+   },
+   {
+    "name": "Somerset",
+    "month": "2026-07",
+    "average_price": 282062,
+    "change_12m_pct": 3.1,
+    "first_time_buyer_price": 232238,
+    "by_type": {
+     "detached": 459732,
+     "semi": 289398,
+     "terraced": 234361,
+     "flat": 135593
+    },
+    "sales_12m": 8170,
+    "url": "https://payotte.com/uk/areas/somerset",
+    "nation": "england",
+    "region": "South West"
+   },
+   {
+    "name": "South Lanarkshire",
+    "month": "2026-07",
+    "average_price": 185267,
+    "change_12m_pct": 4.1,
+    "first_time_buyer_price": 146582,
+    "by_type": {
+     "detached": 380724,
+     "semi": 224101,
+     "terraced": 164407,
+     "flat": 104617
+    },
+    "sales_12m": 6693,
+    "url": "https://payotte.com/uk/areas/south-lanarkshire",
+    "nation": "scotland",
+    "region": null
+   },
+   {
+    "name": "West Northamptonshire",
+    "month": "2026-07",
+    "average_price": 291929,
+    "change_12m_pct": 1.2,
+    "first_time_buyer_price": 242144,
+    "by_type": {
+     "detached": 472440,
+     "semi": 285016,
+     "terraced": 235586,
+     "flat": 139838
+    },
+    "sales_12m": 5918,
+    "url": "https://payotte.com/uk/areas/west-northamptonshire",
+    "nation": "england",
+    "region": "East Midlands"
+   },
+   {
+    "name": "Wiltshire",
+    "month": "2026-07",
+    "average_price": 328746,
+    "change_12m_pct": 2.6,
+    "first_time_buyer_price": 263481,
+    "by_type": {
+     "detached": 519207,
+     "semi": 328063,
+     "terraced": 265275,
+     "flat": 158309
+    },
+    "sales_12m": 7050,
+    "url": "https://payotte.com/uk/areas/wiltshire",
+    "nation": "england",
+    "region": "South West"
+   }
+  ]
+ },
+ "tables": {
+  "conveyancing-system": {
+   "compiled": "2026-10-14",
+   "url": "https://payotte.com/uk/by-nation/conveyancing-system",
+   "nations": {
+    "england": {
+     "binding_point": "Exchange of contracts",
+     "professionals": "Solicitor, licensed conveyancer or CILEx practitioner",
+     "registry": "HM Land Registry",
+     "answer": "In England, you are legally bound to buy only at exchange of contracts; until then an offer is not binding on either side. A solicitor, licensed conveyancer or CILEx practitioner does the legal work, and the change of ownership is registered with HM Land Registry.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Buying a home: Transferring ownership (conveyancing) (GOV.UK)",
+       "url": "https://www.gov.uk/buying-a-home/transferring-ownership"
+      },
+      {
+       "title": "How to buy a home (MHCLG guide, 2019, GOV.UK)",
+       "url": "https://www.gov.uk/government/publications/how-to-buy-a-home/how-to-buy"
+      },
+      {
+       "title": "HM Land Registry registration services fees (GOV.UK)",
+       "url": "https://www.gov.uk/guidance/hm-land-registry-registration-services-fees"
+      }
+     ]
+    },
+    "scotland": {
+     "binding_point": "Concluded missives (the concluding missive is a binding contract)",
+     "professionals": "Solicitor (sends the offer, handles missives, title checks and settlement)",
+     "registry": "Land Register (Registers of Scotland)",
+     "answer": "In Scotland, there is no exchange of contracts: the contract becomes binding when the missives are concluded, and the offer must be sent as a letter from your solicitor. A solicitor handles the whole legal process, and ownership is recorded in the Land Register.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Missives (mygov.scot)",
+       "url": "https://www.mygov.scot/sell-home/missives"
+      },
+      {
+       "title": "Conveyancing (mygov.scot)",
+       "url": "https://www.mygov.scot/buy-home/conveyancing"
+      },
+      {
+       "title": "Settlement (mygov.scot)",
+       "url": "https://www.mygov.scot/buy-home/settlement"
+      }
+     ]
+    },
+    "wales": {
+     "binding_point": "Exchange of contracts",
+     "professionals": "Solicitor, licensed conveyancer or CILEx practitioner",
+     "registry": "HM Land Registry",
+     "answer": "In Wales, as in England, you are legally bound to buy only at exchange of contracts. The guides say the process and the choice of solicitor, licensed conveyancer or CILEx practitioner are the same as in England; Wales has its own Land Transaction Tax.",
+     "note": "Registry inferred from the England-and-Wales sequence in the England guide; no Wales-specific registry page.",
+     "sources": [
+      {
+       "title": "Buying a home: Transferring ownership (conveyancing) (GOV.UK)",
+       "url": "https://www.gov.uk/buying-a-home/transferring-ownership"
+      },
+      {
+       "title": "How to buy a home (MHCLG guide, 2019, GOV.UK)",
+       "url": "https://www.gov.uk/government/publications/how-to-buy-a-home/how-to-buy"
+      },
+      {
+       "title": "How to buy a home (GOV.UK)",
+       "url": "https://www.gov.uk/government/publications/how-to-buy-a-home/how-to-buy"
+      }
+     ]
+    },
+    "northern-ireland": {
+     "binding_point": "Exchange of contracts",
+     "professionals": "Solicitor (regulated by the Law Society of Northern Ireland)",
+     "registry": "Land Registry (and Registry of Deeds for unregistered land), run by Land & Property Services",
+     "answer": "In Northern Ireland, nidirect says the sale becomes legally binding at exchange of contracts, with a deposit of at least five per cent usually paid then. A solicitor does the legal work, and ownership is recorded in the Land Registry or, for unregistered land, the Registry of Deeds.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Buying a home - step-by-step guide (nidirect)",
+       "url": "https://www.nidirect.gov.uk/articles/buying-home-step-step-guide"
+      },
+      {
+       "title": "Consumer guide to buying and selling residential property (Law Society of Northern Ireland)",
+       "url": "https://lawsoc-ni.org/assets/general/files/Final-Conveyancing-Consumer-leaflet_Non-Conference.pdf"
+      },
+      {
+       "title": "Solicitors guide to Compulsory First Registration (Department of Finance)",
+       "url": "https://www.finance-ni.gov.uk/articles/solicitors-guide-compulsory-first-registration"
+      }
+     ]
+    }
+   }
+  },
+  "epc-rules": {
+   "compiled": "2026-10-14",
+   "url": "https://payotte.com/uk/by-nation/epc-rules",
+   "nations": {
+    "england": {
+     "needed_to_sell": "yes",
+     "validity": "10 years",
+     "letting_minimum": "E (cannot let below E without a registered exemption; £3,500 improvement cost cap)",
+     "answer": "In England, you need an energy performance certificate before you market a property to sell or rent, and it is valid for 10 years. A landlord generally cannot let a home rated below E without a registered exemption.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Energy Performance Certificates for buildings: selling or renting (GOV.UK)",
+       "url": "https://www.gov.uk/buy-sell-your-home/energy-performance-certificates"
+      },
+      {
+       "title": "Domestic private rented property: minimum energy efficiency standard, landlord guidance (GOV.UK, updated 5 May 2026)",
+       "url": "https://www.gov.uk/guidance/domestic-private-rented-property-minimum-energy-efficiency-standard-landlord-guidance"
+      }
+     ]
+    },
+    "scotland": {
+     "needed_to_sell": "yes",
+     "validity": "10 years",
+     "letting_minimum": null,
+     "answer": "In Scotland, the EPC is the energy report inside the Home Report, must be provided to the purchaser free of charge, and its rating must appear in the property advertisement. Even where no Home Report is needed, the seller must provide an EPC.",
+     "note": "10-year validity is stated generally in the guide, not in the Scotland section; letting minimum not stated (guide says check gov.scot).",
+     "sources": [
+      {
+       "title": "Energy Performance Certificates: buildings for sale (gov.scot)",
+       "url": "https://www.gov.scot/publications/energy-performance-certificates-guide/pages/buildings-for-sale/"
+      },
+      {
+       "title": "Home report (mygov.scot)",
+       "url": "https://www.mygov.scot/buy-home/home-report"
+      }
+     ]
+    },
+    "wales": {
+     "needed_to_sell": "yes",
+     "validity": "10 years",
+     "letting_minimum": "E (rented homes; civil penalty up to £5,000 unless exempt)",
+     "answer": "In Wales, rented properties must normally have an EPC rating of E or above, with a civil penalty up to £5,000 unless an exemption applies, according to Rent Smart Wales. An EPC lasts 10 years.",
+     "note": "Sale requirement shown as 'Yes (check the Welsh Government)' in the guide; no Welsh sale page was read.",
+     "sources": [
+      {
+       "title": "Energy efficiency regulations for rented homes (Rent Smart Wales)",
+       "url": "https://rentsmart.gov.wales/en/news/41/rsw-energy-efficiency-regulations-video-/"
+      },
+      {
+       "title": "Domestic private rented property: minimum energy efficiency standard, landlord guidance (GOV.UK, updated 5 May 2026)",
+       "url": "https://www.gov.uk/guidance/domestic-private-rented-property-minimum-energy-efficiency-standard-landlord-guidance"
+      }
+     ]
+    },
+    "northern-ireland": {
+     "needed_to_sell": "yes",
+     "validity": "10 years",
+     "letting_minimum": null,
+     "answer": "In Northern Ireland, nidirect says an EPC is needed whenever a property is built or marketed for sale or rent, and each EPC is valid for 10 years. District councils enforce it, and the page does not mention a minimum rating for rented homes.",
+     "note": "Letting minimum not stated on the nidirect page read.",
+     "sources": [
+      {
+       "title": "Energy performance certificates (nidirect)",
+       "url": "https://www.nidirect.gov.uk/articles/energy-performance-certificates"
+      }
+     ]
+    }
+   }
+  },
+  "first-time-buyer-relief": {
+   "compiled": "2026-10-14",
+   "url": "https://payotte.com/uk/by-nation/first-time-buyer-relief",
+   "nations": {
+    "england": {
+     "relief": "yes",
+     "threshold": "£300,000",
+     "price_cap": "£500,000",
+     "conditions": "never owned a residential property anywhere in the world; intend to occupy as main residence; price £500,000 or less; relief claimed in the SDLT return",
+     "answer": "In England, first-time buyers pay 0% Stamp Duty Land Tax on the first £300,000 and 5% on the slice from £300,001 to £500,000, with no relief above £500,000. The buyer must never have owned residential property anywhere in the world and must intend to live in the home as a main residence.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Stamp Duty Land Tax: Residential property rates (GOV.UK)",
+       "url": "https://www.gov.uk/stamp-duty-land-tax/residential-property-rates"
+      },
+      {
+       "title": "Stamp Duty Land Tax: relief for first time buyers (GOV.UK)",
+       "url": "https://www.gov.uk/government/publications/stamp-duty-land-tax-relief-for-first-time-buyers/stamp-duty-land-tax-relief-for-first-time-buyers"
+      },
+      {
+       "title": "SDLTM29845 - Definition of a first-time buyer (HMRC manual)",
+       "url": "https://www.gov.uk/hmrc-internal-manuals/stamp-duty-land-tax-manual/sdltm29845"
+      }
+     ]
+    },
+    "scotland": {
+     "relief": "yes",
+     "threshold": "£175,000",
+     "price_cap": null,
+     "conditions": "never owned a residential property anywhere in the world; intend to occupy as only or main residence; not part of linked transactions; Additional Dwelling Supplement does not apply; every joint buyer must qualify",
+     "answer": "In Scotland, first-time buyer relief raises the LBTT nil rate band from £145,000 to £175,000, which cuts the tax by up to £600. The buyer must never have owned residential property anywhere in the world, must intend to live in the home as their only or main residence, and the Additional Dwelling Supplement must not apply.",
+     "note": "No price limit stated in the guidance the guide read.",
+     "sources": [
+      {
+       "title": "LBTT3048 - First-time buyer relief (Revenue Scotland)",
+       "url": "https://revenue.scot/taxes/land-buildings-transaction-tax/lbtt-legislation-guidance/lbtt3001-exemptions-reliefs/lbtt3010-tax-reliefs/lbtt3048-first-time-buyer-relief"
+      },
+      {
+       "title": "Residential property: LBTT rates and first-time buyer relief (Revenue Scotland)",
+       "url": "https://revenue.scot/taxes/land-buildings-transaction-tax/residential-property"
+      }
+     ]
+    },
+    "wales": {
+     "relief": "no",
+     "threshold": null,
+     "price_cap": null,
+     "conditions": "not applicable",
+     "answer": "In Wales there is no first-time buyers' relief, according to the Welsh Government. A first-time buyer pays the standard Land Transaction Tax rates, which start at 0% up to £225,000.",
+     "note": "No relief, so no threshold or price cap.",
+     "sources": [
+      {
+       "title": "Land Transaction Tax: guide, no first-time buyers' relief in Wales (gov.wales)",
+       "url": "https://www.gov.wales/land-transaction-tax-guide"
+      },
+      {
+       "title": "Land Transaction Tax: overview (gov.wales)",
+       "url": "https://www.gov.wales/land-transaction-tax-overview"
+      }
+     ]
+    },
+    "northern-ireland": {
+     "relief": "yes",
+     "threshold": "£300,000",
+     "price_cap": "£500,000",
+     "conditions": "never owned a residential property anywhere in the world; intend to occupy as main residence; price £500,000 or less; relief claimed in the SDLT return",
+     "answer": "In Northern Ireland, first-time buyers pay 0% Stamp Duty Land Tax on the first £300,000 and 5% on the slice from £300,001 to £500,000, with no relief above £500,000. The buyer must never have owned residential property anywhere in the world and must intend to live in the home as a main residence.",
+     "note": "Northern Ireland shares the SDLT relief with England (guide treats them together).",
+     "sources": [
+      {
+       "title": "Stamp Duty Land Tax: Residential property rates (GOV.UK)",
+       "url": "https://www.gov.uk/stamp-duty-land-tax/residential-property-rates"
+      },
+      {
+       "title": "Stamp Duty Land Tax: relief for first time buyers (GOV.UK)",
+       "url": "https://www.gov.uk/government/publications/stamp-duty-land-tax-relief-for-first-time-buyers/stamp-duty-land-tax-relief-for-first-time-buyers"
+      },
+      {
+       "title": "SDLTM29845 - Definition of a first-time buyer (HMRC manual)",
+       "url": "https://www.gov.uk/hmrc-internal-manuals/stamp-duty-land-tax-manual/sdltm29845"
+      }
+     ]
+    }
+   }
+  },
+  "home-surveys": {
+   "compiled": "2026-10-14",
+   "url": "https://payotte.com/uk/by-nation/home-surveys",
+   "nations": {
+    "england": {
+     "seller_survey_required": "no",
+     "what": "No seller survey; the buyer should consider a RICS Level 1, 2 or 3 survey (a lender's mortgage valuation is not a survey)",
+     "answer": "In England, the seller does not have to provide a survey. The buyer is advised to consider an RICS Home Survey at Level 1, 2 or 3, and a lender's mortgage valuation is not the same thing as a survey.",
+     "note": "Guide says no equivalent of the Scottish Home Report in the sources read; not stated as an explicit English rule.",
+     "sources": [
+      {
+       "title": "House surveys: the costs, types and benefits of one (RICS)",
+       "url": "https://www.rics.org/consumer-guides/house-surveys-uk-the-costs-types-and-benefits-of-an-rics-home-survey"
+      },
+      {
+       "title": "How to buy a home (GOV.UK)",
+       "url": "https://www.gov.uk/government/publications/how-to-buy-a-home/how-to-buy"
+      }
+     ]
+    },
+    "scotland": {
+     "seller_survey_required": "yes",
+     "what": "Home Report: single survey and valuation (visual inspection by a chartered surveyor), property questionnaire and energy report; must be supplied within nine days of a request",
+     "answer": "In Scotland, a home for sale normally comes with a Home Report made of a single survey and valuation, a property questionnaire and an energy report. The seller or agent must give it within nine days of a request, except for exempt homes such as off-plan new builds and seasonal holiday homes.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Home Report (mygov.scot)",
+       "url": "https://www.mygov.scot/buy-home/home-report"
+      },
+      {
+       "title": "Housing (Scotland) Act 2006, Part 3 (legislation.gov.uk)",
+       "url": "https://www.legislation.gov.uk/asp/2006/1/part/3"
+      },
+      {
+       "title": "Property inspection technical guidance for completing Single Surveys (RICS Scotland)",
+       "url": "https://www.rics.org/content/dam/ricsglobal/documents/standards/property_inspection_technical_guidance_for_the_completing_of_single_surveys_rics.pdf"
+      }
+     ]
+    },
+    "wales": {
+     "seller_survey_required": "no",
+     "what": "No seller survey; the buyer should consider a RICS Level 1, 2 or 3 survey (a lender's mortgage valuation is not a survey)",
+     "answer": "In Wales, the guides read describe no seller-provided survey; the Home Report exists in Scotland only. A buyer can commission an RICS Home Survey at Level 1, 2 or 3, which differs from a lender's valuation.",
+     "note": "Wales not discussed separately; 'no' rests on the guide saying England, Wales and Northern Ireland have no equivalent requirement in the sources read.",
+     "sources": [
+      {
+       "title": "House surveys: the costs, types and benefits of one (RICS)",
+       "url": "https://www.rics.org/consumer-guides/house-surveys-uk-the-costs-types-and-benefits-of-an-rics-home-survey"
+      },
+      {
+       "title": "How to buy a home (GOV.UK)",
+       "url": "https://www.gov.uk/government/publications/how-to-buy-a-home/how-to-buy"
+      }
+     ]
+    },
+    "northern-ireland": {
+     "seller_survey_required": "no",
+     "what": "No seller survey; nidirect lists getting the property surveyed as a buyer step, and the lender may require a valuation",
+     "answer": "In Northern Ireland, the seller does not have to provide a survey in the guides read. nidirect lists getting the property surveyed as a step for the buyer, and the lender may also need a valuation.",
+     "note": "'No' rests on the guide saying there is no equivalent requirement in the sources read; the guide gives no NI-specific survey levels.",
+     "sources": [
+      {
+       "title": "Buying a home - step-by-step guide (nidirect)",
+       "url": "https://www.nidirect.gov.uk/articles/buying-home-step-step-guide"
+      },
+      {
+       "title": "House surveys: the costs, types and benefits of one (RICS)",
+       "url": "https://www.rics.org/consumer-guides/house-surveys-uk-the-costs-types-and-benefits-of-an-rics-home-survey"
+      }
+     ]
+    }
+   }
+  },
+  "local-property-tax": {
+   "compiled": "2026-10-14",
+   "url": "https://payotte.com/uk/by-nation/local-property-tax",
+   "nations": {
+    "england": {
+     "tax": "Council tax",
+     "basis": "Valuation band A to H based on estimated open-market value, times the council's charge for the band, less discounts (25% if living alone)",
+     "valuation_date": "1 April 1991",
+     "answer": "In England, the local property tax is council tax, set by the home's valuation band (A to H), the council's charge for that band and any discount. Bands rest on values at 1 April 1991.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Understand how Council Tax bands are assessed (GOV.UK)",
+       "url": "https://www.gov.uk/guidance/understand-how-council-tax-bands-are-assessed"
+      },
+      {
+       "title": "Council Tax (GOV.UK)",
+       "url": "https://www.gov.uk/council-tax"
+      }
+     ]
+    },
+    "scotland": {
+     "tax": "Council tax",
+     "basis": "Valuation band A to H (value ranges from section 74 of the Local Government Finance Act 1992), assessed by the local assessor, times the council's charge, less discounts",
+     "valuation_date": null,
+     "answer": "In Scotland, the local property tax is council tax, with bands A to H assessed by the local assessor. The band value ranges, from £27,000 or less for A to above £212,000 for H, come from section 74 of the Local Government Finance Act 1992.",
+     "note": "Valuation date not stated in the guide for Scotland.",
+     "sources": [
+      {
+       "title": "Local Government Finance Act 1992, section 74 (legislation.gov.uk)",
+       "url": "https://www.legislation.gov.uk/ukpga/1992/14/section/74"
+      },
+      {
+       "title": "Understand how Council Tax bands are assessed (GOV.UK)",
+       "url": "https://www.gov.uk/guidance/understand-how-council-tax-bands-are-assessed"
+      },
+      {
+       "title": "Council tax high-value property bands: rates consultation (gov.scot)",
+       "url": "https://www.gov.scot/news/mansion-tax-rates-consultation/"
+      }
+     ]
+    },
+    "wales": {
+     "tax": "Council tax",
+     "basis": "Valuation band A to I based on estimated open-market value, times the council's charge for the band, less discounts",
+     "valuation_date": "1 April 2003",
+     "answer": "In Wales, the local property tax is council tax, with bands A to I based on values at 1 April 2003. The Welsh Government says reform, including revaluation every five years, will come in 2028.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Understand how Council Tax bands are assessed (GOV.UK)",
+       "url": "https://www.gov.uk/guidance/understand-how-council-tax-bands-are-assessed"
+      },
+      {
+       "title": "Find out about how we are reforming Council Tax (gov.wales)",
+       "url": "https://www.gov.wales/find-out-about-how-we-are-reforming-council-tax"
+      }
+     ]
+    },
+    "northern-ireland": {
+     "tax": "Domestic rates (no council tax)",
+     "basis": "Capital value times (regional rate plus district rate); value above £400,000 ignored; regional rate 0.005559 per £1 in 2026-27",
+     "valuation_date": "1 January 2005",
+     "answer": "Northern Ireland has no council tax; homes pay domestic rates, equal to capital value at 1 January 2005 times the regional rate plus the council's district rate. Value above £400,000 is ignored, and the 2026-27 regional rate is 0.005559 per £1.",
+     "note": null,
+     "sources": [
+      {
+       "title": "How rate bills are calculated (nidirect)",
+       "url": "https://www.nidirect.gov.uk/articles/how-rate-bills-are-calculated"
+      },
+      {
+       "title": "Rate poundages 2026-27 (Department of Finance)",
+       "url": "https://www.finance-ni.gov.uk/articles/rate-poundages"
+      }
+     ]
+    }
+   }
+  },
+  "purchase-tax": {
+   "compiled": "2026-10-14",
+   "url": "https://payotte.com/uk/by-nation/purchase-tax",
+   "nations": {
+    "england": {
+     "tax": "Stamp Duty Land Tax (SDLT)",
+     "bands": "0% to £125,000, 2% to £250,000, 5% to £925,000, 10% to £1,500,000, 12% above £1,500,000",
+     "first_time": "0% to £300,000, 5% to £500,000; no relief above £500,000",
+     "additional": "+5 points in every band (from £40,000)",
+     "deadline": "14 days",
+     "tax_300k_mover": 5000,
+     "tax_300k_first_time": 0,
+     "tax_300k_additional": 20000,
+     "answer": "In England, the purchase tax is Stamp Duty Land Tax (SDLT), collected by HMRC: on a £300,000 home it comes to £5,000 for a home mover, £0 for a first-time buyer and £20,000 for an additional property.",
+     "note": null,
+     "sources": [
+      {
+       "title": "GOV.UK, Stamp Duty Land Tax: residential property rates (HMRC); Higher rates of Stamp Duty Land Tax (HMRC, last updated 1 April 2025)",
+       "url": "https://www.gov.uk/stamp-duty-land-tax/residential-property-rates"
+      }
+     ]
+    },
+    "scotland": {
+     "tax": "Land and Buildings Transaction Tax (LBTT)",
+     "bands": "0% to £145,000, 2% to £250,000, 5% to £325,000, 10% to £750,000, 12% above £750,000",
+     "first_time": "nil-rate band raised to £175,000 (saving up to £600)",
+     "additional": "Additional Dwelling Supplement, 8% of the price",
+     "deadline": "30 days",
+     "tax_300k_mover": 4600,
+     "tax_300k_first_time": 4000,
+     "tax_300k_additional": 28600,
+     "answer": "In Scotland, the purchase tax is Land and Buildings Transaction Tax (LBTT), collected by Revenue Scotland: on a £300,000 home it comes to £4,600 for a home mover, £4,000 for a first-time buyer and £28,600 for an additional property.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Revenue Scotland, LBTT residential property (rates and bands as of 1 April 2021, first-time buyer relief); Scottish Budget 2025-2026: ADS rate 8% for contracts on or after 5 December 2024",
+       "url": "https://www.revenue.scot/taxes/land-buildings-transaction-tax/residential-property"
+      }
+     ]
+    },
+    "wales": {
+     "tax": "Land Transaction Tax (LTT)",
+     "bands": "0% to £225,000, 6% to £400,000, 7.5% to £750,000, 10% to £1,500,000, 12% above £1,500,000",
+     "first_time": "no relief",
+     "additional": "higher rates: 5% to £180,000, 8.5% to £250,000, 10% to £400,000, 12.5% to £750,000, 15% to £1,500,000, 17% above £1,500,000",
+     "deadline": "30 days",
+     "tax_300k_mover": 4500,
+     "tax_300k_first_time": 4500,
+     "tax_300k_additional": 19950,
+     "answer": "In Wales, the purchase tax is Land Transaction Tax (LTT), collected by Welsh Revenue Authority: on a £300,000 home it comes to £4,500 for a home mover, £4,500 for a first-time buyer and £19,950 for an additional property.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Welsh Government, Land Transaction Tax rates and bands (main residential rates from 10 October 2022, higher residential rates from 11 December 2024)",
+       "url": "https://www.gov.wales/land-transaction-tax-rates-and-bands"
+      }
+     ]
+    },
+    "northern-ireland": {
+     "tax": "Stamp Duty Land Tax (SDLT)",
+     "bands": "0% to £125,000, 2% to £250,000, 5% to £925,000, 10% to £1,500,000, 12% above £1,500,000",
+     "first_time": "0% to £300,000, 5% to £500,000; no relief above £500,000",
+     "additional": "+5 points in every band (from £40,000)",
+     "deadline": "14 days",
+     "tax_300k_mover": 5000,
+     "tax_300k_first_time": 0,
+     "tax_300k_additional": 20000,
+     "answer": "In Northern Ireland, the purchase tax is Stamp Duty Land Tax (SDLT), collected by HMRC: on a £300,000 home it comes to £5,000 for a home mover, £0 for a first-time buyer and £20,000 for an additional property.",
+     "note": "Northern Ireland applies the same SDLT as England.",
+     "sources": [
+      {
+       "title": "GOV.UK, Stamp Duty Land Tax: residential property rates (HMRC); Higher rates of Stamp Duty Land Tax (HMRC, last updated 1 April 2025)",
+       "url": "https://www.gov.uk/stamp-duty-land-tax/residential-property-rates"
+      }
+     ]
+    }
+   }
+  },
+  "tenancy-deposits": {
+   "compiled": "2026-10-14",
+   "url": "https://payotte.com/uk/by-nation/tenancy-deposits",
+   "nations": {
+    "england": {
+     "protection_deadline": "30 days from the landlord or agent receiving the deposit",
+     "cap": "5 weeks' rent (annual rent under £50,000); 6 weeks' (£50,000 to £100,000)",
+     "penalty": "County court can order a penalty of not less than the deposit and not more than 3 times the deposit, or order it repaid or paid into a scheme",
+     "answer": "In England, a landlord must protect a tenancy deposit in an approved scheme within 30 days of receiving it. The deposit is capped at 5 weeks' rent (6 weeks' if annual rent is £50,000 to £100,000), and a county court can order a penalty of 1 to 3 times the deposit if it is not protected.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Tenancy deposit protection (GOV.UK)",
+       "url": "https://www.gov.uk/tenancy-deposit-protection"
+      },
+      {
+       "title": "Housing Act 2004, section 214 (legislation.gov.uk)",
+       "url": "https://www.legislation.gov.uk/ukpga/2004/34/section/214"
+      },
+      {
+       "title": "Tenant Fees Act 2019: guidance for tenants (GOV.UK)",
+       "url": "https://www.gov.uk/guidance/tenant-fees-act-2019-guidance-for-tenants"
+      }
+     ]
+    },
+    "scotland": {
+     "protection_deadline": "30 working days from the start of the tenancy",
+     "cap": null,
+     "penalty": "First-tier Tribunal can order up to 3 times the deposit (application during the tenancy or up to 3 months after it ends)",
+     "answer": "In Scotland, a landlord must protect the deposit in one of three approved schemes within 30 working days of the tenancy starting. The First-tier Tribunal can order the landlord to pay up to 3 times the deposit.",
+     "note": "Deposit cap not found in the guide's sources.",
+     "sources": [
+      {
+       "title": "When you must protect a tenancy deposit (mygov.scot)",
+       "url": "https://www.mygov.scot/landlord-deposit/protection"
+      },
+      {
+       "title": "When your tenancy deposit must be protected (mygov.scot)",
+       "url": "https://www.mygov.scot/tenant-deposits/protection"
+      }
+     ]
+    },
+    "wales": {
+     "protection_deadline": "30 days (the landlord has 30 days to give the contract-holder the scheme name and repayment information)",
+     "cap": null,
+     "penalty": "Court can order the deposit returned and award compensation",
+     "answer": "In Wales, under an occupation contract the deposit must go into an approved scheme and the landlord has 30 days to give the contract-holder the scheme details. A court can order the deposit returned and award compensation if it was not properly protected.",
+     "note": "Cap not found in the Welsh pages read. The guide's table gives 30 days to protect, while its Wales text only states 30 days to give scheme details.",
+     "sources": [
+      {
+       "title": "Deposits: guidance for tenants (gov.wales)",
+       "url": "https://www.gov.wales/deposits-guidance-tenants"
+      },
+      {
+       "title": "Standard occupation contracts: guidance (gov.wales)",
+       "url": "https://www.gov.wales/standard-occupation-contracts-guidance-html"
+      }
+     ]
+    },
+    "northern-ireland": {
+     "protection_deadline": "28 days from receipt (written information within 35 days)",
+     "cap": "One month's rent",
+     "penalty": "Council can fine 3 times the deposit; a court up to £20,000",
+     "answer": "In Northern Ireland, a landlord cannot ask for more than one month's rent as a deposit and must protect it within 28 days, giving written information within 35 days. A council can fine a landlord three times the deposit and a court up to £20,000.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Tenancy Deposit Scheme: information for tenants (nidirect)",
+       "url": "https://nidirect.gov.uk/articles/tenancy-deposit-scheme-information-tenants"
+      },
+      {
+       "title": "Private rent and tenancies (nidirect)",
+       "url": "https://www.nidirect.gov.uk/articles/private-rent-and-tenancies"
+      }
+     ]
+    }
+   }
+  },
+  "tenancy-regime": {
+   "compiled": "2026-10-14",
+   "url": "https://payotte.com/uk/by-nation/tenancy-regime",
+   "nations": {
+    "england": {
+     "tenancy_type": "Assured periodic tenancy (no end date) since 1 May 2026",
+     "no_fault_eviction": "no",
+     "landlord_notice": "Section 8 notice with a legal ground; usually 4 months, shorter for some grounds (e.g. 4 weeks for mandatory rent arrears of at least three months)",
+     "answer": "In England, since 1 May 2026 most private tenancies are assured periodic tenancies with no end date, and section 21 no-fault evictions are no longer available. A landlord must use section 8 and a legal ground, with notice usually of 4 months.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Guide to the Renters' Rights Act (GOV.UK)",
+       "url": "https://www.gov.uk/government/publications/guide-to-the-renters-rights-act/guide-to-the-renters-rights-act"
+      },
+      {
+       "title": "Renters' Rights Act overview for tenants (GOV.UK)",
+       "url": "https://www.gov.uk/guidance/renters-rights-act-overview-for-tenants"
+      },
+      {
+       "title": "Private renting: tenancy types (GOV.UK)",
+       "url": "https://www.gov.uk/private-renting"
+      }
+     ]
+    },
+    "scotland": {
+     "tenancy_type": "Private residential tenancy (PRT), open-ended",
+     "no_fault_eviction": "no",
+     "landlord_notice": "Notice to leave stating one of 18 grounds; 84 days after six months' occupation, 28 days if six months or less or for some grounds; eviction order from the First-tier Tribunal needed",
+     "answer": "In Scotland, a private residential tenancy has no end date and the landlord needs one of 18 eviction grounds. Notice is generally 84 days after six months' occupation, and the landlord still needs a First-tier Tribunal order if the tenant stays.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Private residential tenancy: information for tenants (gov.scot)",
+       "url": "https://www.gov.scot/publications/private-residential-tenancies-tenants-guide/"
+      },
+      {
+       "title": "Private Housing (Tenancies) (Scotland) Act 2016, section 54 (legislation.gov.uk)",
+       "url": "https://www.legislation.gov.uk/asp/2016/19/section/54"
+      },
+      {
+       "title": "Private Housing (Tenancies) (Scotland) Act 2016, section 49 (legislation.gov.uk)",
+       "url": "https://www.legislation.gov.uk/asp/2016/19/section/49"
+      }
+     ]
+    },
+    "wales": {
+     "tenancy_type": "Occupation contract (standard contract in the private sector, periodic or fixed term)",
+     "no_fault_eviction": "yes",
+     "landlord_notice": "No-fault notice of at least 6 months, not in the first 6 months and only if the landlord met its obligations (e.g. Rent Smart Wales registration, deposit rules); at least 1 month for breach",
+     "answer": "In Wales, private renters hold an occupation contract, and a landlord can end a standard contract without a ground by giving at least 6 months' no-fault notice, which cannot be served in the first six months. The landlord must have met obligations such as Rent Smart Wales registration and deposit rules.",
+     "note": "Marked 'yes' because a no-fault notice exists, though it is conditioned (6 months, obligations met).",
+     "sources": [
+      {
+       "title": "Tenants: housing law has changed (Renting Homes) (gov.wales)",
+       "url": "https://www.gov.wales/tenants-housing-law-has-changed-renting-homes"
+      },
+      {
+       "title": "Standard occupation contracts: guidance (gov.wales)",
+       "url": "https://www.gov.wales/standard-occupation-contracts-guidance-html"
+      },
+      {
+       "title": "Landlords: housing law has changed (Renting Homes) (gov.wales)",
+       "url": "https://www.gov.wales/landlords-housing-law-has-changed-renting-homes"
+      }
+     ]
+    },
+    "northern-ireland": {
+     "tenancy_type": "Private tenancy under the Private Tenancies Act (Northern Ireland) 2022 (fixed term; six-month tenancy period if none agreed)",
+     "no_fault_eviction": "yes",
+     "landlord_notice": "Notice to quit: 4 weeks (tenancy up to 12 months), 8 weeks (over 12 months up to 10 years), 12 weeks (over 10 years)",
+     "answer": "In Northern Ireland, a landlord ends a private tenancy by notice to quit of 4 weeks (tenancy up to 12 months), 8 weeks (up to 10 years) or 12 weeks (over 10 years). The guide lists no grounds the landlord must show, and a fixed-term tenancy can end without a notice to quit.",
+     "note": "Guide names no tenancy-type label and never states explicitly that no ground is needed; 'yes' inferred from the notice-to-quit rules. Longer landlord periods are in the Act but not in force.",
+     "sources": [
+      {
+       "title": "Private rent and tenancies (nidirect)",
+       "url": "https://www.nidirect.gov.uk/articles/private-rent-and-tenancies"
+      },
+      {
+       "title": "Private Tenancies Act (Northern Ireland) 2022 (Department for Communities)",
+       "url": "https://www.communities-ni.gov.uk/articles/private-tenancies-act-northern-ireland-2022"
+      },
+      {
+       "title": "Section 11 of the Private Tenancies Act (Northern Ireland) 2022 (Department for Communities)",
+       "url": "https://www.communities-ni.gov.uk/articles/section-11-private-tenancies-northern-ireland-act-2022"
+      }
+     ]
+    }
+   }
+  }
+ },
+ "guides": [
+  {
+   "slug": "buying-a-home-in-england",
+   "title": "Buying a home in England: the steps, offer to registration",
+   "description": "The English buying process step by step: offer, conveyancing, searches, survey, exchange, completion, SDLT within 14 days and registration at HM Land Registry.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/uk/guides/buying-a-home-in-england",
+   "draft": false
+  },
+  {
+   "slug": "buying-a-home-in-northern-ireland",
+   "title": "Buying a home in Northern Ireland: process and registers",
+   "description": "How buying a home works in Northern Ireland: solicitor, deposit, exchange, completion, Stamp Duty Land Tax and the Land Registry and Registry of Deeds.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/uk/guides/buying-a-home-in-northern-ireland",
+   "draft": false
+  },
+  {
+   "slug": "buying-a-home-in-scotland",
+   "title": "Buying a home in Scotland: Home Report, offers and missives",
+   "description": "The Scottish process: Home Report, note of interest, closing date, offer, missives, settlement, LBTT within 30 days and registration in the Land Register.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/uk/guides/buying-a-home-in-scotland",
+   "draft": false
+  },
+  {
+   "slug": "capital-gains-tax-on-a-home",
+   "title": "Capital Gains Tax on a home: relief and 60-day report",
+   "description": "When you pay no Capital Gains Tax on your UK home: relief conditions, final 9 months, absences, the £3,000 allowance, 18% and 24% rates, the 60-day report.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/uk/guides/capital-gains-tax-on-a-home",
+   "draft": false
+  },
+  {
+   "slug": "conveyancing-explained",
+   "title": "Conveyancing explained: who does it and what it covers",
+   "description": "Conveyancing is the legal work of transferring a home. Who can do it in England and Wales, Scotland and Northern Ireland, what it covers and how to check.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/uk/guides/conveyancing-explained",
+   "draft": false
+  },
+  {
+   "slug": "council-tax-bands",
+   "title": "Council tax bands in England, Scotland and Wales",
+   "description": "Council tax bands A to H (A to I in Wales) rest on old valuations: 1991 in England, 2003 in Wales. Value ranges, discounts, challenges and reforms to come.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/uk/guides/council-tax-bands",
+   "draft": false
+  },
+  {
+   "slug": "deposit-and-loan-to-value",
+   "title": "UK mortgage deposit and loan-to-value (LTV) explained",
+   "description": "What loan-to-value means, how it is worked out, what first-time buyers actually put down in each nation (ONS), and the 91-95% LTV Mortgage Guarantee Scheme.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/uk/guides/deposit-and-loan-to-value",
+   "draft": false
+  },
+  {
+   "slug": "domestic-rates-northern-ireland",
+   "title": "Domestic rates in Northern Ireland: how your bill works",
+   "description": "Northern Ireland charges domestic rates, not council tax: capital value at 1 January 2005 times regional and district rates, with value capped at £400,000.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/uk/guides/domestic-rates-northern-ireland",
+   "draft": false
+  },
+  {
+   "slug": "energy-performance-certificate",
+   "title": "Energy performance certificate (EPC) rules by UK nation",
+   "description": "When an EPC is required to sell or let in England, Wales, Scotland and Northern Ireland: 10-year validity, minimum E rating for lettings, 2027-2028 changes.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/uk/guides/energy-performance-certificate",
+   "draft": false
+  },
+  {
+   "slug": "exchange-and-completion",
+   "title": "Exchange and completion: when you are bound to buy",
+   "description": "When a UK home purchase becomes binding, what the deposit is, what completion means, and how England, Wales, Scotland and Northern Ireland differ.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/uk/guides/exchange-and-completion",
+   "draft": false
+  },
+  {
+   "slug": "first-time-buyer-relief",
+   "title": "First-time buyer relief: England, Scotland and Wales",
+   "description": "England and NI: 0% SDLT to £300,000 (price cap £500,000). Scotland: LBTT nil band £175,000. Wales: no relief. Conditions and what joint buyers must meet.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/uk/guides/first-time-buyer-relief",
+   "draft": false
+  },
+  {
+   "slug": "higher-rates-additional-property",
+   "title": "Buying a second home: SDLT, ADS and LTT higher rates",
+   "description": "Extra tax on an additional home: +5 points SDLT in England and NI, 8% ADS in Scotland, higher LTT rates in Wales. Replacing your main home and refunds.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/uk/guides/higher-rates-additional-property",
+   "draft": false
+  },
+  {
+   "slug": "home-report-scotland",
+   "title": "The Home Report in Scotland: contents and your rights",
+   "description": "In Scotland the seller normally provides a Home Report: survey and valuation, property questionnaire, energy report. Contents, the nine days, exemptions.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/uk/guides/home-report-scotland",
+   "draft": false
+  },
+  {
+   "slug": "home-survey-levels",
+   "title": "Home survey levels 1, 2 and 3: which one to choose",
+   "description": "RICS Home Survey Levels 1, 2 and 3: what each covers, which homes suit it, how a survey differs from a lender's valuation, and the Scottish Single Survey.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/uk/guides/home-survey-levels",
+   "draft": false
+  },
+  {
+   "slug": "inheritance-tax-on-a-home",
+   "title": "Inheritance tax on a home: the £500,000 threshold",
+   "description": "Inheritance tax is 40% above £325,000, rising to £500,000 when a home passes to children or grandchildren; £1m for a surviving spouse. Taper above £2m.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/uk/guides/inheritance-tax-on-a-home",
+   "draft": false
+  },
+  {
+   "slug": "land-registry-title-register",
+   "title": "The title register: what it shows and how to get it",
+   "description": "What the HM Land Registry title register shows, official copies (£11), the £7 downloads, registration fees, and the Scottish and Northern Irish registers.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/uk/guides/land-registry-title-register",
+   "draft": false
+  },
+  {
+   "slug": "land-transaction-tax-wales",
+   "title": "Land Transaction Tax in Wales: rates, higher rates, 30 days",
+   "description": "Wales charges LTT, not SDLT: 0% to £225,000, then 6%, 7.5%, 10% and 12%. Higher rates since 11 December 2024, no first-time buyer relief, 30-day return.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/uk/guides/land-transaction-tax-wales",
+   "draft": false
+  },
+  {
+   "slug": "lbtt-scotland",
+   "title": "LBTT in Scotland: rates, first-time buyers, ADS, 30 days",
+   "description": "Scotland's Land and Buildings Transaction Tax: 0% to £145,000, then 2%, 5%, 10% and 12%. First-time buyer relief, the 8% ADS and the 30-day return.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/uk/guides/lbtt-scotland",
+   "draft": false
+  },
+  {
+   "slug": "leasehold-and-freehold",
+   "title": "Leasehold and freehold: what you own, and 2024 reforms",
+   "description": "Freehold or leasehold in England, Wales, Scotland and Northern Ireland, ground rent rules, and which parts of the 2024 leasehold reform Act are in force.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/uk/guides/leasehold-and-freehold",
+   "draft": false
+  },
+  {
+   "slug": "lifetime-isa-first-home",
+   "title": "Lifetime ISA for a first home: rules, 25% charge, cap",
+   "description": "How a Lifetime ISA works for a first home in the UK: £4,000 a year, 25% bonus, £450,000 price cap, 12-month wait, conveyancer rule, 25% withdrawal charge.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/uk/guides/lifetime-isa-first-home",
+   "draft": false
+  },
+  {
+   "slug": "mortgage-affordability-rules",
+   "title": "UK mortgage affordability rules: FCA checks, 4.5x limit",
+   "description": "How UK lenders test affordability under FCA rules (MCOB 11.6), the 1% rate-rise stress, and the Bank of England 4.5x income limit changing on 28 October 2026.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/uk/guides/mortgage-affordability-rules",
+   "draft": false
+  },
+  {
+   "slug": "mortgage-in-principle",
+   "title": "Mortgage in principle in the UK: what to know first",
+   "description": "A mortgage in principle is an early lender indication, not an offer. What to prepare, how FCA income-evidence rules shape the full application, what to ask.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/uk/guides/mortgage-in-principle",
+   "draft": false
+  },
+  {
+   "slug": "non-uk-resident-surcharge",
+   "title": "Non-UK resident SDLT surcharge: the 2% and how to reclaim it",
+   "description": "Buyers not in the UK for 183 days in the past 12 months pay 2 points extra SDLT in England and NI. The residence test, exemptions and the 2-year refund.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/uk/guides/non-uk-resident-surcharge",
+   "draft": false
+  },
+  {
+   "slug": "private-residential-tenancy-scotland",
+   "title": "Private residential tenancy in Scotland: your rights",
+   "description": "Scottish private tenancies have no end date. A landlord needs one of 18 grounds and usually 84 days' notice; rent rises once a year with 3 months' notice.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/uk/guides/private-residential-tenancy-scotland",
+   "draft": false
+  },
+  {
+   "slug": "property-searches",
+   "title": "Property searches when buying a home in the UK",
+   "description": "Property searches check what the seller's papers do not show. What they cover in England, Wales, Scotland and Northern Ireland, and what they cost.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/uk/guides/property-searches",
+   "draft": false
+  },
+  {
+   "slug": "renting-homes-wales",
+   "title": "Renting in Wales: occupation contracts explained",
+   "description": "Since 1 December 2022 Welsh renters hold an occupation contract. Written statement in 14 days, 6 months' no-fault notice, 2 months' notice of a rent change.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/uk/guides/renting-homes-wales",
+   "draft": false
+  },
+  {
+   "slug": "renting-in-england",
+   "title": "Renting in England: the rules since 1 May 2026",
+   "description": "Since 1 May 2026 most English tenancies are periodic, section 21 is gone and rent rises once a year. What applies, what is still to come, and the caps.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/uk/guides/renting-in-england",
+   "draft": false
+  },
+  {
+   "slug": "renting-in-northern-ireland",
+   "title": "Renting in Northern Ireland: notice, rent and deposits",
+   "description": "In Northern Ireland a deposit is capped at one month's rent, rent can rise once a year with 3 months' notice, and notice to quit runs from 4 to 12 weeks.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/uk/guides/renting-in-northern-ireland",
+   "draft": false
+  },
+  {
+   "slug": "right-to-rent-checks",
+   "title": "Right to rent checks in England: what landlords must do",
+   "description": "Landlords in England must check every adult occupier's right to rent before a tenancy starts. Share codes, documents, 28 days and penalties up to £20,000.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/uk/guides/right-to-rent-checks",
+   "draft": false
+  },
+  {
+   "slug": "selling-a-home-costs",
+   "title": "Costs of selling a home in the UK: agent, legal, EPC, tax",
+   "description": "What selling a home costs in the UK: agent fees as a formula, what the agent must disclose, EPC or Home Report, legal fees, tax.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/uk/guides/selling-a-home-costs",
+   "draft": false
+  },
+  {
+   "slug": "service-charges-and-ground-rent",
+   "title": "Service charges and ground rent on a leasehold home",
+   "description": "Leaseholders in England and Wales pay service charges and sometimes ground rent. Consultation limits of £250 and £100, peppercorn leases since 30 June 2022.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/uk/guides/service-charges-and-ground-rent",
+   "draft": false
+  },
+  {
+   "slug": "shared-ownership",
+   "title": "Shared ownership in the UK: shares, rent and who can apply",
+   "description": "How shared ownership works in England: 10% to 75% shares, rent on the rest, £80,000 income cap, staircasing. What Wales and Scotland say and where to check.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/uk/guides/shared-ownership",
+   "draft": false
+  },
+  {
+   "slug": "stamp-duty-land-tax",
+   "title": "Stamp Duty Land Tax: rates, who pays and the 14 days",
+   "description": "SDLT applies in England and Northern Ireland: 0% to £125,000, then 2%, 5%, 10% and 12%. Who pays, the 14-day deadline, and what differs in Scotland and Wales.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/uk/guides/stamp-duty-land-tax",
+   "draft": false
+  },
+  {
+   "slug": "tenancy-deposit-protection",
+   "title": "Tenancy deposit protection in the UK, nation by nation",
+   "description": "A landlord must protect your deposit in an approved scheme: 30 days in England and Wales, 30 working days in Scotland, 28 days in Northern Ireland.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/uk/guides/tenancy-deposit-protection",
+   "draft": false
+  }
+ ],
+ "professions": [
+  {
+   "slug": "conveyancer",
+   "title": "Conveyancers in the UK: solicitors and CLC lawyers",
+   "description": "Who does conveyancing in England and Wales, Scotland and Northern Ireland, which regulator to check, and what the registers allow you to copy.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/uk/professions/conveyancer",
+   "draft": false
+  },
+  {
+   "slug": "estate-agent",
+   "title": "Estate agents in the UK: redress scheme and checks",
+   "description": "No licence is needed to be an estate agent in the UK, but residential agents must belong to a redress scheme. What to check, and what fees to expect.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/uk/professions/estate-agent",
+   "draft": false
+  },
+  {
+   "slug": "mortgage-adviser",
+   "title": "Mortgage advisers in the UK: FCA register and fees",
+   "description": "Mortgage advice is regulated by the FCA. How to check a firm on the Financial Services Register, how advisers are paid, and what the register forbids.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/uk/professions/mortgage-adviser",
+   "draft": false
+  },
+  {
+   "slug": "surveyor",
+   "title": "Surveyors in the UK: RICS, survey levels, Home Report",
+   "description": "RICS Home Survey levels 1 to 3, no legal duty to survey in England and Wales, the Scottish Home Report, and how to check a surveyor.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/uk/professions/surveyor",
+   "draft": false
+  },
+  {
+   "slug": "valuer",
+   "title": "Valuers in the UK: RICS Registered Valuer scheme",
+   "description": "How a home valuation differs from a survey, what the RICS Valuer Registration Scheme requires, how to check a valuer, and what RICS forbids copying.",
+   "answer": "",
+   "checked": "2026-10-14",
+   "url": "https://payotte.com/uk/professions/valuer",
+   "draft": false
+  }
+ ]
+}
