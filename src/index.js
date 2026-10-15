@@ -64,7 +64,7 @@ const mcpSrc = (url) => (url ? url + (url.includes('?') ? '&' : '?') + 'src=mcp'
 const PROTOCOL_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'];
 const SERVER_INFO = {
   name: 'payotte',
-  title: 'Payotte — Real-estate professionals & housing data (10 countries)',
+  title: 'Payotte — Real-estate professionals & housing data (9 countries)',
   version: '1.13.0',
 };
 const INSTRUCTIONS =

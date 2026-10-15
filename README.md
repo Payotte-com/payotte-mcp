@@ -1,7 +1,7 @@
 # payotte-mcp
 
 Serveur **MCP** (Model Context Protocol) de Payotte — l'annuaire immobilier canadien de professionnels
-**vérifiés** branché dans les IA, et les données immobilières de 10 pays (Canada, France, Belgique,
+**vérifiés** branché dans les IA, et les données immobilières de 9 pays (Canada, France,
 États-Unis, Royaume-Uni, Australie, Inde, Brésil, Mexique, Espagne).
 
 - **Hébergement** : Cloudflare Workers, palier gratuit (100 000 requêtes/jour).
