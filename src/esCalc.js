@@ -1245,16 +1245,19 @@ var frais_achat_default = {
       },
       iva_neuf: {
         impot: "IPSI",
-        taux: null,
-        raison: "taux de l'IPSI sur la livraison de logements neufs fix\xE9 par l'ordonnance fiscale de la ville : texte non lu (non trouv\xE9 sur source officielle lisible)",
+        taux: 4,
+        taux_reduit: {
+          taux: 0.5,
+          condition: "premi\xE8re transmission de logements de protection officielle par leurs promoteurs (Anexo 1, apartado TERCERO, 1\xBA)"
+        },
         source: {
-          titre: "Ley 8/1991 (IPSI)",
-          url: "https://www.boe.es/buscar/act.php?id=BOE-A-1991-7645",
-          article: "art. 18.1",
+          titre: "Ordenanza fiscal del IPSI (operaciones interiores) de la Ciudad de Melilla, Anexo 1 (BOME n\xBA 5857, 4 mai 2021, p. 1300, Decreto n\xBA 584 du 30/04/2021)",
+          url: "https://bomemelilla.es/bome/descargar/BOME-P-2021-1300.pdf",
+          article: "Anexo 1, apartado TERCERO : \xAB La entrega de Bienes Inmuebles, tributar\xE1n al tipo del 4% \xBB; 0.5% pour la premi\xE8re transmission de VPO par les promoteurs",
           consulte: "2026-10-15"
         }
       },
-      note: "Taux d'\xC9tat de repli (TRLITPAJD art. 11.1.a : 6 % ; art. 31.2 : 0,5 %), confirm\xE9s par la page AEAT \xAB Base Imponible y tipos Ceuta y Melilla \xBB (mise \xE0 jour 22/01/2026), avec bonification de 50 % de la cuota (art. 57 bis.3.a pour l'ITP ; art. 57 bis.1 pour l'AJD si le Registro est \xE0 Ceuta/Melilla). Taux effectifs : ITP 3 %, AJD 0,25 %. Logement neuf : IPSI (Ley 8/1991, art. 18 : taux fix\xE9s par ordonnance municipale entre 0,5 % et 10 %) \u2014 taux logement NON LU.",
+      note: "Taux d'\xC9tat de repli (TRLITPAJD art. 11.1.a : 6 % ; art. 31.2 : 0,5 %), confirm\xE9s par la page AEAT \xAB Base Imponible y tipos Ceuta y Melilla \xBB (mise \xE0 jour 22/01/2026), avec bonification de 50 % de la cuota (art. 57 bis.3.a pour l'ITP ; art. 57 bis.1 pour l'AJD si le Registro est \xE0 Ceuta/Melilla). Taux effectifs : ITP 3 %, AJD 0,25 %. Logement neuf : IPSI \xE0 4 % sur la livraison d'immeubles (ordonnance municipale, Anexo 1 TERCERO, BOME du 4 mai 2021 ; 0,5 % pour la premi\xE8re transmission de VPO par le promoteur). Les avis BOME de 2023 et 2025 renvoient encore \xE0 ce d\xE9cret n\xB0 584/2021 ; modification ult\xE9rieure non exclue.",
       statut: "PARTIEL"
     }
   }
@@ -1508,7 +1511,7 @@ var EN = {
       total: "Buyer total (taxes + land registry)",
       notaire: "Notary's deed fee (the seller's by default)",
       nonCalcule: "not computed",
-      msgIpsi: "IPSI rate on new homes in Ceuta and Melilla not read at an official source: not included, the total is a lower limit.",
+      msgIpsi: "IPSI rate on new homes in Ceuta not read at an official source: not included, the total is a lower limit.",
       msgForal: "Foral region: the tax is charged on the real value, not on the Catastro reference value.",
       msgBasque: "Basque Country: 4% applies if the buyer does not hold more than five homes (6% otherwise).",
       note: "General rates for an individual buyer. Not applied: reduced rates (young buyers, large families, disability, main home under a price cap\u2026), the 20% Catalan rate for large holders, the optional notary discount of up to 10%. Not included: notary copies and folios (they depend on the length of the deed), gestor\xEDa, valuation, mortgage costs (the AJD on the mortgage deed is paid by the lender). The notary's deed fee is shown apart: by default the seller pays the deed and the buyer the first copy (Civil Code, art. 1455), unless the contract says otherwise. The land registry fee is paid by the person in whose favour the right is registered, the buyer (Real Decreto 1427/1989, annex II, rule 8)."

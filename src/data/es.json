@@ -1698,12 +1698,12 @@
      "reduced_rate": "yes",
      "itp_rate": "50% off the tax",
      "price_cap": null,
-     "conditions": "Income up to €35,000 plus €6,000 per extra child (art. 121-5).",
+     "conditions": "Art. 121-5: purchase of the family's main home; previous home sold between two years before and four years after (waived for a first main home); usable area at least 10% larger; income (general base plus part of the savings base, less personal and descendant minimums) at most €35,000 plus €6,000 per child above the legal minimum.",
      "answer": "Aragon gives large families a 50% bonus on the transfer tax if income is up to €35,000 plus €6,000 per extra child; the general rate runs from 8% to 10%.",
-     "note": "Price cap not read.",
+     "note": "Settled on art. 121-5 (BOE consolidated text, read 15 Oct. 2026); the article sets no price cap.",
      "sources": [
       {
-       "title": "Decreto Legislativo 1/2005, Aragon, art. 121-4 (BOE)",
+       "title": "Decreto Legislativo 1/2005, Aragon, art. 121-5 (BOE)",
        "url": "https://www.boe.es/buscar/act.php?id=BOA-d-2005-90006"
       }
      ]
@@ -1788,7 +1788,7 @@
      "price_cap": null,
      "conditions": "Main home; income cap €31,500, or €37,800 for large families plus €6,000 per member (art. 28).",
      "answer": "Castile and León taxes a large family's main home at 4% instead of 8% and 10%, with an income cap of €37,800 plus €6,000 per member.",
-     "note": "Price cap not read.",
+     "note": "Settled on arts. 25.3.a and 28.2 (BOE consolidated text last updated 14/05/2024, read 15 Oct. 2026): if the buyer already owns a home, it must be sold within one year of buying the new one; no price cap in these articles.",
      "sources": [
       {
        "title": "Decreto Legislativo 1/2013, Castile and León, arts. 25, 28 (BOE)",
@@ -1814,12 +1814,12 @@
      "reduced_rate": "yes",
      "itp_rate": "5%",
      "price_cap": null,
-     "conditions": "Income up to €36,000 (listed with the other 5% groups, arts. 641-2 to 641-5 bis).",
-     "answer": "Catalonia taxes large families at 5% instead of 10% to 13%, with an income limit of €36,000 as listed for the group.",
-     "note": "The income limit is read for the group of 5% rates; price cap not read.",
+     "conditions": "Art. 641-2: main home; sum of the general and savings bases less personal and family minimums of the family members in the last income tax return at most €36,000, plus €14,000 per child above the legal minimum for large-family status.",
+     "answer": "Catalonia taxes a large family's main home at 5% instead of 10% to 13%, if family income is at most €36,000 plus €14,000 per child above the legal minimum.",
+     "note": "Settled on art. 641-2 (BOE consolidated text, read 15 Oct. 2026); the article sets no price cap.",
      "sources": [
       {
-       "title": "Decreto Legislativo 1/2024, Catalonia, arts. 641-5, 642-6 (BOE)",
+       "title": "Decreto Legislativo 1/2024, Catalonia, art. 641-2 (BOE)",
        "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2024-6951"
       }
      ]
@@ -1846,9 +1846,9 @@
      "reduced_rate": "yes",
      "itp_rate": "4%",
      "price_cap": null,
-     "conditions": "Art. 29.",
+     "conditions": "Art. 29: buyer holds the large-family title and the property is the family's main home; if the previous main home belonged to a holder, it must be sold within two years before or after (waived when the new property is joined to the old home).",
      "answer": "The Community of Madrid taxes large families at 4% instead of the general 6%.",
-     "note": "Conditions of art. 29 are not detailed in the report; price cap not read.",
+     "note": "Settled on art. 29 (BOE consolidated text, read 15 Oct. 2026); the article sets no price cap or income cap.",
      "sources": [
       {
        "title": "Decreto Legislativo 1/2010, Community of Madrid, arts. 30 bis, 38 bis (BOE)",
@@ -1888,9 +1888,9 @@
      "reduced_rate": "yes",
      "itp_rate": "5% (3% under conditions)",
      "price_cap": null,
-     "conditions": "Art. 45; conditions for the 3% rate not detailed.",
+     "conditions": "Art. 45.1: 5% in general. 3% if all of these hold: purchase within five years of the family becoming large (or of each birth or adoption); previous main home sold in that period; usable area at least 10% larger than the previous home; combined taxable bases of everyone living there, after the personal and family minimum, at most €30,600.",
      "answer": "La Rioja taxes large families at 5%, or 3% under conditions, instead of the general 7%.",
-     "note": "The conditions for 3% are not detailed; price cap not read.",
+     "note": "Settled on art. 45.1 (BOE consolidated text, read 15 Oct. 2026); the article sets no price cap.",
      "sources": [
       {
        "title": "Ley 10/2017, La Rioja, art. 45 (BOE)",
@@ -1920,9 +1920,9 @@
      "reduced_rate": "yes",
      "itp_rate": "3%",
      "price_cap": null,
-     "conditions": "Income (general base less minimum) below €44,000 plus €6,000 per extra child (guide).",
+     "conditions": "Art. 6.5: first main home of the family (or previous home sold within two years either side, and usable area at least 10% larger); general base less personal minimum under €44,000, plus €6,000 per child above the minimum for large-family status.",
      "answer": "The Region of Murcia taxes a large family's purchase at 3% instead of 7.75% when income is below €44,000.",
-     "note": "The €6,000 per child supplement comes from the Murcia guide, not the report; price cap not read.",
+     "note": "Settled on art. 6.5 (BOE consolidated text, read 15 Oct. 2026); the article sets no price cap.",
      "sources": [
       {
        "title": "Decreto Legislativo 1/2010, Region of Murcia, art. 6 (BOE)",
@@ -1945,12 +1945,12 @@
      ]
     },
     "valencian-community": {
-     "reduced_rate": "not_read",
-     "itp_rate": null,
-     "price_cap": null,
-     "conditions": null,
-     "answer": "The Valencian Community has a general rate of 9%, and the report does not say whether a large-family rate exists.",
-     "note": "Report lists 4% and 3% rates (arts. 13.Cuatro and Cinco) for disability and others, with the full list cut off.",
+     "reduced_rate": "yes",
+     "itp_rate": "4% above €180,000; 3% up to €180,000",
+     "price_cap": "€180,000 (rate threshold)",
+     "conditions": "Main home of the large or single-parent family; income ceiling set by art. 4.Cuatro according to the family category and the type of return.",
+     "answer": "The Valencian Community taxes a large family's main home at 3% when the value is €180,000 or less and at 4% above that, instead of the general 9%, if the family's income stays under the ceiling of art. 4.Cuatro.",
+     "note": "Settled on the BOE consolidated text of Ley 13/1997, art. 13.Cuatro and Cinco (last update 10/08/2026, read 15 Oct. 2026). The income ceilings of art. 4.Cuatro were not read.",
      "sources": [
       {
        "title": "Ley 13/1997, Valencian Community, arts. 4, 13 (BOE)",
@@ -2236,10 +2236,10 @@
     },
     "melilla": {
      "indirect_tax": "IPSI",
-     "indirect_rate": null,
+     "indirect_rate": "4%",
      "ajd_rate": "0.25%",
-     "total_300k": "at least €951",
-     "answer": "In Melilla, a new home pays IPSI, whose rate could not be read at an official source, plus stamp duty (AJD) of 0.25%: €750 on €300,000.",
+     "total_300k": "€12,951",
+     "answer": "In Melilla, a new home bought from the developer pays IPSI at 4% and stamp duty on the deed (AJD) of 0.25%: €12,951 with land registry fees on €300,000.",
      "note": null,
      "sources": [
       {
@@ -2247,8 +2247,8 @@
        "url": "https://www.boe.es/buscar/act.php?id=BOE-A-1993-25359"
       },
       {
-       "title": "Ley 8/1991 (IPSI)",
-       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-1991-7645"
+       "title": "Ordenanza fiscal del IPSI (operaciones interiores) de la Ciudad de Melilla, Anexo 1 (BOME nº 5857, 4 mai 2021, p. 1300, Decreto nº 584 du 30/04/2021)",
+       "url": "https://bomemelilla.es/bome/descargar/BOME-P-2021-1300.pdf"
       }
      ]
     },
@@ -2626,8 +2626,8 @@
      "declared": "not_found",
      "municipalities": null,
      "resolution": null,
-     "answer": "No stressed housing market area declaration for Andalusia was found in the BOE resolutions read on 15 October 2026.",
-     "note": "Not found in the BOE resolutions read; the list read is not complete (some quarters not read, third quarter 2026 resolution not found, ministry list blocked), so this is not proof of absence.",
+     "answer": "No stressed housing market area declaration for Andalusia was found in the BOE quarterly resolutions published up to 15 October 2026.",
+     "note": "Not found in any of the nine quarterly BOE resolutions published from March 2024 to July 2026 (BOE-A-2024-5214, 2024-20576, 2025-1721, 2025-8636, 2025-15728, 2025-21901, 2026-2448, 2026-9175, 2026-16532; every BOE issue up to 15 Oct. 2026 was searched). The third quarter 2026 resolution has not been published yet and the ministry list is blocked, so declarations made since July 2026 would not show here.",
      "sources": [
       {
        "title": "Ley 12/2023 por el derecho a la vivienda, art. 3.k y 18 (BOE, texto consolidado)",
@@ -2643,8 +2643,8 @@
      "declared": "not_found",
      "municipalities": null,
      "resolution": null,
-     "answer": "No stressed housing market area declaration for Aragon was found in the BOE resolutions read on 15 October 2026.",
-     "note": "Not found in the BOE resolutions read; the list read is not complete (some quarters not read, third quarter 2026 resolution not found, ministry list blocked), so this is not proof of absence.",
+     "answer": "No stressed housing market area declaration for Aragon was found in the BOE quarterly resolutions published up to 15 October 2026.",
+     "note": "Not found in any of the nine quarterly BOE resolutions published from March 2024 to July 2026 (BOE-A-2024-5214, 2024-20576, 2025-1721, 2025-8636, 2025-15728, 2025-21901, 2026-2448, 2026-9175, 2026-16532; every BOE issue up to 15 Oct. 2026 was searched). The third quarter 2026 resolution has not been published yet and the ministry list is blocked, so declarations made since July 2026 would not show here.",
      "sources": [
       {
        "title": "Ley 12/2023 por el derecho a la vivienda, art. 3.k y 18 (BOE, texto consolidado)",
@@ -2677,8 +2677,8 @@
      "declared": "not_found",
      "municipalities": null,
      "resolution": null,
-     "answer": "No stressed housing market area declaration for the Balearic Islands was found in the BOE resolutions read on 15 October 2026.",
-     "note": "Not found in the BOE resolutions read; the list read is not complete (some quarters not read, third quarter 2026 resolution not found, ministry list blocked), so this is not proof of absence.",
+     "answer": "No stressed housing market area declaration for the Balearic Islands was found in the BOE quarterly resolutions published up to 15 October 2026.",
+     "note": "Not found in any of the nine quarterly BOE resolutions published from March 2024 to July 2026 (BOE-A-2024-5214, 2024-20576, 2025-1721, 2025-8636, 2025-15728, 2025-21901, 2026-2448, 2026-9175, 2026-16532; every BOE issue up to 15 Oct. 2026 was searched). The third quarter 2026 resolution has not been published yet and the ministry list is blocked, so declarations made since July 2026 would not show here.",
      "sources": [
       {
        "title": "Ley 12/2023 por el derecho a la vivienda, art. 3.k y 18 (BOE, texto consolidado)",
@@ -2692,25 +2692,37 @@
     },
     "basque-country": {
      "declared": "yes",
-     "municipalities": "Donostia/San Sebastián and Galdakao (district 2) (BOE-A-2025-15728); Hernani, Lezo, Tolosa (BOE-A-2026-2448); Pasaia, Zestoa, Arrasate/Mondragón (BOE-A-2026-9175); Basauri (BOE-A-2026-16532)",
-     "resolution": "BOE-A-2025-15728 (2nd quarter 2025); BOE-A-2026-2448 (4th quarter 2025); BOE-A-2026-9175 (1st quarter 2026); BOE-A-2026-16532 (2nd quarter 2026)",
-     "answer": "The Basque Country has declared stressed areas in nine places listed in the BOE resolutions read: Donostia/San Sebastián and district 2 of Galdakao (second quarter 2025), Hernani, Lezo and Tolosa (fourth quarter 2025), Pasaia, Zestoa and Arrasate/Mondragón (first quarter 2026) and Basauri (second quarter 2026).",
-     "note": "Settled by reading the four BOE resolutions cited: the former contradiction between the guide and the report disappears because they cover different quarters. Large-holder threshold differs: five or more properties (Donostia, Galdakao, Hernani, Lezo, Tolosa, Arrasate/Mondragón, Basauri), more than five or more than 1,500 m² (Pasaia), more than ten or more than 1,500 m² (Zestoa). Resolutions for other quarters (first and third quarters 2025, third quarter 2026) were not read, so other Basque places may exist.",
+     "municipalities": "Errenteria (BOE-A-2025-1721); Lasarte-Oria, Zumaia, Barakaldo, Irun (BOE-A-2025-8636); Donostia/San Sebastián and Galdakao (district 2) (BOE-A-2025-15728); Astigarraga, Bilbao, Usurbil, Vitoria-Gasteiz except its rural local entities (BOE-A-2025-21901); Hernani, Lezo, Tolosa (BOE-A-2026-2448); Pasaia, Zestoa, Arrasate/Mondragón (BOE-A-2026-9175); Basauri (BOE-A-2026-16532)",
+     "resolution": "BOE-A-2025-1721 (4th quarter 2024); BOE-A-2025-8636 (1st quarter 2025); BOE-A-2025-15728 (2nd quarter 2025); BOE-A-2025-21901 (3rd quarter 2025); BOE-A-2026-2448 (4th quarter 2025); BOE-A-2026-9175 (1st quarter 2026); BOE-A-2026-16532 (2nd quarter 2026)",
+     "answer": "The Basque Country has declared stressed areas in eighteen places listed in the BOE resolutions: Errenteria (fourth quarter 2024); Lasarte-Oria, Zumaia, Barakaldo and Irun (first quarter 2025); Donostia/San Sebastián and district 2 of Galdakao (second quarter 2025); Astigarraga, Bilbao, Usurbil and Vitoria-Gasteiz (third quarter 2025); Hernani, Lezo and Tolosa (fourth quarter 2025); Pasaia, Zestoa and Arrasate/Mondragón (first quarter 2026); Basauri (second quarter 2026).",
+     "note": "Settled by reading the seven BOE resolutions cited (each lists only the declarations of its own quarter). Large-holder threshold: five or more residential properties (Errenteria, Lasarte-Oria, Zumaia, Barakaldo, Irun, Donostia, Galdakao, Astigarraga, Usurbil, Vitoria-Gasteiz, Hernani, Lezo, Tolosa, Arrasate/Mondragón, Basauri); more than ten properties or more than 1,500 m2 (Bilbao, Zestoa); more than five or more than 1,500 m2 (Pasaia). Declarations since July 2026 would appear in the third quarter 2026 resolution, not yet published.",
      "sources": [
       {
-       "title": "Resolución de 28 de julio de 2025, zonas tensionadas del segundo trimestre de 2025 (BOE-A-2025-15728)",
+       "title": "Resolución, zonas tensionadas, cuarto trimestre de 2024 (BOE-A-2025-1721)",
+       "url": "https://www.boe.es/buscar/doc.php?id=BOE-A-2025-1721"
+      },
+      {
+       "title": "Resolución, zonas tensionadas, primer trimestre de 2025 (BOE-A-2025-8636)",
+       "url": "https://www.boe.es/buscar/doc.php?id=BOE-A-2025-8636"
+      },
+      {
+       "title": "Resolución, zonas tensionadas, segundo trimestre de 2025 (BOE-A-2025-15728)",
        "url": "https://www.boe.es/buscar/doc.php?id=BOE-A-2025-15728"
       },
       {
-       "title": "Resolución de 30 de enero de 2026, zonas tensionadas del cuarto trimestre de 2025 (BOE-A-2026-2448)",
+       "title": "Resolución, zonas tensionadas, tercer trimestre de 2025 (BOE-A-2025-21901)",
+       "url": "https://www.boe.es/buscar/doc.php?id=BOE-A-2025-21901"
+      },
+      {
+       "title": "Resolución, zonas tensionadas, cuarto trimestre de 2025 (BOE-A-2026-2448)",
        "url": "https://www.boe.es/buscar/doc.php?id=BOE-A-2026-2448"
       },
       {
-       "title": "Resolución de 23 de abril de 2026, zonas tensionadas del primer trimestre de 2026 (BOE-A-2026-9175)",
+       "title": "Resolución, zonas tensionadas, primer trimestre de 2026 (BOE-A-2026-9175)",
        "url": "https://www.boe.es/buscar/doc.php?id=BOE-A-2026-9175"
       },
       {
-       "title": "Resolución de 24 de julio de 2026, zonas tensionadas del segundo trimestre de 2026 (BOE-A-2026-16532)",
+       "title": "Resolución, zonas tensionadas, segundo trimestre de 2026 (BOE-A-2026-16532)",
        "url": "https://www.boe.es/buscar/doc.php?id=BOE-A-2026-16532"
       }
      ]
@@ -2719,8 +2731,8 @@
      "declared": "not_found",
      "municipalities": null,
      "resolution": null,
-     "answer": "No stressed housing market area declaration for the Canary Islands was found in the BOE resolutions read on 15 October 2026.",
-     "note": "Not found in the BOE resolutions read; the list read is not complete (some quarters not read, third quarter 2026 resolution not found, ministry list blocked), so this is not proof of absence.",
+     "answer": "No stressed housing market area declaration for the Canary Islands was found in the BOE quarterly resolutions published up to 15 October 2026.",
+     "note": "Not found in any of the nine quarterly BOE resolutions published from March 2024 to July 2026 (BOE-A-2024-5214, 2024-20576, 2025-1721, 2025-8636, 2025-15728, 2025-21901, 2026-2448, 2026-9175, 2026-16532; every BOE issue up to 15 Oct. 2026 was searched). The third quarter 2026 resolution has not been published yet and the ministry list is blocked, so declarations made since July 2026 would not show here.",
      "sources": [
       {
        "title": "Ley 12/2023 por el derecho a la vivienda, art. 3.k y 18 (BOE, texto consolidado)",
@@ -2736,8 +2748,8 @@
      "declared": "not_found",
      "municipalities": null,
      "resolution": null,
-     "answer": "No stressed housing market area declaration for Cantabria was found in the BOE resolutions read on 15 October 2026.",
-     "note": "Not found in the BOE resolutions read; the list read is not complete (some quarters not read, third quarter 2026 resolution not found, ministry list blocked), so this is not proof of absence.",
+     "answer": "No stressed housing market area declaration for Cantabria was found in the BOE quarterly resolutions published up to 15 October 2026.",
+     "note": "Not found in any of the nine quarterly BOE resolutions published from March 2024 to July 2026 (BOE-A-2024-5214, 2024-20576, 2025-1721, 2025-8636, 2025-15728, 2025-21901, 2026-2448, 2026-9175, 2026-16532; every BOE issue up to 15 Oct. 2026 was searched). The third quarter 2026 resolution has not been published yet and the ministry list is blocked, so declarations made since July 2026 would not show here.",
      "sources": [
       {
        "title": "Ley 12/2023 por el derecho a la vivienda, art. 3.k y 18 (BOE, texto consolidado)",
@@ -2753,8 +2765,8 @@
      "declared": "not_found",
      "municipalities": null,
      "resolution": null,
-     "answer": "No stressed housing market area declaration for Castile and León was found in the BOE resolutions read on 15 October 2026.",
-     "note": "Not found in the BOE resolutions read; the list read is not complete (some quarters not read, third quarter 2026 resolution not found, ministry list blocked), so this is not proof of absence.",
+     "answer": "No stressed housing market area declaration for Castile and León was found in the BOE quarterly resolutions published up to 15 October 2026.",
+     "note": "Not found in any of the nine quarterly BOE resolutions published from March 2024 to July 2026 (BOE-A-2024-5214, 2024-20576, 2025-1721, 2025-8636, 2025-15728, 2025-21901, 2026-2448, 2026-9175, 2026-16532; every BOE issue up to 15 Oct. 2026 was searched). The third quarter 2026 resolution has not been published yet and the ministry list is blocked, so declarations made since July 2026 would not show here.",
      "sources": [
       {
        "title": "Ley 12/2023 por el derecho a la vivienda, art. 3.k y 18 (BOE, texto consolidado)",
@@ -2770,8 +2782,8 @@
      "declared": "not_found",
      "municipalities": null,
      "resolution": null,
-     "answer": "No stressed housing market area declaration for Castilla-La Mancha was found in the BOE resolutions read on 15 October 2026.",
-     "note": "Not found in the BOE resolutions read; the list read is not complete (some quarters not read, third quarter 2026 resolution not found, ministry list blocked), so this is not proof of absence.",
+     "answer": "No stressed housing market area declaration for Castilla-La Mancha was found in the BOE quarterly resolutions published up to 15 October 2026.",
+     "note": "Not found in any of the nine quarterly BOE resolutions published from March 2024 to July 2026 (BOE-A-2024-5214, 2024-20576, 2025-1721, 2025-8636, 2025-15728, 2025-21901, 2026-2448, 2026-9175, 2026-16532; every BOE issue up to 15 Oct. 2026 was searched). The third quarter 2026 resolution has not been published yet and the ministry list is blocked, so declarations made since July 2026 would not show here.",
      "sources": [
       {
        "title": "Ley 12/2023 por el derecho a la vivienda, art. 3.k y 18 (BOE, texto consolidado)",
@@ -2808,8 +2820,8 @@
      "declared": "not_found",
      "municipalities": null,
      "resolution": null,
-     "answer": "No stressed housing market area declaration for Ceuta was found in the BOE resolutions read on 15 October 2026.",
-     "note": "Not found in the BOE resolutions read; the list read is not complete (some quarters not read, third quarter 2026 resolution not found, ministry list blocked), so this is not proof of absence.",
+     "answer": "No stressed housing market area declaration for Ceuta was found in the BOE quarterly resolutions published up to 15 October 2026.",
+     "note": "Not found in any of the nine quarterly BOE resolutions published from March 2024 to July 2026 (BOE-A-2024-5214, 2024-20576, 2025-1721, 2025-8636, 2025-15728, 2025-21901, 2026-2448, 2026-9175, 2026-16532; every BOE issue up to 15 Oct. 2026 was searched). The third quarter 2026 resolution has not been published yet and the ministry list is blocked, so declarations made since July 2026 would not show here.",
      "sources": [
       {
        "title": "Ley 12/2023 por el derecho a la vivienda, art. 3.k y 18 (BOE, texto consolidado)",
@@ -2825,8 +2837,8 @@
      "declared": "not_found",
      "municipalities": null,
      "resolution": null,
-     "answer": "No stressed housing market area declaration for the Community of Madrid was found in the BOE resolutions read on 15 October 2026.",
-     "note": "Not found in the BOE resolutions read; the list read is not complete (some quarters not read, third quarter 2026 resolution not found, ministry list blocked), so this is not proof of absence.",
+     "answer": "No stressed housing market area declaration for the Community of Madrid was found in the BOE quarterly resolutions published up to 15 October 2026.",
+     "note": "Not found in any of the nine quarterly BOE resolutions published from March 2024 to July 2026 (BOE-A-2024-5214, 2024-20576, 2025-1721, 2025-8636, 2025-15728, 2025-21901, 2026-2448, 2026-9175, 2026-16532; every BOE issue up to 15 Oct. 2026 was searched). The third quarter 2026 resolution has not been published yet and the ministry list is blocked, so declarations made since July 2026 would not show here.",
      "sources": [
       {
        "title": "Ley 12/2023 por el derecho a la vivienda, art. 3.k y 18 (BOE, texto consolidado)",
@@ -2842,8 +2854,8 @@
      "declared": "not_found",
      "municipalities": null,
      "resolution": null,
-     "answer": "No stressed housing market area declaration for Extremadura was found in the BOE resolutions read on 15 October 2026.",
-     "note": "Not found in the BOE resolutions read; the list read is not complete (some quarters not read, third quarter 2026 resolution not found, ministry list blocked), so this is not proof of absence.",
+     "answer": "No stressed housing market area declaration for Extremadura was found in the BOE quarterly resolutions published up to 15 October 2026.",
+     "note": "Not found in any of the nine quarterly BOE resolutions published from March 2024 to July 2026 (BOE-A-2024-5214, 2024-20576, 2025-1721, 2025-8636, 2025-15728, 2025-21901, 2026-2448, 2026-9175, 2026-16532; every BOE issue up to 15 Oct. 2026 was searched). The third quarter 2026 resolution has not been published yet and the ministry list is blocked, so declarations made since July 2026 would not show here.",
      "sources": [
       {
        "title": "Ley 12/2023 por el derecho a la vivienda, art. 3.k y 18 (BOE, texto consolidado)",
@@ -2860,7 +2872,7 @@
      "municipalities": "A Coruña (2025); Santiago de Compostela (second quarter 2026)",
      "resolution": "BOE-A-2026-16532 (Santiago de Compostela); second quarter 2025 list (A Coruña)",
      "answer": "Galicia has declared stressed areas in A Coruña (2025) and Santiago de Compostela (second quarter 2026, BOE-A-2026-16532).",
-     "note": "A Coruña from BOE-A-2025-15728 (resolution of 30 May 2025 of the Instituto Gallego de la Vivienda y Suelo); Santiago de Compostela from BOE-A-2026-16532 (large holder: five or more properties). Other Galician municipalities may exist in quarters not read.",
+     "note": "A Coruña from BOE-A-2025-15728 (resolution of 30 May 2025 of the Instituto Gallego de la Vivienda y Suelo); Santiago de Compostela from BOE-A-2026-16532 (large holder: five or more properties). No other Galician municipality appears in the quarterly resolutions up to the second quarter 2026.",
      "sources": [
       {
        "title": "Resolución de 24 de julio de 2026, zonas tensionadas del segundo trimestre de 2026 (BOE-A-2026-16532)",
@@ -2876,8 +2888,8 @@
      "declared": "not_found",
      "municipalities": null,
      "resolution": null,
-     "answer": "No stressed housing market area declaration for La Rioja was found in the BOE resolutions read on 15 October 2026.",
-     "note": "Not found in the BOE resolutions read; the list read is not complete (some quarters not read, third quarter 2026 resolution not found, ministry list blocked), so this is not proof of absence.",
+     "answer": "No stressed housing market area declaration for La Rioja was found in the BOE quarterly resolutions published up to 15 October 2026.",
+     "note": "Not found in any of the nine quarterly BOE resolutions published from March 2024 to July 2026 (BOE-A-2024-5214, 2024-20576, 2025-1721, 2025-8636, 2025-15728, 2025-21901, 2026-2448, 2026-9175, 2026-16532; every BOE issue up to 15 Oct. 2026 was searched). The third quarter 2026 resolution has not been published yet and the ministry list is blocked, so declarations made since July 2026 would not show here.",
      "sources": [
       {
        "title": "Ley 12/2023 por el derecho a la vivienda, art. 3.k y 18 (BOE, texto consolidado)",
@@ -2893,8 +2905,8 @@
      "declared": "not_found",
      "municipalities": null,
      "resolution": null,
-     "answer": "No stressed housing market area declaration for Melilla was found in the BOE resolutions read on 15 October 2026.",
-     "note": "Not found in the BOE resolutions read; the list read is not complete (some quarters not read, third quarter 2026 resolution not found, ministry list blocked), so this is not proof of absence.",
+     "answer": "No stressed housing market area declaration for Melilla was found in the BOE quarterly resolutions published up to 15 October 2026.",
+     "note": "Not found in any of the nine quarterly BOE resolutions published from March 2024 to July 2026 (BOE-A-2024-5214, 2024-20576, 2025-1721, 2025-8636, 2025-15728, 2025-21901, 2026-2448, 2026-9175, 2026-16532; every BOE issue up to 15 Oct. 2026 was searched). The third quarter 2026 resolution has not been published yet and the ministry list is blocked, so declarations made since July 2026 would not show here.",
      "sources": [
       {
        "title": "Ley 12/2023 por el derecho a la vivienda, art. 3.k y 18 (BOE, texto consolidado)",
@@ -2910,8 +2922,8 @@
      "declared": "not_found",
      "municipalities": null,
      "resolution": null,
-     "answer": "No stressed housing market area declaration for the Region of Murcia was found in the BOE resolutions read on 15 October 2026.",
-     "note": "Not found in the BOE resolutions read; the list read is not complete (some quarters not read, third quarter 2026 resolution not found, ministry list blocked), so this is not proof of absence.",
+     "answer": "No stressed housing market area declaration for the Region of Murcia was found in the BOE quarterly resolutions published up to 15 October 2026.",
+     "note": "Not found in any of the nine quarterly BOE resolutions published from March 2024 to July 2026 (BOE-A-2024-5214, 2024-20576, 2025-1721, 2025-8636, 2025-15728, 2025-21901, 2026-2448, 2026-9175, 2026-16532; every BOE issue up to 15 Oct. 2026 was searched). The third quarter 2026 resolution has not been published yet and the ministry list is blocked, so declarations made since July 2026 would not show here.",
      "sources": [
       {
        "title": "Ley 12/2023 por el derecho a la vivienda, art. 3.k y 18 (BOE, texto consolidado)",
@@ -2928,7 +2940,7 @@
      "municipalities": "Pamplona/Iruña, Tudela, Valle de Egüés/Eguesibar, Burlada/Burlata, Barañáin/Barañain, Zizur Mayor, Estella-Lizarra, Aranguren, Berriozar, Tafalla, Ansoáin/Antsoain, Villava/Atarrabia, Corella, Valle de Elorz/Elortzibar, Cintruénigo, Baztan, Altsasu/Alsasua, Huarte/Uharte, Berrioplano/Berriobeiti, San Adrián, Peralta/Azkoien",
      "resolution": "Orden Foral 157E/2025 (BOE-A-2025-15728)",
      "answer": "Navarre has declared 21 municipalities as stressed areas under Orden Foral 157E/2025, including Pamplona/Iruña, Tudela, Burlada/Burlata, Estella-Lizarra and Tafalla.",
-     "note": "Complete list as published in BOE-A-2025-15728 (read 15 Oct. 2026). Later quarters were not read.",
+     "note": "Complete list as published in BOE-A-2025-15728 (read 15 Oct. 2026); no later quarterly resolution up to the second quarter 2026 adds a Navarre municipality.",
      "sources": [
       {
        "title": "Resolución de 28 de julio de 2025, zonas tensionadas del segundo trimestre de 2025 (BOE-A-2025-15728)",
@@ -2944,8 +2956,8 @@
      "declared": "not_found",
      "municipalities": null,
      "resolution": null,
-     "answer": "No stressed housing market area declaration for the Valencian Community was found in the BOE resolutions read on 15 October 2026.",
-     "note": "Not found in the BOE resolutions read; the list read is not complete (some quarters not read, third quarter 2026 resolution not found, ministry list blocked), so this is not proof of absence.",
+     "answer": "No stressed housing market area declaration for the Valencian Community was found in the BOE quarterly resolutions published up to 15 October 2026.",
+     "note": "Not found in any of the nine quarterly BOE resolutions published from March 2024 to July 2026 (BOE-A-2024-5214, 2024-20576, 2025-1721, 2025-8636, 2025-15728, 2025-21901, 2026-2448, 2026-9175, 2026-16532; every BOE issue up to 15 Oct. 2026 was searched). The third quarter 2026 resolution has not been published yet and the ministry list is blocked, so declarations made since July 2026 would not show here.",
      "sources": [
       {
        "title": "Ley 12/2023 por el derecho a la vivienda, art. 3.k y 18 (BOE, texto consolidado)",
@@ -2987,7 +2999,7 @@
      "income_cap": null,
      "conditions": "Bonus of 12.5% of the tax (art. 121-4), also for disability of 65% or more and victims of gender violence.",
      "answer": "Aragon gives buyers under 35 a 12.5% bonus on the transfer tax when the home is worth up to €100,000; the general rate runs from 8% to 10% by value.",
-     "note": "The report does not give an income cap or a main-home condition for this bonus; the guide says main home.",
+     "note": "Settled on art. 121-4 (BOE consolidated text, read 15 Oct. 2026): 12.5% bonus on the full tax for buyers under 35, main home, real value of the property not above €100,000; no income cap in the article.",
      "sources": [
       {
        "title": "Decreto Legislativo 1/2005, Aragon, art. 121-4 (BOE)",
@@ -3028,22 +3040,26 @@
      ]
     },
     "basque-country": {
-     "reduced_rate": "not_read",
+     "reduced_rate": "no",
      "age_limit": null,
      "itp_rate": null,
      "price_cap": null,
      "income_cap": null,
      "conditions": null,
-     "answer": "The Basque Country has its own foral rules, and the sources read do not mention a young-buyer rate; the housing rate is 4% for everyone in the three territories (Álava, Bizkaia, Gipuzkoa).",
-     "note": "Young-buyer rule not read; foral rules not covered by the guide table.",
+     "answer": "The three Basque territories (Álava, Bizkaia, Gipuzkoa) have no young-buyer rate in their ITP norma foral texts read on 15 Oct. 2026: a home pays 4% whatever the buyer's age, and 2.5% under the area or large-family tests.",
+     "note": "Settled on the texts of Norma Foral 11/2003 (Álava), 1/2011 (Bizkaia) and 18/1987 (Gipuzkoa), searched for any young-buyer (jóvenes) rate: none found.",
      "sources": [
-      {
-       "title": "Basque Government, list of ITP and AJD regulations",
-       "url": "https://www.euskadi.eus/impuestos-de-transmisiones-patrimoniales-y-actos-juridicos-documentados/web01-s2oga/es/"
-      },
       {
        "title": "Norma Foral 11/2003, Álava, updated text (Diputación Foral de Álava)",
        "url": "https://web.araba.eus/documents/d/araba/indice_norma-foral-itp-ajd-cas-2-pdf"
+      },
+      {
+       "title": "Norma Foral 1/2011, Bizkaia, consolidated text (Diputación Foral de Bizkaia)",
+       "url": "https://www.bizkaia.eus/documents/880307/15187815/ca_1_2011.pdf/50b78491-3852-b68f-f9d5-2db574a48917?t=1746431731226"
+      },
+      {
+       "title": "Norma Foral 18/1987, Gipuzkoa, information copy (Diputación Foral de Gipuzkoa)",
+       "url": "https://www.gipuzkoa.eus/documents/2456431/2854433/NF+18-1987+(2025).pdf/fd85880e-c8c0-641d-eead-3869889f88ad?t=1747374492563"
       }
      ]
     },
@@ -3071,7 +3087,7 @@
      "income_cap": null,
      "conditions": "Main home; the excess above €300,000 pays 9%.",
      "answer": "Cantabria taxes a main home bought by a buyer under 40 at 4% on the first €300,000 of value, with the 9% general rate on any excess.",
-     "note": "No income cap read in the report.",
+     "note": "Settled on art. 9.3.c (BOE consolidated text, read 15 Oct. 2026): buyer under 40 at the date of purchase, main home; no income cap in that article. The reduced rate is limited to the first €300,000 (art. 9.7).",
      "sources": [
       {
        "title": "Decreto Legislativo 62/2008, Cantabria, art. 9 (BOE)",
@@ -3087,7 +3103,7 @@
      "income_cap": "€31,500",
      "conditions": "Main home.",
      "answer": "Castile and León taxes a main home bought by a buyer under 36 at 4% (0.01% in rural communes), with an income cap of €31,500, against the general 8% and 10%.",
-     "note": "Price cap not read. The rural 0.01% rate applies to housing in a rural commune (art. 7.1.c).",
+     "note": "Settled on arts. 25.3 and 28.2 (BOE consolidated text last updated 14/05/2024, read 15 Oct. 2026): all buyers under 36 at the date of accrual, main home, first home of each buyer; total taxable bases less personal and family minimum at most €31,500; no price cap in these articles. The rural 0.01% rate applies to housing in a commune listed in art. 7.1.c.",
      "sources": [
       {
        "title": "Decreto Legislativo 1/2013, Castile and León, arts. 25, 28 (BOE)",
@@ -3119,7 +3135,7 @@
      "income_cap": "€36,000",
      "conditions": "Main home; stamp duty (AJD) 100% bonus for the same group (art. 642-6).",
      "answer": "Catalonia taxes buyers aged 35 or under at 5% (income up to €36,000) instead of 10% to 13%, and gives them a 100% bonus on stamp duty on a new home.",
-     "note": "Price cap not read in the report.",
+     "note": "Settled on art. 641-5 (BOE consolidated text, read 15 Oct. 2026; rate in force since 27/06/2025): the 5% rate applies to a main home bought by a buyer aged 35 or under at the date of tax accrual, if the sum of the general and savings bases less the personal and family minimum in the last income tax return does not exceed €36,000; the article sets no price cap.",
      "sources": [
       {
        "title": "Decreto Legislativo 1/2024, Catalonia, arts. 641-5, 642-6 (BOE)",
@@ -3203,7 +3219,7 @@
      "income_cap": null,
      "conditions": "First main home.",
      "answer": "La Rioja taxes a first main home bought by a buyer under 40 at 4%, or 3% in the municipalities of the law's annex I, against the general 7%.",
-     "note": "Price and income caps not read.",
+     "note": "Settled on art. 45.3 (BOE consolidated text, read 15 Oct. 2026): the 4% rate (3% in annex I municipalities) applies to a first main home bought by a buyer under 40 at the date of purchase; the article sets no price cap and no income cap.",
      "sources": [
       {
        "title": "Ley 10/2017, La Rioja, art. 45 (BOE)",
@@ -3236,10 +3252,10 @@
      "age_limit": "40 or under",
      "itp_rate": "3%",
      "price_cap": null,
-     "income_cap": "general base less personal minimum under €40,000",
+     "income_cap": "general base less personal minimum under €40,000 (savings base at most €1,800)",
      "conditions": "Main home.",
      "answer": "The Region of Murcia taxes a main home bought by a buyer aged 40 or under at 3% instead of 7.75%, if the general taxable base less the personal minimum is under €40,000.",
-     "note": "Price cap not read.",
+     "note": "Settled on art. 6.6 (BOE consolidated text, read 15 Oct. 2026): age 40 or under, main home, general taxable base less personal and family minimum under €40,000 and savings base at most €1,800; the article sets no price cap.",
      "sources": [
       {
        "title": "Decreto Legislativo 1/2010, Region of Murcia, art. 6 (BOE)",
@@ -3248,14 +3264,14 @@
      ]
     },
     "navarre": {
-     "reduced_rate": "not_read",
+     "reduced_rate": "no",
      "age_limit": null,
      "itp_rate": null,
      "price_cap": null,
      "income_cap": null,
      "conditions": null,
-     "answer": "Navarre has its own foral rules and the sources read list no young-buyer rate; the general rate is 6%, with 5% for families with two children or more.",
-     "note": "Young-buyer rule not read.",
+     "answer": "Navarre has no young-buyer rate in article 8 of its ITP text (read 15 Oct. 2026): the general rate is 6%, with 5% for families with two children or more and 4% in municipalities at risk of depopulation.",
+     "note": "Settled on article 8 of Decreto Foral Legislativo 129/1999 (consolidated text updated 20/04/2026), read for any rate tied to the buyer's age: none found.",
      "sources": [
       {
        "title": "Decreto Foral Legislativo 129/1999, Navarre, consolidated ITPAJD text (BOE)",
@@ -3709,7 +3725,7 @@
   {
    "slug": "rental-deposit-fianza",
    "title": "Rental deposit (fianza) in Spain: amount, filing, return",
-   "description": "The Spanish rental deposit is one month's rent by law, plus a capped extra guarantee. Regional bodies hold it: Catalonia and Madrid rules, and getting it back.",
+   "description": "The Spanish rental deposit is one month's rent by law, plus a capped extra guarantee. Regional bodies hold it: six regions' rules, and getting it back.",
    "answer": "",
    "checked": "2026-10-15",
    "url": "https://payotte.com/spain/guides/rental-deposit-fianza",
