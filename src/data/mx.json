@@ -1670,6 +1670,79 @@
      "url": "https://congresodetlaxcala.gob.mx/archivo/ingreso2026/pdf/m50.pdf",
      "consulte": "2026-10-15"
     }
+   },
+   "mexico-city": {
+    "nom": "Mexico City",
+    "etat": "09",
+    "impot": "Property acquisition tax (ISAI)",
+    "methode": "bareme",
+    "unite": "MXN",
+    "bareme": [
+     [
+      0.12,
+      327.29,
+      1.446
+     ],
+     [
+      123988.82,
+      2120.18,
+      3.083
+     ],
+     [
+      198382.04,
+      4413.73,
+      4.028
+     ],
+     [
+      297572.77,
+      8409.14,
+      4.699
+     ],
+     [
+      595145.68,
+      22392.1,
+      5.219
+     ],
+     [
+      1487864.16,
+      68983.09,
+      5.702
+     ],
+     [
+      2975728.35,
+      153821.12,
+      6.185
+     ],
+     [
+      5732476.12,
+      324325.98,
+      6.425
+     ],
+     [
+      14928323.93,
+      915159.21,
+      6.495
+     ],
+     [
+      27529938.64,
+      1733634.09,
+      6.546
+     ],
+     [
+      55059877.22,
+      3535743.88,
+      9.018
+     ]
+    ],
+    "base": "the highest of the acquisition value, the cadastral value and an appraisal",
+    "source": {
+     "titre": "Código Fiscal de la Ciudad de México, art. 112-116 (last reform Gaceta Oficial 19 Dec. 2025)",
+     "url": "https://data.consejeria.cdmx.gob.mx/images/leyes/2025/2026/210126/CODIGO_FISCAL_DE_LA_CDMX_26.1.pdf",
+     "consulte": "2026-10-15"
+    },
+    "notes": [
+     "Mexico City is a federal entity: the city sets the tax for all its 16 boroughs (alcaldías)."
+    ]
    }
   },
   "etats": {
@@ -1722,6 +1795,9 @@
       "Jalisco charges MX$4,801 to record a home that is not economic, social or popular housing (lower fixed fees below a cadastral value of MX$1,238,206); non-residential property pays 0.5% of the value."
      ]
     }
+   },
+   "15": {
+    "nom": "State of Mexico"
    },
    "16": {
     "nom": "Michoacán",
@@ -2007,6 +2083,20 @@
       "consulte": "2026-10-15"
      }
     }
+   },
+   "09": {
+    "nom": "Mexico City",
+    "rpp": {
+     "fixeMxn": 25098,
+     "source": {
+      "titre": "Código Fiscal de la Ciudad de México, art. 196-I-a (amount reformed Gaceta Oficial 19 Dec. 2025)",
+      "url": "https://data.consejeria.cdmx.gob.mx/images/leyes/2025/2026/210126/CODIGO_FISCAL_DE_LA_CDMX_26.1.pdf",
+      "consulte": "2026-10-15"
+     },
+     "notes": [
+      "Mexico City: MX$25,098 per recording; a lower fee applies below the value of social housing (threshold not established)."
+     ]
+    }
    }
   },
   "nonCalcules": {
@@ -2017,7 +2107,8 @@
    "zihuatanejo": "Zihuatanejo (Guerrero): same as Acapulco",
    "campeche": "Campeche: 2% under the 2026 revenue law, but the state law that sets the base could not be reached, and a second 2% tax on public instruments may apply",
    "tuxtla-gutierrez": "Tuxtla Gutiérrez (Chiapas): the 2026 revenue law could not be reached on any official site",
-   "xalapa": "Xalapa (Veracruz): the rate is set by the 2026 revenue law, which could not be reached"
+   "xalapa": "Xalapa (Veracruz): the rate is set by the 2026 revenue law, which could not be reached",
+   "toluca": "Toluca (State of Mexico): the state table (Código Financiero, art. 115) could be read only in an undated copy last reformed in 2013-2015; the state's legal portals could not be reached"
   }
  },
  "loans": {
@@ -3704,6 +3795,20 @@
       {
        "title": "Ley de Ingresos del Municipio de Juárez 2026, art. 38 and 43 (Decreto LXVIII/APLIM/0427/2025, P.O. 103, 24 Dec. 2025)",
        "url": "https://www.congresochihuahua2.gob.mx/biblioteca/decretos/archivosDecretos/17431.docx"
+      }
+     ]
+    },
+    "09": {
+     "municipalities_computed": 1,
+     "lowest_3m": "MX$155,322 (Mexico City)",
+     "highest_3m": null,
+     "tax_name": "Property acquisition tax (ISAI)",
+     "answer": "In Mexico City, the acquisition tax on a MX$3 million home is MX$155,322 in Mexico City, under its 2026 law (the only municipality of the state Payotte computes).",
+     "note": null,
+     "sources": [
+      {
+       "title": "Código Fiscal de la Ciudad de México, art. 112-116 (last reform Gaceta Oficial 19 Dec. 2025)",
+       "url": "https://data.consejeria.cdmx.gob.mx/images/leyes/2025/2026/210126/CODIGO_FISCAL_DE_LA_CDMX_26.1.pdf"
       }
      ]
     }
@@ -5593,6 +5698,20 @@
        "url": "https://www.congresochihuahua2.gob.mx/biblioteca/leyes/archivosLeyes/1538.pdf"
       }
      ]
+    },
+    "09": {
+     "fee_3m": "MX$25,098",
+     "fee_8m": "MX$25,098",
+     "form": "fixed",
+     "confirmed": "yes",
+     "answer": "In Mexico City, the fee to record the deed of a home sale at the Registro Público de la Propiedad is MX$25,098 on MX$3 million, whatever the price.",
+     "note": "Mexico City: MX$25,098 per recording; a lower fee applies below the value of social housing (threshold not established).",
+     "sources": [
+      {
+       "title": "Código Fiscal de la Ciudad de México, art. 196-I-a (amount reformed Gaceta Oficial 19 Dec. 2025)",
+       "url": "https://data.consejeria.cdmx.gob.mx/images/leyes/2025/2026/210126/CODIGO_FISCAL_DE_LA_CDMX_26.1.pdf"
+      }
+     ]
     }
    }
   },
@@ -5990,6 +6109,132 @@
  },
  "guides": [
   {
+   "slug": "acquisition-tax-baja-california-sur",
+   "title": "Baja California Sur acquisition tax: 3% less a UMA deduction",
+   "description": "In Los Cabos, La Paz and Loreto the buyer pays 3% of the value less a UMA deduction. Base, 90-day appraisal, 30-day deadline and the state recording fee.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/mexico/guides/acquisition-tax-baja-california-sur",
+   "draft": false
+  },
+  {
+   "slug": "acquisition-tax-baja-california",
+   "title": "Baja California acquisition tax: Tijuana, Ensenada, Rosarito",
+   "description": "Baja California's ISAI: a 2% state default less one UMA, replaced by municipal tables in Tijuana, Ensenada, Rosarito and Mexicali. Base, deadline, fees.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/mexico/guides/acquisition-tax-baja-california",
+   "draft": false
+  },
+  {
+   "slug": "acquisition-tax-chihuahua",
+   "title": "Property transfer tax in Chihuahua: 2% plus surcharges",
+   "description": "Chihuahua city and Ciudad Juárez charge a 2% transfer tax (ISTD) plus a 4% university surcharge; the state recording fee is 167.3734 UMA. Base and deadlines.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/mexico/guides/acquisition-tax-chihuahua",
+   "draft": false
+  },
+  {
+   "slug": "acquisition-tax-coahuila",
+   "title": "Property acquisition tax in Coahuila: Saltillo and Torreón",
+   "description": "Coahuila's acquisition tax (ISAI) is set by municipio: 3% in Saltillo, 2.5% in Torreón (1.5% downtown), cadastral appraisal fees and a MX$26,726 recording fee.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/mexico/guides/acquisition-tax-coahuila",
+   "draft": false
+  },
+  {
+   "slug": "acquisition-tax-colima",
+   "title": "Property transfer tax in Colima: Colima and Manzanillo",
+   "description": "Colima and Manzanillo share a marginal transfer tax table (ISTP) topping out at 2%, a highest-of-three base and a 0.3% recording fee; deadlines differ.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/mexico/guides/acquisition-tax-colima",
+   "draft": false
+  },
+  {
+   "slug": "acquisition-tax-guanajuato",
+   "title": "Guanajuato acquisition tax: a UMA deduction, then a table",
+   "description": "Guanajuato deducts 10 annual UMA, then each municipality's table applies (León, Guanajuato, San Miguel de Allende). New state law since 9 July 2026.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/mexico/guides/acquisition-tax-guanajuato",
+   "draft": false
+  },
+  {
+   "slug": "acquisition-tax-jalisco",
+   "title": "Jalisco property transfer tax: the appraisal sets the base",
+   "description": "Jalisco's transfer tax: progressive municipal tables (Guadalajara, Zapopan, Puerto Vallarta, Chapala), a base set by the approved appraisal and a MX$4,801 fee.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/mexico/guides/acquisition-tax-jalisco",
+   "draft": false
+  },
+  {
+   "slug": "acquisition-tax-nayarit",
+   "title": "Nayarit acquisition tax: 2% in Bahía de Banderas and Tepic",
+   "description": "Nayarit's acquisition tax is 2% of the highest value in Bahía de Banderas and Tepic, due within a month. Base, notary duty and the 131.8 UMA recording fee.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/mexico/guides/acquisition-tax-nayarit",
+   "draft": false
+  },
+  {
+   "slug": "acquisition-tax-oaxaca",
+   "title": "Property transfer tax in Oaxaca: 2026 rules by municipio",
+   "description": "Oaxaca's transfer tax (ISTD) is set by each municipio: Oaxaca de Juárez table, Huatulco brackets, Puerto Escondido 2%, plus the recording fee and notary duties.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/mexico/guides/acquisition-tax-oaxaca",
+   "draft": false
+  },
+  {
+   "slug": "acquisition-tax-queretaro",
+   "title": "Property transfer tax in Querétaro city: 2026 table",
+   "description": "Querétaro city's 2026 transfer tax (ISTD) is a progressive table, about 5.7% on MX$3 million, withheld by the notary. Base, deadlines, reviews and gaps.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/mexico/guides/acquisition-tax-queretaro",
+   "draft": false
+  },
+  {
+   "slug": "acquisition-tax-quintana-roo",
+   "title": "Quintana Roo acquisition tax: 2% to 4% by municipality",
+   "description": "Quintana Roo's ISABI is set by each municipality: 3% in Cancún, 4% in Playa del Carmen and Tulum, 2% in Chetumal. Base, deadline, recording fee and traps.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/mexico/guides/acquisition-tax-quintana-roo",
+   "draft": false
+  },
+  {
+   "slug": "acquisition-tax-sinaloa",
+   "title": "Property acquisition tax in Sinaloa: 2% plus a 10% add-on",
+   "description": "Sinaloa fixes the acquisition tax (ISAI) at 2% statewide, plus a 10% additional tax, with the base, notary duties and the 0.75% recording fee.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/mexico/guides/acquisition-tax-sinaloa",
+   "draft": false
+  },
+  {
+   "slug": "acquisition-tax-sonora",
+   "title": "Property transfer tax in Sonora: Guaymas and Puerto Peñasco",
+   "description": "Sonora's transfer tax (ITDBI) is voted by municipio: Guaymas 2%, Puerto Peñasco 2.5% or 3% on the whole value, with base, deadlines and the notary's role.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/mexico/guides/acquisition-tax-sonora",
+   "draft": false
+  },
+  {
+   "slug": "acquisition-tax-yucatan",
+   "title": "Yucatán acquisition tax: Mérida's table, Progreso 4%",
+   "description": "Yucatán's ISAI is municipal: a 2.5% to 5% table in Mérida, a flat 4% in Progreso, bands in Valladolid. Base, 30 working days, notary duties, MX$1,490 fee.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/mexico/guides/acquisition-tax-yucatan",
+   "draft": false
+  },
+  {
    "slug": "binding-mortgage-offer-mexico",
    "title": "Binding mortgage offer in Mexico: 20 days, free",
    "description": "The oferta vinculante under article 6 of the LTFCCG: what it contains, how long it binds the lender, what you must do to accept it, and its conditions.",
@@ -6215,6 +6460,15 @@
    "draft": false
   },
   {
+   "slug": "mexico-house-prices-shf-index",
+   "title": "Mexico house prices: what the SHF index measures",
+   "description": "The Sociedad Hipotecaria Federal index tracks mortgage appraisal values, not sale prices. Q2 2026: +7.3 % over a year nationally, median appraisal MX$1,299,580.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/mexico/guides/mexico-house-prices-shf-index",
+   "draft": false
+  },
+  {
    "slug": "mexico-uk-tax-treaty-property",
    "title": "Mexico-UK tax treaty: rent and gains on Mexican property",
    "description": "What articles 6 and 13 of the 1994 UK-Mexico double taxation convention, as amended, say about rental income and gains on Mexican real estate.",
@@ -6271,10 +6525,19 @@
   {
    "slug": "probate-and-succession-mexico",
    "title": "Probate and succession in Mexico: who inherits",
-   "description": "How an estate passes in Mexico: the court or notary route, the intestate order in the Mexico City Civil Code, and what federal income tax law says about inherited property.",
+   "description": "How an estate passes in Mexico: court or notary route, the intestate order in the Mexico City Civil Code, and federal income tax rules on inherited homes.",
    "answer": "",
    "checked": "2026-10-15",
    "url": "https://payotte.com/mexico/guides/probate-and-succession-mexico",
+   "draft": false
+  },
+  {
+   "slug": "property-acquisition-tax-mexico",
+   "title": "Property acquisition tax in Mexico, state by state",
+   "description": "Who sets the buyer's acquisition tax in Mexico (ISAI and local names), how the base is chosen, the 2026 range across 53 municipalities and links by state.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/mexico/guides/property-acquisition-tax-mexico",
    "draft": false
   },
   {
@@ -6302,6 +6565,15 @@
    "answer": "",
    "checked": "2026-10-15",
    "url": "https://payotte.com/mexico/guides/public-property-registry-mexico",
+   "draft": false
+  },
+  {
+   "slug": "real-estate-agent-licensing-by-state-mexico",
+   "title": "Real estate agent licensing in Mexico, state by state",
+   "description": "Mexico has no federal agent licence. Some states require one, Jalisco makes it voluntary, others are not established. What each state text read says.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/mexico/guides/real-estate-agent-licensing-by-state-mexico",
    "draft": false
   },
   {
@@ -6379,7 +6651,7 @@
   {
    "slug": "selling-a-home-in-mexico-costs",
    "title": "Selling a home in Mexico: the seller's costs and taxes",
-   "description": "What a seller pays in Mexico: federal income tax on the gain, the 5 % state payment, notary-calculated filing, deductions, arrears certificates and agent commissions.",
+   "description": "What a seller pays in Mexico: income tax on the gain, the 5 % state payment, notary filing, deductions, arrears certificates and agent commission.",
    "answer": "",
    "checked": "2026-10-15",
    "url": "https://payotte.com/mexico/guides/selling-a-home-in-mexico-costs",
@@ -6451,7 +6723,7 @@
   {
    "slug": "wills-in-mexico",
    "title": "Making a will in Mexico: the public open will",
-   "description": "How a testamento público abierto works before a Mexican notary, who may make one, the duty to leave maintenance, the national notice registry and September's campaign.",
+   "description": "How a testamento público abierto works before a Mexican notary: who may make one, the duty to leave maintenance, the national notice registry, September campaign.",
    "answer": "",
    "checked": "2026-10-15",
    "url": "https://payotte.com/mexico/guides/wills-in-mexico",

@@ -15,6 +15,7 @@ const cas = [
   ['Durango 8 M', c(8e6, 'Durango').acquisition_tax, 311679.13], ['Oaxaca de Juárez 8 M', c(8e6, 'Oaxaca de Juárez').acquisition_tax, 210708.53],
   ['Tamaulipas registre plafonné', c(8e6, 'Tampico').recording_fee, 58655], ['Colima registre 8 M', c(8e6, 'Manzanillo').recording_fee, 24234.62],
   ['Puebla 3 M (tranche)', c(3e6, 'Puebla').acquisition_tax, 54000], ['Pachuca 3 M (abattement)', c(3e6, 'Pachuca').acquisition_tax, 55720.54],
+  ['Mexico City 3 M', c(3e6, 'Mexico City').acquisition_tax, 155322.32], ['Mexico City registre', c(3e6, 'mexico city').recording_fee, 25098],
   ['Monterrey non calculé', c(3e6, 'Monterrey').computed, false], ['Acapulco non calculé', c(3e6, 'Acapulco').computed, false],
   ['Paiement 2,4 M 20 ans 11,31 %', IMPL_MX.mortgage_payment_mx({ loan_amount: 2400000, interest_rate: 11.31, term_years: 20 }).monthly_payment, null],
 ];
