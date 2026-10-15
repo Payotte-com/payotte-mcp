@@ -1,0 +1,4016 @@
+{
+ "_note": "Généré par payotte-astro-espagne/scripts/es/export-mcp.mjs ; ne pas modifier à la main.",
+ "generated": "2026-10-15",
+ "loans": {
+  "_note": "Taux de référence du calculateur /spain/mortgage-calculator. Chaque chiffre est lu à la source citée (rapport ~/Payotte/espagne/rapports/phase-0/donnees.md, §2, BOE et Banco de España, réutilisation permise avec citation du Banco de España) ; aucun n'est une offre de prêt.",
+  "releve": "2026-10-15",
+  "euribor": {
+   "taux": 3.247,
+   "mois": "2026-09",
+   "source": {
+    "titre": "Banco de España, Resolución de 1 de octubre de 2026, official mortgage market reference rates (BOE no. 244, 2 Oct. 2026)",
+    "url": "https://www.boe.es/boe/dias/2026/10/02/pdfs/BOE-A-2026-20519.pdf"
+   },
+   "precedent": {
+    "taux": 2.954,
+    "mois": "2026-08"
+   }
+  },
+  "tipoMedio": {
+   "taux": 3.134,
+   "mois": "2026-08",
+   "source": {
+    "titre": "Banco de España, Resolución de 17 de septiembre de 2026: average rate of mortgage loans over three years for the purchase of open-market housing (BOE no. 231, 18 Sept. 2026)",
+    "url": "https://www.boe.es/boe/dias/2026/09/18/pdfs/BOE-A-2026-19481.pdf"
+   }
+  },
+  "taeNouveaux": {
+   "taux": 3.096,
+   "mois": "2026-08",
+   "source": {
+    "titre": "Banco de España, interest rate statistics, new loans to households for house purchase, APRC (series be1906)",
+    "url": "https://www.bde.es/webbe/es/estadisticas/compartido/datos/csv/be1906.csv"
+   }
+  }
+ },
+ "irnr": {
+  "_note": "Paramètres du calculateur /spain/non-resident-tax-calculator (revenu imputé d'un logement non loué d'un non-résident, exercice 2026). Lu au BOE consolidé le 15 oct. 2026 (rapport ~/Payotte/espagne/rapports/phase-0/national-etrangers.md, §4).",
+  "releve": "2026-10-15",
+  "exercice": 2026,
+  "imputation": {
+   "general": 2,
+   "revise": 1.1,
+   "source": {
+    "titre": "Ley 35/2006 (IRPF), art. 85.1, applied to non-residents by art. 24.5 TRLIRNR",
+    "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2006-20764"
+   }
+  },
+  "taux": {
+   "ueEee": 19,
+   "autres": 24,
+   "source": {
+    "titre": "Real Decreto Legislativo 5/2004 (TRLIRNR), art. 25.1.a",
+    "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2004-4527"
+   }
+  },
+  "aVenir": "From 1 January 2027, Real Decreto-ley 29/2026 (art. 6) replaces the 2%/1.1% rule with a scale of 1.1% to 3% on the sum of cadastral values, subject to validation by the Cortes; its application to non-residents is not settled by the texts read.",
+  "da55": "For 2026, Real Decreto-ley 29/2026 extends the 1.1% rate to municipalities whose values were revised from 1 January 2012 (additional provision 55 of Ley 35/2006), subject to validation by the Cortes."
+ },
+ "prices": {
+  "valor_tasado": {
+   "source": "Ministerio de Vivienda y Agenda Urbana / Ministerio de Transportes y Movilidad Sostenible, Estadística de valor tasado de la vivienda (Boletín Online), tablas 1 y 4",
+   "url": "https://apps.fomento.gob.es/BoletinOnline2/?nivel=2&orden=35000000",
+   "periode": "Q2 2026",
+   "publie": "2026-09-15",
+   "unite": "€/m²",
+   "mesure": "average appraised value of open-market housing (valuations by approved valuation companies), not sale prices",
+   "national": 2355,
+   "nationalAn": 12.5,
+   "reutilisation": "Elaboración propia con datos del Ministerio; reuse under Real Decreto 1495/2011, arts. 7 and 8 (source and update date cited)"
+  },
+  "ipv": {
+   "source": "INE, Índice de Precios de Vivienda (IPV), base 2025, Q2 2026",
+   "url": "https://www.ine.es/jaxiT3/Tabla.htm?t=80270",
+   "periode": "Q2 2026",
+   "publie": "2026-09-07",
+   "national": 12.2,
+   "reutilisation": "Fuente: Sitio web del INE: www.ine.es"
+  },
+  "regions": [
+   {
+    "slug": "andalusia",
+    "name": "Andalusia",
+    "name_es": "Andalucía",
+    "appraised_value_eur_m2": 1981.6,
+    "appraised_change_12m_pct": 13.8,
+    "ipv_change_12m_pct": 11.9,
+    "url": "https://payotte.com/spain/regions/andalusia"
+   },
+   {
+    "slug": "aragon",
+    "name": "Aragon",
+    "name_es": "Aragón",
+    "appraised_value_eur_m2": 1762.8,
+    "appraised_change_12m_pct": 14.6,
+    "ipv_change_12m_pct": 14.6,
+    "url": "https://payotte.com/spain/regions/aragon"
+   },
+   {
+    "slug": "asturias",
+    "name": "Asturias",
+    "name_es": "Principado de Asturias",
+    "appraised_value_eur_m2": 1798.5,
+    "appraised_change_12m_pct": 14,
+    "ipv_change_12m_pct": 15,
+    "url": "https://payotte.com/spain/regions/asturias"
+   },
+   {
+    "slug": "balearic-islands",
+    "name": "Balearic Islands",
+    "name_es": "Illes Balears",
+    "appraised_value_eur_m2": 3980.8,
+    "appraised_change_12m_pct": 13.1,
+    "ipv_change_12m_pct": 13.7,
+    "url": "https://payotte.com/spain/regions/balearic-islands"
+   },
+   {
+    "slug": "canary-islands",
+    "name": "Canary Islands",
+    "name_es": "Canarias",
+    "appraised_value_eur_m2": 2279.4,
+    "appraised_change_12m_pct": 14.2,
+    "ipv_change_12m_pct": 11,
+    "url": "https://payotte.com/spain/regions/canary-islands"
+   },
+   {
+    "slug": "cantabria",
+    "name": "Cantabria",
+    "name_es": "Cantabria",
+    "appraised_value_eur_m2": 2122,
+    "appraised_change_12m_pct": 14.6,
+    "ipv_change_12m_pct": 13.5,
+    "url": "https://payotte.com/spain/regions/cantabria"
+   },
+   {
+    "slug": "castile-and-leon",
+    "name": "Castile and León",
+    "name_es": "Castilla y León",
+    "appraised_value_eur_m2": 1349.6,
+    "appraised_change_12m_pct": 15.1,
+    "ipv_change_12m_pct": 14.8,
+    "url": "https://payotte.com/spain/regions/castile-and-leon"
+   },
+   {
+    "slug": "castilla-la-mancha",
+    "name": "Castilla-La Mancha",
+    "name_es": "Castilla-La Mancha",
+    "appraised_value_eur_m2": 1215.4,
+    "appraised_change_12m_pct": 14.7,
+    "ipv_change_12m_pct": 11.7,
+    "url": "https://payotte.com/spain/regions/castilla-la-mancha"
+   },
+   {
+    "slug": "catalonia",
+    "name": "Catalonia",
+    "name_es": "Cataluña / Catalunya",
+    "appraised_value_eur_m2": 2752.9,
+    "appraised_change_12m_pct": 10.1,
+    "ipv_change_12m_pct": 10.1,
+    "url": "https://payotte.com/spain/regions/catalonia"
+   },
+   {
+    "slug": "valencian-community",
+    "name": "Valencian Community",
+    "name_es": "Comunitat Valenciana",
+    "appraised_value_eur_m2": 1935,
+    "appraised_change_12m_pct": 15.7,
+    "ipv_change_12m_pct": 13,
+    "url": "https://payotte.com/spain/regions/valencian-community"
+   },
+   {
+    "slug": "extremadura",
+    "name": "Extremadura",
+    "name_es": "Extremadura",
+    "appraised_value_eur_m2": 996.6,
+    "appraised_change_12m_pct": 8.3,
+    "ipv_change_12m_pct": 12.8,
+    "url": "https://payotte.com/spain/regions/extremadura"
+   },
+   {
+    "slug": "galicia",
+    "name": "Galicia",
+    "name_es": "Galicia",
+    "appraised_value_eur_m2": 1656.8,
+    "appraised_change_12m_pct": 11.2,
+    "ipv_change_12m_pct": 12.9,
+    "url": "https://payotte.com/spain/regions/galicia"
+   },
+   {
+    "slug": "community-of-madrid",
+    "name": "Community of Madrid",
+    "name_es": "Comunidad de Madrid",
+    "appraised_value_eur_m2": 4089.6,
+    "appraised_change_12m_pct": 12.6,
+    "ipv_change_12m_pct": 12.9,
+    "url": "https://payotte.com/spain/regions/community-of-madrid"
+   },
+   {
+    "slug": "murcia",
+    "name": "Region of Murcia",
+    "name_es": "Región de Murcia",
+    "appraised_value_eur_m2": 1350.1,
+    "appraised_change_12m_pct": 13.9,
+    "ipv_change_12m_pct": 14.4,
+    "url": "https://payotte.com/spain/regions/murcia"
+   },
+   {
+    "slug": "navarre",
+    "name": "Navarre",
+    "name_es": "Comunidad Foral de Navarra",
+    "appraised_value_eur_m2": 1936.4,
+    "appraised_change_12m_pct": 8.5,
+    "ipv_change_12m_pct": 9.5,
+    "url": "https://payotte.com/spain/regions/navarre"
+   },
+   {
+    "slug": "basque-country",
+    "name": "Basque Country",
+    "name_es": "País Vasco / Euskadi",
+    "appraised_value_eur_m2": 3102.3,
+    "appraised_change_12m_pct": 11.1,
+    "ipv_change_12m_pct": 10,
+    "url": "https://payotte.com/spain/regions/basque-country"
+   },
+   {
+    "slug": "la-rioja",
+    "name": "La Rioja",
+    "name_es": "La Rioja",
+    "appraised_value_eur_m2": 1476.8,
+    "appraised_change_12m_pct": 12.1,
+    "ipv_change_12m_pct": 14.4,
+    "url": "https://payotte.com/spain/regions/la-rioja"
+   },
+   {
+    "slug": "ceuta",
+    "name": "Ceuta",
+    "name_es": "Ciudad Autónoma de Ceuta",
+    "appraised_value_eur_m2": 2214.9,
+    "appraised_change_12m_pct": 6.5,
+    "ipv_change_12m_pct": 15.2,
+    "url": "https://payotte.com/spain/regions/ceuta"
+   },
+   {
+    "slug": "melilla",
+    "name": "Melilla",
+    "name_es": "Ciudad Autónoma de Melilla",
+    "appraised_value_eur_m2": 2164.5,
+    "appraised_change_12m_pct": 8.6,
+    "ipv_change_12m_pct": 13.8,
+    "url": "https://payotte.com/spain/regions/melilla"
+   }
+  ],
+  "cities": [
+   {
+    "slug": "madrid",
+    "name": "Madrid",
+    "name_es": "Madrid",
+    "region": "community-of-madrid",
+    "province": "Madrid",
+    "population_2025": 3506730,
+    "appraised_value_eur_m2": 5418.4,
+    "valuations": 11686,
+    "appraised_change_12m_pct": 9.4,
+    "url": "https://payotte.com/spain/cities/madrid"
+   },
+   {
+    "slug": "barcelona",
+    "name": "Barcelona",
+    "name_es": "Barcelona",
+    "region": "catalonia",
+    "province": "Barcelona",
+    "population_2025": 1731649,
+    "appraised_value_eur_m2": 4601.8,
+    "valuations": 5519,
+    "appraised_change_12m_pct": 6.9,
+    "url": "https://payotte.com/spain/cities/barcelona"
+   },
+   {
+    "slug": "valencia",
+    "name": "Valencia",
+    "name_es": "València",
+    "region": "valencian-community",
+    "province": "València/Valencia",
+    "population_2025": 840792,
+    "appraised_value_eur_m2": 2972.8,
+    "valuations": 2735,
+    "appraised_change_12m_pct": 17,
+    "url": "https://payotte.com/spain/cities/valencia"
+   },
+   {
+    "slug": "seville",
+    "name": "Seville",
+    "name_es": "Sevilla",
+    "region": "andalusia",
+    "province": "Sevilla",
+    "population_2025": 689423,
+    "appraised_value_eur_m2": 2652.3,
+    "valuations": 2543,
+    "appraised_change_12m_pct": 14.7,
+    "url": "https://payotte.com/spain/cities/seville"
+   },
+   {
+    "slug": "zaragoza",
+    "name": "Zaragoza",
+    "name_es": "Zaragoza",
+    "region": "aragon",
+    "province": "Zaragoza",
+    "population_2025": 693091,
+    "appraised_value_eur_m2": 2240.3,
+    "valuations": 1940,
+    "appraised_change_12m_pct": 12.6,
+    "url": "https://payotte.com/spain/cities/zaragoza"
+   },
+   {
+    "slug": "malaga",
+    "name": "Málaga",
+    "name_es": "Málaga",
+    "region": "andalusia",
+    "province": "Málaga",
+    "population_2025": 599063,
+    "appraised_value_eur_m2": 3320.5,
+    "valuations": 1722,
+    "appraised_change_12m_pct": 14.8,
+    "url": "https://payotte.com/spain/cities/malaga"
+   },
+   {
+    "slug": "murcia",
+    "name": "Murcia",
+    "name_es": "Murcia",
+    "region": "murcia",
+    "province": "Murcia",
+    "population_2025": 479405,
+    "appraised_value_eur_m2": 1579.6,
+    "valuations": 2035,
+    "appraised_change_12m_pct": 13.8,
+    "url": "https://payotte.com/spain/cities/murcia"
+   },
+   {
+    "slug": "palma",
+    "name": "Palma",
+    "name_es": "Palma",
+    "region": "balearic-islands",
+    "province": "Illes Balears",
+    "population_2025": 434786,
+    "appraised_value_eur_m2": 3814.5,
+    "valuations": 1274,
+    "appraised_change_12m_pct": 14.3,
+    "url": "https://payotte.com/spain/cities/palma"
+   },
+   {
+    "slug": "las-palmas-de-gran-canaria",
+    "name": "Las Palmas de Gran Canaria",
+    "name_es": "Las Palmas de Gran Canaria",
+    "region": "canary-islands",
+    "province": "Las Palmas",
+    "population_2025": 381868,
+    "appraised_value_eur_m2": 2337.4,
+    "valuations": 1058,
+    "appraised_change_12m_pct": 14.2,
+    "url": "https://payotte.com/spain/cities/las-palmas-de-gran-canaria"
+   },
+   {
+    "slug": "bilbao",
+    "name": "Bilbao",
+    "name_es": "Bilbao",
+    "region": "basque-country",
+    "province": "Bizkaia",
+    "population_2025": 351124,
+    "appraised_value_eur_m2": 3529.3,
+    "valuations": 956,
+    "appraised_change_12m_pct": 8,
+    "url": "https://payotte.com/spain/cities/bilbao"
+   },
+   {
+    "slug": "alicante",
+    "name": "Alicante",
+    "name_es": "Alacant/Alicante",
+    "region": "valencian-community",
+    "province": "Alacant/Alicante",
+    "population_2025": 366221,
+    "appraised_value_eur_m2": 2279.2,
+    "valuations": 1213,
+    "appraised_change_12m_pct": 12.6,
+    "url": "https://payotte.com/spain/cities/alicante"
+   },
+   {
+    "slug": "cordoba",
+    "name": "Córdoba",
+    "name_es": "Córdoba",
+    "region": "andalusia",
+    "province": "Córdoba",
+    "population_2025": 323262,
+    "appraised_value_eur_m2": 1783.8,
+    "valuations": 1202,
+    "appraised_change_12m_pct": 13,
+    "url": "https://payotte.com/spain/cities/cordoba"
+   },
+   {
+    "slug": "valladolid",
+    "name": "Valladolid",
+    "name_es": "Valladolid",
+    "region": "castile-and-leon",
+    "province": "Valladolid",
+    "population_2025": 302614,
+    "appraised_value_eur_m2": 1946.5,
+    "valuations": 819,
+    "appraised_change_12m_pct": 17.3,
+    "url": "https://payotte.com/spain/cities/valladolid"
+   },
+   {
+    "slug": "vigo",
+    "name": "Vigo",
+    "name_es": "Vigo",
+    "region": "galicia",
+    "province": "Pontevedra",
+    "population_2025": 294489,
+    "appraised_value_eur_m2": 2346.3,
+    "valuations": 692,
+    "appraised_change_12m_pct": 12.2,
+    "url": "https://payotte.com/spain/cities/vigo"
+   },
+   {
+    "slug": "gijon",
+    "name": "Gijón",
+    "name_es": "Gijón",
+    "region": "asturias",
+    "province": "Asturias",
+    "population_2025": 269894,
+    "appraised_value_eur_m2": 2343.3,
+    "valuations": 790,
+    "appraised_change_12m_pct": 12.5,
+    "url": "https://payotte.com/spain/cities/gijon"
+   },
+   {
+    "slug": "a-coruna",
+    "name": "A Coruña",
+    "name_es": "A Coruña",
+    "region": "galicia",
+    "province": "A Coruña",
+    "population_2025": 251543,
+    "appraised_value_eur_m2": 2774.8,
+    "valuations": 583,
+    "appraised_change_12m_pct": 7.9,
+    "url": "https://payotte.com/spain/cities/a-coruna"
+   },
+   {
+    "slug": "granada",
+    "name": "Granada",
+    "name_es": "Granada",
+    "region": "andalusia",
+    "province": "Granada",
+    "population_2025": 233975,
+    "appraised_value_eur_m2": 2446.5,
+    "valuations": 789,
+    "appraised_change_12m_pct": 11.9,
+    "url": "https://payotte.com/spain/cities/granada"
+   },
+   {
+    "slug": "vitoria-gasteiz",
+    "name": "Vitoria-Gasteiz",
+    "name_es": "Vitoria-Gasteiz",
+    "region": "basque-country",
+    "province": "Araba/Álava",
+    "population_2025": 260699,
+    "appraised_value_eur_m2": 2680.9,
+    "valuations": 537,
+    "appraised_change_12m_pct": 5.8,
+    "url": "https://payotte.com/spain/cities/vitoria-gasteiz"
+   },
+   {
+    "slug": "elche",
+    "name": "Elche",
+    "name_es": "Elx/Elche",
+    "region": "valencian-community",
+    "province": "Alacant/Alicante",
+    "population_2025": 245557,
+    "appraised_value_eur_m2": 1635.1,
+    "valuations": 790,
+    "appraised_change_12m_pct": 13.9,
+    "url": "https://payotte.com/spain/cities/elche"
+   },
+   {
+    "slug": "santa-cruz-de-tenerife",
+    "name": "Santa Cruz de Tenerife",
+    "name_es": "Santa Cruz de Tenerife",
+    "region": "canary-islands",
+    "province": "Santa Cruz de Tenerife",
+    "population_2025": 211957,
+    "appraised_value_eur_m2": 2330,
+    "valuations": 648,
+    "appraised_change_12m_pct": 19.6,
+    "url": "https://payotte.com/spain/cities/santa-cruz-de-tenerife"
+   },
+   {
+    "slug": "pamplona",
+    "name": "Pamplona",
+    "name_es": "Pamplona/Iruña",
+    "region": "navarre",
+    "province": "Navarra",
+    "population_2025": 209094,
+    "appraised_value_eur_m2": 2695,
+    "valuations": 388,
+    "appraised_change_12m_pct": 4.5,
+    "url": "https://payotte.com/spain/cities/pamplona"
+   },
+   {
+    "slug": "san-sebastian",
+    "name": "San Sebastián",
+    "name_es": "Donostia/San Sebastián",
+    "region": "basque-country",
+    "province": "Gipuzkoa",
+    "population_2025": 189866,
+    "appraised_value_eur_m2": 5208.3,
+    "valuations": 424,
+    "appraised_change_12m_pct": 8.8,
+    "url": "https://payotte.com/spain/cities/san-sebastian"
+   },
+   {
+    "slug": "santander",
+    "name": "Santander",
+    "name_es": "Santander",
+    "region": "cantabria",
+    "province": "Cantabria",
+    "population_2025": 175425,
+    "appraised_value_eur_m2": 2662.3,
+    "valuations": 514,
+    "appraised_change_12m_pct": 14.2,
+    "url": "https://payotte.com/spain/cities/santander"
+   },
+   {
+    "slug": "cadiz",
+    "name": "Cádiz",
+    "name_es": "Cádiz",
+    "region": "andalusia",
+    "province": "Cádiz",
+    "population_2025": 109950,
+    "appraised_value_eur_m2": 3021.1,
+    "valuations": 339,
+    "appraised_change_12m_pct": 9,
+    "url": "https://payotte.com/spain/cities/cadiz"
+   },
+   {
+    "slug": "almeria",
+    "name": "Almería",
+    "name_es": "Almería",
+    "region": "andalusia",
+    "province": "Almería",
+    "population_2025": 205468,
+    "appraised_value_eur_m2": 1796.4,
+    "valuations": 723,
+    "appraised_change_12m_pct": 20.8,
+    "url": "https://payotte.com/spain/cities/almeria"
+   },
+   {
+    "slug": "marbella",
+    "name": "Marbella",
+    "name_es": "Marbella",
+    "region": "andalusia",
+    "province": "Málaga",
+    "population_2025": 159786,
+    "appraised_value_eur_m2": 4528.3,
+    "valuations": 748,
+    "appraised_change_12m_pct": 15.6,
+    "url": "https://payotte.com/spain/cities/marbella"
+   },
+   {
+    "slug": "estepona",
+    "name": "Estepona",
+    "name_es": "Estepona",
+    "region": "andalusia",
+    "province": "Málaga",
+    "population_2025": 79621,
+    "appraised_value_eur_m2": 3518.4,
+    "valuations": 470,
+    "appraised_change_12m_pct": 12.1,
+    "url": "https://payotte.com/spain/cities/estepona"
+   },
+   {
+    "slug": "fuengirola",
+    "name": "Fuengirola",
+    "name_es": "Fuengirola",
+    "region": "andalusia",
+    "province": "Málaga",
+    "population_2025": 85211,
+    "appraised_value_eur_m2": 3758,
+    "valuations": 423,
+    "appraised_change_12m_pct": 14.8,
+    "url": "https://payotte.com/spain/cities/fuengirola"
+   },
+   {
+    "slug": "benalmadena",
+    "name": "Benalmádena",
+    "name_es": "Benalmádena",
+    "region": "andalusia",
+    "province": "Málaga",
+    "population_2025": 78338,
+    "appraised_value_eur_m2": 3782.7,
+    "valuations": 402,
+    "appraised_change_12m_pct": 12.8,
+    "url": "https://payotte.com/spain/cities/benalmadena"
+   },
+   {
+    "slug": "mijas",
+    "name": "Mijas",
+    "name_es": "Mijas",
+    "region": "andalusia",
+    "province": "Málaga",
+    "population_2025": 95104,
+    "appraised_value_eur_m2": 3365.1,
+    "valuations": 675,
+    "appraised_change_12m_pct": 11.6,
+    "url": "https://payotte.com/spain/cities/mijas"
+   },
+   {
+    "slug": "torremolinos",
+    "name": "Torremolinos",
+    "name_es": "Torremolinos",
+    "region": "andalusia",
+    "province": "Málaga",
+    "population_2025": 71329,
+    "appraised_value_eur_m2": 3758.3,
+    "valuations": 326,
+    "appraised_change_12m_pct": 7.9,
+    "url": "https://payotte.com/spain/cities/torremolinos"
+   },
+   {
+    "slug": "chiclana-de-la-frontera",
+    "name": "Chiclana de la Frontera",
+    "name_es": "Chiclana de la Frontera",
+    "region": "andalusia",
+    "province": "Cádiz",
+    "population_2025": 90864,
+    "appraised_value_eur_m2": 2229,
+    "valuations": 389,
+    "appraised_change_12m_pct": 16.5,
+    "url": "https://payotte.com/spain/cities/chiclana-de-la-frontera"
+   },
+   {
+    "slug": "san-roque",
+    "name": "San Roque",
+    "name_es": "San Roque",
+    "region": "andalusia",
+    "province": "Cádiz",
+    "population_2025": 34310,
+    "appraised_value_eur_m2": 2568.8,
+    "valuations": 175,
+    "appraised_change_12m_pct": 14.5,
+    "url": "https://payotte.com/spain/cities/san-roque"
+   },
+   {
+    "slug": "torrevieja",
+    "name": "Torrevieja",
+    "name_es": "Torrevieja",
+    "region": "valencian-community",
+    "province": "Alacant/Alicante",
+    "population_2025": 98533,
+    "appraised_value_eur_m2": 2254,
+    "valuations": 716,
+    "appraised_change_12m_pct": 16.7,
+    "url": "https://payotte.com/spain/cities/torrevieja"
+   },
+   {
+    "slug": "orihuela",
+    "name": "Orihuela",
+    "name_es": "Orihuela",
+    "region": "valencian-community",
+    "province": "Alacant/Alicante",
+    "population_2025": 84560,
+    "appraised_value_eur_m2": 2079.9,
+    "valuations": 538,
+    "appraised_change_12m_pct": 17.9,
+    "url": "https://payotte.com/spain/cities/orihuela"
+   },
+   {
+    "slug": "benidorm",
+    "name": "Benidorm",
+    "name_es": "Benidorm",
+    "region": "valencian-community",
+    "province": "Alacant/Alicante",
+    "population_2025": 77327,
+    "appraised_value_eur_m2": 3216.5,
+    "valuations": 288,
+    "appraised_change_12m_pct": 15.7,
+    "url": "https://payotte.com/spain/cities/benidorm"
+   },
+   {
+    "slug": "denia",
+    "name": "Dénia",
+    "name_es": "Dénia",
+    "region": "valencian-community",
+    "province": "Alacant/Alicante",
+    "population_2025": 47261,
+    "appraised_value_eur_m2": 2984.9,
+    "valuations": 282,
+    "appraised_change_12m_pct": 18.3,
+    "url": "https://payotte.com/spain/cities/denia"
+   },
+   {
+    "slug": "javea",
+    "name": "Jávea",
+    "name_es": "Xàbia/Jávea",
+    "region": "valencian-community",
+    "province": "Alacant/Alicante",
+    "population_2025": 30642,
+    "appraised_value_eur_m2": 3507.2,
+    "valuations": 170,
+    "appraised_change_12m_pct": 7.5,
+    "url": "https://payotte.com/spain/cities/javea"
+   },
+   {
+    "slug": "calpe",
+    "name": "Calpe",
+    "name_es": "Calp",
+    "region": "valencian-community",
+    "province": "Alacant/Alicante",
+    "population_2025": 27616,
+    "appraised_value_eur_m2": 3268.5,
+    "valuations": 133,
+    "appraised_change_12m_pct": 16.1,
+    "url": "https://payotte.com/spain/cities/calpe"
+   },
+   {
+    "slug": "villajoyosa",
+    "name": "Villajoyosa",
+    "name_es": "la Vila Joiosa/Villajoyosa",
+    "region": "valencian-community",
+    "province": "Alacant/Alicante",
+    "population_2025": 37449,
+    "appraised_value_eur_m2": 2222.1,
+    "valuations": 187,
+    "appraised_change_12m_pct": 13,
+    "url": "https://payotte.com/spain/cities/villajoyosa"
+   },
+   {
+    "slug": "cartagena",
+    "name": "Cartagena",
+    "name_es": "Cartagena",
+    "region": "murcia",
+    "province": "Murcia",
+    "population_2025": 220704,
+    "appraised_value_eur_m2": 1485.6,
+    "valuations": 934,
+    "appraised_change_12m_pct": 13.6,
+    "url": "https://payotte.com/spain/cities/cartagena"
+   },
+   {
+    "slug": "san-javier",
+    "name": "San Javier",
+    "name_es": "San Javier",
+    "region": "murcia",
+    "province": "Murcia",
+    "population_2025": 36524,
+    "appraised_value_eur_m2": 1952.8,
+    "valuations": 291,
+    "appraised_change_12m_pct": 18.6,
+    "url": "https://payotte.com/spain/cities/san-javier"
+   },
+   {
+    "slug": "mazarron",
+    "name": "Mazarrón",
+    "name_es": "Mazarrón",
+    "region": "murcia",
+    "province": "Murcia",
+    "population_2025": 35449,
+    "appraised_value_eur_m2": 1583.6,
+    "valuations": 187,
+    "appraised_change_12m_pct": 13.6,
+    "url": "https://payotte.com/spain/cities/mazarron"
+   },
+   {
+    "slug": "calvia",
+    "name": "Calvià",
+    "name_es": "Calvià",
+    "region": "balearic-islands",
+    "province": "Illes Balears",
+    "population_2025": 53793,
+    "appraised_value_eur_m2": 5502.2,
+    "valuations": 191,
+    "appraised_change_12m_pct": 7.7,
+    "url": "https://payotte.com/spain/cities/calvia"
+   },
+   {
+    "slug": "ibiza-town",
+    "name": "Ibiza Town",
+    "name_es": "Eivissa",
+    "region": "balearic-islands",
+    "province": "Illes Balears",
+    "population_2025": 55337,
+    "appraised_value_eur_m2": 5473.3,
+    "valuations": 121,
+    "appraised_change_12m_pct": 2.7,
+    "url": "https://payotte.com/spain/cities/ibiza-town"
+   },
+   {
+    "slug": "santa-eularia-des-riu",
+    "name": "Santa Eulària des Riu",
+    "name_es": "Santa Eulària des Riu",
+    "region": "balearic-islands",
+    "province": "Illes Balears",
+    "population_2025": 42479,
+    "appraised_value_eur_m2": 6844.4,
+    "valuations": 123,
+    "appraised_change_12m_pct": 13.3,
+    "url": "https://payotte.com/spain/cities/santa-eularia-des-riu"
+   },
+   {
+    "slug": "mahon",
+    "name": "Mahón",
+    "name_es": "Maó",
+    "region": "balearic-islands",
+    "province": "Illes Balears",
+    "population_2025": 30666,
+    "appraised_value_eur_m2": 2990.7,
+    "valuations": 87,
+    "appraised_change_12m_pct": 19,
+    "url": "https://payotte.com/spain/cities/mahon"
+   },
+   {
+    "slug": "sitges",
+    "name": "Sitges",
+    "name_es": "Sitges",
+    "region": "catalonia",
+    "province": "Barcelona",
+    "population_2025": 32609,
+    "appraised_value_eur_m2": 4931.8,
+    "valuations": 151,
+    "appraised_change_12m_pct": 10.8,
+    "url": "https://payotte.com/spain/cities/sitges"
+   },
+   {
+    "slug": "castelldefels",
+    "name": "Castelldefels",
+    "name_es": "Castelldefels",
+    "region": "catalonia",
+    "province": "Barcelona",
+    "population_2025": 70057,
+    "appraised_value_eur_m2": 4336.7,
+    "valuations": 264,
+    "appraised_change_12m_pct": 7.3,
+    "url": "https://payotte.com/spain/cities/castelldefels"
+   },
+   {
+    "slug": "salou",
+    "name": "Salou",
+    "name_es": "Salou",
+    "region": "catalonia",
+    "province": "Tarragona",
+    "population_2025": 31491,
+    "appraised_value_eur_m2": 2568.9,
+    "valuations": 229,
+    "appraised_change_12m_pct": 12.3,
+    "url": "https://payotte.com/spain/cities/salou"
+   },
+   {
+    "slug": "girona",
+    "name": "Girona",
+    "name_es": "Girona",
+    "region": "catalonia",
+    "province": "Girona",
+    "population_2025": 108666,
+    "appraised_value_eur_m2": 2315.8,
+    "valuations": 366,
+    "appraised_change_12m_pct": 6.4,
+    "url": "https://payotte.com/spain/cities/girona"
+   },
+   {
+    "slug": "adeje",
+    "name": "Adeje",
+    "name_es": "Adeje",
+    "region": "canary-islands",
+    "province": "Santa Cruz de Tenerife",
+    "population_2025": 50021,
+    "appraised_value_eur_m2": 3775.9,
+    "valuations": 199,
+    "appraised_change_12m_pct": 14.9,
+    "url": "https://payotte.com/spain/cities/adeje"
+   },
+   {
+    "slug": "arona",
+    "name": "Arona",
+    "name_es": "Arona",
+    "region": "canary-islands",
+    "province": "Santa Cruz de Tenerife",
+    "population_2025": 87793,
+    "appraised_value_eur_m2": 2945.8,
+    "valuations": 268,
+    "appraised_change_12m_pct": 15,
+    "url": "https://payotte.com/spain/cities/arona"
+   },
+   {
+    "slug": "san-bartolome-de-tirajana",
+    "name": "San Bartolomé de Tirajana",
+    "name_es": "San Bartolomé de Tirajana",
+    "region": "canary-islands",
+    "province": "Las Palmas",
+    "population_2025": 54291,
+    "appraised_value_eur_m2": 3286.3,
+    "valuations": 144,
+    "appraised_change_12m_pct": 20.9,
+    "url": "https://payotte.com/spain/cities/san-bartolome-de-tirajana"
+   },
+   {
+    "slug": "la-laguna",
+    "name": "San Cristóbal de La Laguna",
+    "name_es": "San Cristóbal de La Laguna",
+    "region": "canary-islands",
+    "province": "Santa Cruz de Tenerife",
+    "population_2025": 161108,
+    "appraised_value_eur_m2": 2041.9,
+    "valuations": 415,
+    "appraised_change_12m_pct": 16.2,
+    "url": "https://payotte.com/spain/cities/la-laguna"
+   }
+  ]
+ },
+ "tables": {
+  "agent-registers": {
+   "compiled": "2026-10-15",
+   "url": "https://payotte.com/spain/by-region/agent-registers",
+   "regions": {
+    "andalusia": {
+     "register": "compulsory_not_yet_set_up",
+     "law": "Ley 5/2025 de Vivienda de Andalucía, arts. 49 to 52",
+     "register_url": null,
+     "answer": "Andalusia makes registration compulsory by law (Ley 5/2025, art. 50.3), but the register had no implementing decree on 15 October 2026, and the law gives up to two years from 24 January 2026 to set it up.",
+     "note": "Registrants must also be members of an API college (art. 52.1.d). No register address read.",
+     "sources": [
+      {
+       "title": "Ley 5/2025, de Vivienda de Andalucía (BOE-A-2026-423), arts. 49 to 52",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2026-423"
+      }
+     ]
+    },
+    "aragon": {
+     "register": "not_established",
+     "law": null,
+     "register_url": null,
+     "answer": "No agent register was established for Aragon in the sources read on 15 October 2026; estate agency is free at national level under Ley 10/2003.",
+     "note": "Nothing reliable was read for Aragon. This is not proof that no register exists.",
+     "sources": [
+      {
+       "title": "Ley 10/2003 (BOE-A-2003-10185), art. 3",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2003-10185"
+      }
+     ]
+    },
+    "asturias": {
+     "register": "not_established",
+     "law": null,
+     "register_url": null,
+     "answer": "No agent register was established for Asturias in the sources read on 15 October 2026; estate agency is free at national level under Ley 10/2003.",
+     "note": "Nothing reliable was read for Asturias. This is not proof that no register exists.",
+     "sources": [
+      {
+       "title": "Ley 10/2003 (BOE-A-2003-10185), art. 3",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2003-10185"
+      }
+     ]
+    },
+    "balearic-islands": {
+     "register": "voluntary",
+     "law": "Ley 3/2024, disposición adicional 14.ª",
+     "register_url": "https://caib.es/sites/agentsimmobiliaris/",
+     "answer": "The Balearic Islands have an official register of real estate agents that is voluntary under Ley 3/2024, although a registered agent must show the registration number in advertising.",
+     "note": "The address is where the report found the forms, not read in depth.",
+     "sources": [
+      {
+       "title": "Ley 3/2024, Illes Balears (BOE-A-2024-15575), disposición adicional 14.ª",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2024-15575"
+      }
+     ]
+    },
+    "basque-country": {
+     "register": "not_established",
+     "law": "Ley 3/2015 de vivienda, disposición adicional 1.ª.3 (provides for a register)",
+     "register_url": null,
+     "answer": "The Basque housing law (Ley 3/2015) provides for a register of real estate agents, but no creating decree was found, so its status is not established.",
+     "note": "The report did not read whether registration would be compulsory.",
+     "sources": [
+      {
+       "title": "Ley 10/2003 (BOE-A-2003-10185), art. 3",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2003-10185"
+      }
+     ]
+    },
+    "canary-islands": {
+     "register": "voluntary",
+     "law": "Decreto 11/2022, art. 4.2",
+     "register_url": null,
+     "answer": "The Canary Islands keep a register of real estate agents that is voluntary under Decreto 11/2022, article 4.2; it is public and free.",
+     "note": "The report gives no search address; the BOC link is for the decree.",
+     "sources": [
+      {
+       "title": "Decreto 11/2022, Canarias (BOC n.º 21, 31/01/2022), art. 4",
+       "url": "https://sede.gobiernodecanarias.org/boc/boc-a-2022-021-319.html"
+      }
+     ]
+    },
+    "cantabria": {
+     "register": "not_established",
+     "law": null,
+     "register_url": null,
+     "answer": "No agent register was established for Cantabria in the sources read on 15 October 2026; estate agency is free at national level under Ley 10/2003.",
+     "note": "Nothing reliable was read for Cantabria. This is not proof that no register exists.",
+     "sources": [
+      {
+       "title": "Ley 10/2003 (BOE-A-2003-10185), art. 3",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2003-10185"
+      }
+     ]
+    },
+    "castile-and-leon": {
+     "register": "not_established",
+     "law": null,
+     "register_url": null,
+     "answer": "No agent register was established for Castile and León in the sources read on 15 October 2026; estate agency is free at national level under Ley 10/2003.",
+     "note": "Nothing reliable was read for Castile and León. This is not proof that no register exists.",
+     "sources": [
+      {
+       "title": "Ley 10/2003 (BOE-A-2003-10185), art. 3",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2003-10185"
+      }
+     ]
+    },
+    "castilla-la-mancha": {
+     "register": "not_established",
+     "law": null,
+     "register_url": null,
+     "answer": "No agent register was established for Castilla-La Mancha in the sources read on 15 October 2026; estate agency is free at national level under Ley 10/2003.",
+     "note": "Nothing reliable was read for Castilla-La Mancha. This is not proof that no register exists.",
+     "sources": [
+      {
+       "title": "Ley 10/2003 (BOE-A-2003-10185), art. 3",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2003-10185"
+      }
+     ]
+    },
+    "catalonia": {
+     "register": "compulsory",
+     "law": "Ley 18/2007, art. 55.4 and 56",
+     "register_url": "https://tramits.gencat.cat/es/tramits/tramits-temes/Registre_Agents_Immobiliaris_Catalunya",
+     "answer": "Catalonia has a compulsory register of real estate agents (Registre d'agents immobiliaris de Catalunya) under Ley 18/2007; the Generalitat page says it is public, administrative and compulsory.",
+     "note": "A missing registration does not affect the validity of contracts (art. 56.4). The search tool (agenciahabitatge.gencat.cat/cercadoragents) was blocked and its fields were not read.",
+     "sources": [
+      {
+       "title": "Ley 18/2007, Cataluña (BOE-A-2008-3657), arts. 55 and 56",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2008-3657"
+      },
+      {
+       "title": "Generalitat de Catalunya, Registro de agentes inmobiliarios de Cataluña",
+       "url": "https://tramits.gencat.cat/es/tramits/tramits-temes/Registre_Agents_Immobiliaris_Catalunya"
+      }
+     ]
+    },
+    "ceuta": {
+     "register": "not_established",
+     "law": null,
+     "register_url": null,
+     "answer": "No agent register was established for Ceuta in the sources read on 15 October 2026; estate agency is free at national level under Ley 10/2003.",
+     "note": "Nothing reliable was read for Ceuta. This is not proof that no register exists.",
+     "sources": [
+      {
+       "title": "Ley 10/2003 (BOE-A-2003-10185), art. 3",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2003-10185"
+      }
+     ]
+    },
+    "community-of-madrid": {
+     "register": "voluntary",
+     "law": "Decreto 8/2018 (text not read)",
+     "register_url": "https://sede.comunidad.madrid/inscripciones-registro/registro-agentes-inmobiliarios",
+     "answer": "The Community of Madrid keeps a register of real estate agents that is voluntary, according to the regional government page.",
+     "note": "Decreto 8/2018 itself was not read. A press announcement of a compulsory register is only proposed.",
+     "sources": [
+      {
+       "title": "Comunidad de Madrid, Registro de Agentes Inmobiliarios",
+       "url": "https://sede.comunidad.madrid/inscripciones-registro/registro-agentes-inmobiliarios"
+      }
+     ]
+    },
+    "extremadura": {
+     "register": "not_established",
+     "law": null,
+     "register_url": null,
+     "answer": "No agent register was established for Extremadura in the sources read on 15 October 2026; estate agency is free at national level under Ley 10/2003.",
+     "note": "Nothing reliable was read for Extremadura. This is not proof that no register exists.",
+     "sources": [
+      {
+       "title": "Ley 10/2003 (BOE-A-2003-10185), art. 3",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2003-10185"
+      }
+     ]
+    },
+    "galicia": {
+     "register": "not_established",
+     "law": null,
+     "register_url": null,
+     "answer": "No agent register was established for Galicia in the sources read on 15 October 2026; only a register of building agents (Registro de Agentes de la Edificación) appears in Ley 8/2012.",
+     "note": "Nothing reliable was read for estate agents. This is not proof that no register exists.",
+     "sources": [
+      {
+       "title": "Ley 10/2003 (BOE-A-2003-10185), art. 3",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2003-10185"
+      }
+     ]
+    },
+    "la-rioja": {
+     "register": "not_established",
+     "law": null,
+     "register_url": null,
+     "answer": "No agent register was established for La Rioja in the sources read on 15 October 2026; estate agency is free at national level under Ley 10/2003.",
+     "note": "Nothing reliable was read for La Rioja. This is not proof that no register exists.",
+     "sources": [
+      {
+       "title": "Ley 10/2003 (BOE-A-2003-10185), art. 3",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2003-10185"
+      }
+     ]
+    },
+    "melilla": {
+     "register": "not_established",
+     "law": null,
+     "register_url": null,
+     "answer": "No agent register was established for Melilla in the sources read on 15 October 2026; estate agency is free at national level under Ley 10/2003.",
+     "note": "Nothing reliable was read for Melilla. This is not proof that no register exists.",
+     "sources": [
+      {
+       "title": "Ley 10/2003 (BOE-A-2003-10185), art. 3",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2003-10185"
+      }
+     ]
+    },
+    "murcia": {
+     "register": "not_established",
+     "law": null,
+     "register_url": null,
+     "answer": "No agent register was established for the Region of Murcia in the sources read on 15 October 2026; nothing was read there.",
+     "note": "Nothing was read for Murcia. This is not proof that no register exists.",
+     "sources": [
+      {
+       "title": "Ley 10/2003 (BOE-A-2003-10185), art. 3",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2003-10185"
+      }
+     ]
+    },
+    "navarre": {
+     "register": "not_established",
+     "law": "Decreto Foral 33/2019 (search result only, not read)",
+     "register_url": null,
+     "answer": "No agent register was established for Navarre in the sources read on 15 October 2026; a Navarre register (Decreto Foral 33/2019) was seen only in a search result and its text was not read.",
+     "note": "The report notes that the search result describes it as voluntary and informative, unread; Ley Foral 10/2010 says nothing on agents.",
+     "sources": [
+      {
+       "title": "Ley 10/2003 (BOE-A-2003-10185), art. 3",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2003-10185"
+      }
+     ]
+    },
+    "valencian-community": {
+     "register": "compulsory",
+     "law": "Decreto 98/2022, art. 4.1 (Ley 2/2017)",
+     "register_url": "https://sede.gva.es/es/detall-tramit?id_proc=22848",
+     "answer": "The Valencian Community has a compulsory register of real estate intermediation agents (RAI) under Decreto 98/2022, article 4.1, although a regional high court judgment of 17 January 2025 partly annulled the decree.",
+     "note": "The outcome of the possible cassation appeal and the effect on the register itself were not established. The address is the procedure page.",
+     "sources": [
+      {
+       "title": "Decreto 98/2022, Comunitat Valenciana (DOGV 16/08/2022)",
+       "url": "https://sede.gva.es/es/detall-tramit?id_proc=22848"
+      }
+     ]
+    }
+   }
+  },
+  "appraised-values": {
+   "compiled": "2026-10-15",
+   "url": "https://payotte.com/spain/by-region/appraised-values",
+   "regions": {
+    "andalusia": {
+     "value_m2": "€1,982/m²",
+     "change_12m": "+13.8%",
+     "dearest_city": "Marbella (€4,528/m²)",
+     "answer": "In Andalusia, open-market homes were appraised at €1,982/m² on average in Q2 2026, +13.8% over a year (Spain: €2,355/m²).",
+     "note": null,
+     "sources": [
+      {
+       "title": "Ministerio de Vivienda y Agenda Urbana / Ministerio de Transportes y Movilidad Sostenible, Estadística de valor tasado de la vivienda (Boletín Online), tablas 1 y 4",
+       "url": "https://apps.fomento.gob.es/BoletinOnline2/?nivel=2&orden=35000000"
+      }
+     ]
+    },
+    "aragon": {
+     "value_m2": "€1,763/m²",
+     "change_12m": "+14.6%",
+     "dearest_city": "Zaragoza (€2,240/m²)",
+     "answer": "In Aragon, open-market homes were appraised at €1,763/m² on average in Q2 2026, +14.6% over a year (Spain: €2,355/m²).",
+     "note": null,
+     "sources": [
+      {
+       "title": "Ministerio de Vivienda y Agenda Urbana / Ministerio de Transportes y Movilidad Sostenible, Estadística de valor tasado de la vivienda (Boletín Online), tablas 1 y 4",
+       "url": "https://apps.fomento.gob.es/BoletinOnline2/?nivel=2&orden=35000000"
+      }
+     ]
+    },
+    "asturias": {
+     "value_m2": "€1,799/m²",
+     "change_12m": "+14%",
+     "dearest_city": "Gijón (€2,343/m²)",
+     "answer": "In Asturias, open-market homes were appraised at €1,799/m² on average in Q2 2026, +14% over a year (Spain: €2,355/m²).",
+     "note": null,
+     "sources": [
+      {
+       "title": "Ministerio de Vivienda y Agenda Urbana / Ministerio de Transportes y Movilidad Sostenible, Estadística de valor tasado de la vivienda (Boletín Online), tablas 1 y 4",
+       "url": "https://apps.fomento.gob.es/BoletinOnline2/?nivel=2&orden=35000000"
+      }
+     ]
+    },
+    "balearic-islands": {
+     "value_m2": "€3,981/m²",
+     "change_12m": "+13.1%",
+     "dearest_city": "Santa Eulària des Riu (€6,844/m²)",
+     "answer": "In the Balearic Islands, open-market homes were appraised at €3,981/m² on average in Q2 2026, +13.1% over a year (Spain: €2,355/m²).",
+     "note": null,
+     "sources": [
+      {
+       "title": "Ministerio de Vivienda y Agenda Urbana / Ministerio de Transportes y Movilidad Sostenible, Estadística de valor tasado de la vivienda (Boletín Online), tablas 1 y 4",
+       "url": "https://apps.fomento.gob.es/BoletinOnline2/?nivel=2&orden=35000000"
+      }
+     ]
+    },
+    "basque-country": {
+     "value_m2": "€3,102/m²",
+     "change_12m": "+11.1%",
+     "dearest_city": "San Sebastián (€5,208/m²)",
+     "answer": "In the Basque Country, open-market homes were appraised at €3,102/m² on average in Q2 2026, +11.1% over a year (Spain: €2,355/m²).",
+     "note": null,
+     "sources": [
+      {
+       "title": "Ministerio de Vivienda y Agenda Urbana / Ministerio de Transportes y Movilidad Sostenible, Estadística de valor tasado de la vivienda (Boletín Online), tablas 1 y 4",
+       "url": "https://apps.fomento.gob.es/BoletinOnline2/?nivel=2&orden=35000000"
+      }
+     ]
+    },
+    "canary-islands": {
+     "value_m2": "€2,279/m²",
+     "change_12m": "+14.2%",
+     "dearest_city": "Adeje (€3,776/m²)",
+     "answer": "In the Canary Islands, open-market homes were appraised at €2,279/m² on average in Q2 2026, +14.2% over a year (Spain: €2,355/m²).",
+     "note": null,
+     "sources": [
+      {
+       "title": "Ministerio de Vivienda y Agenda Urbana / Ministerio de Transportes y Movilidad Sostenible, Estadística de valor tasado de la vivienda (Boletín Online), tablas 1 y 4",
+       "url": "https://apps.fomento.gob.es/BoletinOnline2/?nivel=2&orden=35000000"
+      }
+     ]
+    },
+    "cantabria": {
+     "value_m2": "€2,122/m²",
+     "change_12m": "+14.6%",
+     "dearest_city": "Santander (€2,662/m²)",
+     "answer": "In Cantabria, open-market homes were appraised at €2,122/m² on average in Q2 2026, +14.6% over a year (Spain: €2,355/m²).",
+     "note": null,
+     "sources": [
+      {
+       "title": "Ministerio de Vivienda y Agenda Urbana / Ministerio de Transportes y Movilidad Sostenible, Estadística de valor tasado de la vivienda (Boletín Online), tablas 1 y 4",
+       "url": "https://apps.fomento.gob.es/BoletinOnline2/?nivel=2&orden=35000000"
+      }
+     ]
+    },
+    "castile-and-leon": {
+     "value_m2": "€1,350/m²",
+     "change_12m": "+15.1%",
+     "dearest_city": "Valladolid (€1,947/m²)",
+     "answer": "In Castile and León, open-market homes were appraised at €1,350/m² on average in Q2 2026, +15.1% over a year (Spain: €2,355/m²).",
+     "note": null,
+     "sources": [
+      {
+       "title": "Ministerio de Vivienda y Agenda Urbana / Ministerio de Transportes y Movilidad Sostenible, Estadística de valor tasado de la vivienda (Boletín Online), tablas 1 y 4",
+       "url": "https://apps.fomento.gob.es/BoletinOnline2/?nivel=2&orden=35000000"
+      }
+     ]
+    },
+    "castilla-la-mancha": {
+     "value_m2": "€1,215/m²",
+     "change_12m": "+14.7%",
+     "dearest_city": null,
+     "answer": "In Castilla-La Mancha, open-market homes were appraised at €1,215/m² on average in Q2 2026, +14.7% over a year (Spain: €2,355/m²).",
+     "note": null,
+     "sources": [
+      {
+       "title": "Ministerio de Vivienda y Agenda Urbana / Ministerio de Transportes y Movilidad Sostenible, Estadística de valor tasado de la vivienda (Boletín Online), tablas 1 y 4",
+       "url": "https://apps.fomento.gob.es/BoletinOnline2/?nivel=2&orden=35000000"
+      }
+     ]
+    },
+    "catalonia": {
+     "value_m2": "€2,753/m²",
+     "change_12m": "+10.1%",
+     "dearest_city": "Sitges (€4,932/m²)",
+     "answer": "In Catalonia, open-market homes were appraised at €2,753/m² on average in Q2 2026, +10.1% over a year (Spain: €2,355/m²).",
+     "note": null,
+     "sources": [
+      {
+       "title": "Ministerio de Vivienda y Agenda Urbana / Ministerio de Transportes y Movilidad Sostenible, Estadística de valor tasado de la vivienda (Boletín Online), tablas 1 y 4",
+       "url": "https://apps.fomento.gob.es/BoletinOnline2/?nivel=2&orden=35000000"
+      }
+     ]
+    },
+    "ceuta": {
+     "value_m2": "€2,215/m²",
+     "change_12m": "+6.5%",
+     "dearest_city": null,
+     "answer": "In Ceuta, open-market homes were appraised at €2,215/m² on average in Q2 2026, +6.5% over a year (Spain: €2,355/m²).",
+     "note": null,
+     "sources": [
+      {
+       "title": "Ministerio de Vivienda y Agenda Urbana / Ministerio de Transportes y Movilidad Sostenible, Estadística de valor tasado de la vivienda (Boletín Online), tablas 1 y 4",
+       "url": "https://apps.fomento.gob.es/BoletinOnline2/?nivel=2&orden=35000000"
+      }
+     ]
+    },
+    "community-of-madrid": {
+     "value_m2": "€4,090/m²",
+     "change_12m": "+12.6%",
+     "dearest_city": "Madrid (€5,418/m²)",
+     "answer": "In the Community of Madrid, open-market homes were appraised at €4,090/m² on average in Q2 2026, +12.6% over a year (Spain: €2,355/m²).",
+     "note": null,
+     "sources": [
+      {
+       "title": "Ministerio de Vivienda y Agenda Urbana / Ministerio de Transportes y Movilidad Sostenible, Estadística de valor tasado de la vivienda (Boletín Online), tablas 1 y 4",
+       "url": "https://apps.fomento.gob.es/BoletinOnline2/?nivel=2&orden=35000000"
+      }
+     ]
+    },
+    "extremadura": {
+     "value_m2": "€997/m²",
+     "change_12m": "+8.3%",
+     "dearest_city": null,
+     "answer": "In Extremadura, open-market homes were appraised at €997/m² on average in Q2 2026, +8.3% over a year (Spain: €2,355/m²).",
+     "note": null,
+     "sources": [
+      {
+       "title": "Ministerio de Vivienda y Agenda Urbana / Ministerio de Transportes y Movilidad Sostenible, Estadística de valor tasado de la vivienda (Boletín Online), tablas 1 y 4",
+       "url": "https://apps.fomento.gob.es/BoletinOnline2/?nivel=2&orden=35000000"
+      }
+     ]
+    },
+    "galicia": {
+     "value_m2": "€1,657/m²",
+     "change_12m": "+11.2%",
+     "dearest_city": "A Coruña (€2,775/m²)",
+     "answer": "In Galicia, open-market homes were appraised at €1,657/m² on average in Q2 2026, +11.2% over a year (Spain: €2,355/m²).",
+     "note": null,
+     "sources": [
+      {
+       "title": "Ministerio de Vivienda y Agenda Urbana / Ministerio de Transportes y Movilidad Sostenible, Estadística de valor tasado de la vivienda (Boletín Online), tablas 1 y 4",
+       "url": "https://apps.fomento.gob.es/BoletinOnline2/?nivel=2&orden=35000000"
+      }
+     ]
+    },
+    "la-rioja": {
+     "value_m2": "€1,477/m²",
+     "change_12m": "+12.1%",
+     "dearest_city": null,
+     "answer": "In La Rioja, open-market homes were appraised at €1,477/m² on average in Q2 2026, +12.1% over a year (Spain: €2,355/m²).",
+     "note": null,
+     "sources": [
+      {
+       "title": "Ministerio de Vivienda y Agenda Urbana / Ministerio de Transportes y Movilidad Sostenible, Estadística de valor tasado de la vivienda (Boletín Online), tablas 1 y 4",
+       "url": "https://apps.fomento.gob.es/BoletinOnline2/?nivel=2&orden=35000000"
+      }
+     ]
+    },
+    "melilla": {
+     "value_m2": "€2,165/m²",
+     "change_12m": "+8.6%",
+     "dearest_city": null,
+     "answer": "In Melilla, open-market homes were appraised at €2,165/m² on average in Q2 2026, +8.6% over a year (Spain: €2,355/m²).",
+     "note": null,
+     "sources": [
+      {
+       "title": "Ministerio de Vivienda y Agenda Urbana / Ministerio de Transportes y Movilidad Sostenible, Estadística de valor tasado de la vivienda (Boletín Online), tablas 1 y 4",
+       "url": "https://apps.fomento.gob.es/BoletinOnline2/?nivel=2&orden=35000000"
+      }
+     ]
+    },
+    "murcia": {
+     "value_m2": "€1,350/m²",
+     "change_12m": "+13.9%",
+     "dearest_city": "San Javier (€1,953/m²)",
+     "answer": "In the Region of Murcia, open-market homes were appraised at €1,350/m² on average in Q2 2026, +13.9% over a year (Spain: €2,355/m²).",
+     "note": null,
+     "sources": [
+      {
+       "title": "Ministerio de Vivienda y Agenda Urbana / Ministerio de Transportes y Movilidad Sostenible, Estadística de valor tasado de la vivienda (Boletín Online), tablas 1 y 4",
+       "url": "https://apps.fomento.gob.es/BoletinOnline2/?nivel=2&orden=35000000"
+      }
+     ]
+    },
+    "navarre": {
+     "value_m2": "€1,936/m²",
+     "change_12m": "+8.5%",
+     "dearest_city": "Pamplona (€2,695/m²)",
+     "answer": "In Navarre, open-market homes were appraised at €1,936/m² on average in Q2 2026, +8.5% over a year (Spain: €2,355/m²).",
+     "note": null,
+     "sources": [
+      {
+       "title": "Ministerio de Vivienda y Agenda Urbana / Ministerio de Transportes y Movilidad Sostenible, Estadística de valor tasado de la vivienda (Boletín Online), tablas 1 y 4",
+       "url": "https://apps.fomento.gob.es/BoletinOnline2/?nivel=2&orden=35000000"
+      }
+     ]
+    },
+    "valencian-community": {
+     "value_m2": "€1,935/m²",
+     "change_12m": "+15.7%",
+     "dearest_city": "Jávea (€3,507/m²)",
+     "answer": "In the Valencian Community, open-market homes were appraised at €1,935/m² on average in Q2 2026, +15.7% over a year (Spain: €2,355/m²).",
+     "note": null,
+     "sources": [
+      {
+       "title": "Ministerio de Vivienda y Agenda Urbana / Ministerio de Transportes y Movilidad Sostenible, Estadística de valor tasado de la vivienda (Boletín Online), tablas 1 y 4",
+       "url": "https://apps.fomento.gob.es/BoletinOnline2/?nivel=2&orden=35000000"
+      }
+     ]
+    }
+   }
+  },
+  "house-price-index": {
+   "compiled": "2026-10-15",
+   "url": "https://payotte.com/spain/by-region/house-price-index",
+   "regions": {
+    "andalusia": {
+     "change_12m": "+11.9%",
+     "index": "110.903",
+     "faster_than_spain": "no",
+     "answer": "In Andalusia, the INE house price index rose 11.9% over a year in Q2 2026 (index 110.903, base 2025 = 100), against 12.2% for Spain.",
+     "note": null,
+     "sources": [
+      {
+       "title": "INE, Índice de Precios de Vivienda (IPV), base 2025, Q2 2026",
+       "url": "https://www.ine.es/jaxiT3/Tabla.htm?t=80270"
+      }
+     ]
+    },
+    "aragon": {
+     "change_12m": "+14.6%",
+     "index": "113.472",
+     "faster_than_spain": "yes",
+     "answer": "In Aragon, the INE house price index rose 14.6% over a year in Q2 2026 (index 113.472, base 2025 = 100), against 12.2% for Spain.",
+     "note": null,
+     "sources": [
+      {
+       "title": "INE, Índice de Precios de Vivienda (IPV), base 2025, Q2 2026",
+       "url": "https://www.ine.es/jaxiT3/Tabla.htm?t=80270"
+      }
+     ]
+    },
+    "asturias": {
+     "change_12m": "+15%",
+     "index": "114.014",
+     "faster_than_spain": "yes",
+     "answer": "In Asturias, the INE house price index rose 15% over a year in Q2 2026 (index 114.014, base 2025 = 100), against 12.2% for Spain.",
+     "note": null,
+     "sources": [
+      {
+       "title": "INE, Índice de Precios de Vivienda (IPV), base 2025, Q2 2026",
+       "url": "https://www.ine.es/jaxiT3/Tabla.htm?t=80270"
+      }
+     ]
+    },
+    "balearic-islands": {
+     "change_12m": "+13.7%",
+     "index": "112.048",
+     "faster_than_spain": "yes",
+     "answer": "In the Balearic Islands, the INE house price index rose 13.7% over a year in Q2 2026 (index 112.048, base 2025 = 100), against 12.2% for Spain.",
+     "note": null,
+     "sources": [
+      {
+       "title": "INE, Índice de Precios de Vivienda (IPV), base 2025, Q2 2026",
+       "url": "https://www.ine.es/jaxiT3/Tabla.htm?t=80270"
+      }
+     ]
+    },
+    "basque-country": {
+     "change_12m": "+10%",
+     "index": "109.329",
+     "faster_than_spain": "no",
+     "answer": "In the Basque Country, the INE house price index rose 10% over a year in Q2 2026 (index 109.329, base 2025 = 100), against 12.2% for Spain.",
+     "note": null,
+     "sources": [
+      {
+       "title": "INE, Índice de Precios de Vivienda (IPV), base 2025, Q2 2026",
+       "url": "https://www.ine.es/jaxiT3/Tabla.htm?t=80270"
+      }
+     ]
+    },
+    "canary-islands": {
+     "change_12m": "+11%",
+     "index": "110.44",
+     "faster_than_spain": "no",
+     "answer": "In the Canary Islands, the INE house price index rose 11% over a year in Q2 2026 (index 110.44, base 2025 = 100), against 12.2% for Spain.",
+     "note": null,
+     "sources": [
+      {
+       "title": "INE, Índice de Precios de Vivienda (IPV), base 2025, Q2 2026",
+       "url": "https://www.ine.es/jaxiT3/Tabla.htm?t=80270"
+      }
+     ]
+    },
+    "cantabria": {
+     "change_12m": "+13.5%",
+     "index": "111.313",
+     "faster_than_spain": "yes",
+     "answer": "In Cantabria, the INE house price index rose 13.5% over a year in Q2 2026 (index 111.313, base 2025 = 100), against 12.2% for Spain.",
+     "note": null,
+     "sources": [
+      {
+       "title": "INE, Índice de Precios de Vivienda (IPV), base 2025, Q2 2026",
+       "url": "https://www.ine.es/jaxiT3/Tabla.htm?t=80270"
+      }
+     ]
+    },
+    "castile-and-leon": {
+     "change_12m": "+14.8%",
+     "index": "113.551",
+     "faster_than_spain": "yes",
+     "answer": "In Castile and León, the INE house price index rose 14.8% over a year in Q2 2026 (index 113.551, base 2025 = 100), against 12.2% for Spain.",
+     "note": null,
+     "sources": [
+      {
+       "title": "INE, Índice de Precios de Vivienda (IPV), base 2025, Q2 2026",
+       "url": "https://www.ine.es/jaxiT3/Tabla.htm?t=80270"
+      }
+     ]
+    },
+    "castilla-la-mancha": {
+     "change_12m": "+11.7%",
+     "index": "110.864",
+     "faster_than_spain": "no",
+     "answer": "In Castilla-La Mancha, the INE house price index rose 11.7% over a year in Q2 2026 (index 110.864, base 2025 = 100), against 12.2% for Spain.",
+     "note": null,
+     "sources": [
+      {
+       "title": "INE, Índice de Precios de Vivienda (IPV), base 2025, Q2 2026",
+       "url": "https://www.ine.es/jaxiT3/Tabla.htm?t=80270"
+      }
+     ]
+    },
+    "catalonia": {
+     "change_12m": "+10.1%",
+     "index": "109.046",
+     "faster_than_spain": "no",
+     "answer": "In Catalonia, the INE house price index rose 10.1% over a year in Q2 2026 (index 109.046, base 2025 = 100), against 12.2% for Spain.",
+     "note": null,
+     "sources": [
+      {
+       "title": "INE, Índice de Precios de Vivienda (IPV), base 2025, Q2 2026",
+       "url": "https://www.ine.es/jaxiT3/Tabla.htm?t=80270"
+      }
+     ]
+    },
+    "ceuta": {
+     "change_12m": "+15.2%",
+     "index": "114.124",
+     "faster_than_spain": "yes",
+     "answer": "In Ceuta, the INE house price index rose 15.2% over a year in Q2 2026 (index 114.124, base 2025 = 100), against 12.2% for Spain.",
+     "note": null,
+     "sources": [
+      {
+       "title": "INE, Índice de Precios de Vivienda (IPV), base 2025, Q2 2026",
+       "url": "https://www.ine.es/jaxiT3/Tabla.htm?t=80270"
+      }
+     ]
+    },
+    "community-of-madrid": {
+     "change_12m": "+12.9%",
+     "index": "111.85",
+     "faster_than_spain": "yes",
+     "answer": "In the Community of Madrid, the INE house price index rose 12.9% over a year in Q2 2026 (index 111.85, base 2025 = 100), against 12.2% for Spain.",
+     "note": null,
+     "sources": [
+      {
+       "title": "INE, Índice de Precios de Vivienda (IPV), base 2025, Q2 2026",
+       "url": "https://www.ine.es/jaxiT3/Tabla.htm?t=80270"
+      }
+     ]
+    },
+    "extremadura": {
+     "change_12m": "+12.8%",
+     "index": "111.963",
+     "faster_than_spain": "yes",
+     "answer": "In Extremadura, the INE house price index rose 12.8% over a year in Q2 2026 (index 111.963, base 2025 = 100), against 12.2% for Spain.",
+     "note": null,
+     "sources": [
+      {
+       "title": "INE, Índice de Precios de Vivienda (IPV), base 2025, Q2 2026",
+       "url": "https://www.ine.es/jaxiT3/Tabla.htm?t=80270"
+      }
+     ]
+    },
+    "galicia": {
+     "change_12m": "+12.9%",
+     "index": "111.825",
+     "faster_than_spain": "yes",
+     "answer": "In Galicia, the INE house price index rose 12.9% over a year in Q2 2026 (index 111.825, base 2025 = 100), against 12.2% for Spain.",
+     "note": null,
+     "sources": [
+      {
+       "title": "INE, Índice de Precios de Vivienda (IPV), base 2025, Q2 2026",
+       "url": "https://www.ine.es/jaxiT3/Tabla.htm?t=80270"
+      }
+     ]
+    },
+    "la-rioja": {
+     "change_12m": "+14.4%",
+     "index": "113.309",
+     "faster_than_spain": "yes",
+     "answer": "In La Rioja, the INE house price index rose 14.4% over a year in Q2 2026 (index 113.309, base 2025 = 100), against 12.2% for Spain.",
+     "note": null,
+     "sources": [
+      {
+       "title": "INE, Índice de Precios de Vivienda (IPV), base 2025, Q2 2026",
+       "url": "https://www.ine.es/jaxiT3/Tabla.htm?t=80270"
+      }
+     ]
+    },
+    "melilla": {
+     "change_12m": "+13.8%",
+     "index": "113.245",
+     "faster_than_spain": "yes",
+     "answer": "In Melilla, the INE house price index rose 13.8% over a year in Q2 2026 (index 113.245, base 2025 = 100), against 12.2% for Spain.",
+     "note": null,
+     "sources": [
+      {
+       "title": "INE, Índice de Precios de Vivienda (IPV), base 2025, Q2 2026",
+       "url": "https://www.ine.es/jaxiT3/Tabla.htm?t=80270"
+      }
+     ]
+    },
+    "murcia": {
+     "change_12m": "+14.4%",
+     "index": "113.192",
+     "faster_than_spain": "yes",
+     "answer": "In the Region of Murcia, the INE house price index rose 14.4% over a year in Q2 2026 (index 113.192, base 2025 = 100), against 12.2% for Spain.",
+     "note": null,
+     "sources": [
+      {
+       "title": "INE, Índice de Precios de Vivienda (IPV), base 2025, Q2 2026",
+       "url": "https://www.ine.es/jaxiT3/Tabla.htm?t=80270"
+      }
+     ]
+    },
+    "navarre": {
+     "change_12m": "+9.5%",
+     "index": "109.174",
+     "faster_than_spain": "no",
+     "answer": "In Navarre, the INE house price index rose 9.5% over a year in Q2 2026 (index 109.174, base 2025 = 100), against 12.2% for Spain.",
+     "note": null,
+     "sources": [
+      {
+       "title": "INE, Índice de Precios de Vivienda (IPV), base 2025, Q2 2026",
+       "url": "https://www.ine.es/jaxiT3/Tabla.htm?t=80270"
+      }
+     ]
+    },
+    "valencian-community": {
+     "change_12m": "+13%",
+     "index": "111.696",
+     "faster_than_spain": "yes",
+     "answer": "In the Valencian Community, the INE house price index rose 13% over a year in Q2 2026 (index 111.696, base 2025 = 100), against 12.2% for Spain.",
+     "note": null,
+     "sources": [
+      {
+       "title": "INE, Índice de Precios de Vivienda (IPV), base 2025, Q2 2026",
+       "url": "https://www.ine.es/jaxiT3/Tabla.htm?t=80270"
+      }
+     ]
+    }
+   }
+  },
+  "large-family-rates": {
+   "compiled": "2026-10-15",
+   "url": "https://payotte.com/spain/by-region/large-family-rates",
+   "regions": {
+    "andalusia": {
+     "reduced_rate": "yes",
+     "itp_rate": "3.5%",
+     "price_cap": "€250,000",
+     "conditions": null,
+     "answer": "Andalusia taxes a home bought by a large family at 3.5% instead of the general 7%, when the value is up to €250,000.",
+     "note": "Main-home condition not stated in the report for this case.",
+     "sources": [
+      {
+       "title": "Ley 5/2021, Andalusia, art. 43 (BOE)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2021-17915"
+      }
+     ]
+    },
+    "aragon": {
+     "reduced_rate": "yes",
+     "itp_rate": "50% off the tax",
+     "price_cap": null,
+     "conditions": "Art. 121-5: purchase of the family's main home; previous home sold between two years before and four years after (waived for a first main home); usable area at least 10% larger; income (general base plus part of the savings base, less personal and descendant minimums) at most €35,000 plus €6,000 per child above the legal minimum.",
+     "answer": "Aragon gives large families a 50% bonus on the transfer tax if income is up to €35,000 plus €6,000 per extra child; the general rate runs from 8% to 10%.",
+     "note": "Settled on art. 121-5 (BOE consolidated text, read 15 Oct. 2026); the article sets no price cap.",
+     "sources": [
+      {
+       "title": "Decreto Legislativo 1/2005, Aragon, art. 121-5 (BOE)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOA-d-2005-90006"
+      }
+     ]
+    },
+    "asturias": {
+     "reduced_rate": "yes",
+     "itp_rate": "4% up to €150,000, 6% above",
+     "price_cap": null,
+     "conditions": "Main home (art. 32 bis); same article covers single-parent families, young buyers and rural areas.",
+     "answer": "Asturias taxes a large family's main home at 4% up to €150,000 and 6% above, instead of the general 8% to 10%.",
+     "note": "Price cap null: €150,000 is a rate threshold.",
+     "sources": [
+      {
+       "title": "Decreto Legislativo 2/2014, Asturias, art. 32 bis (BOE)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2015-945"
+      }
+     ]
+    },
+    "balearic-islands": {
+     "reduced_rate": "yes",
+     "itp_rate": "2%",
+     "price_cap": null,
+     "conditions": "Art. 10.d also covers under-36 first-home buyers, disability and single-parent families.",
+     "answer": "The Balearic Islands tax a large family's purchase at 2%, against a general rate of 8% to 13%.",
+     "note": "The conditions of article 10.d for large families are not detailed in the report; no price cap read.",
+     "sources": [
+      {
+       "title": "Decreto Legislativo 1/2014, Balearic Islands, arts. 10, 14 quater (BOE)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2014-6925"
+      }
+     ]
+    },
+    "basque-country": {
+     "reduced_rate": "yes",
+     "itp_rate": "2.5%",
+     "price_cap": null,
+     "conditions": "Main home (vivienda habitual); no other home held above 25% in the municipality; or a home of 120 m2 built or less.",
+     "answer": "In the three Basque territories, a large family buying a main home pays 2.5% transfer tax instead of the 4% housing rate, if it owns no other home above 25% in the municipality.",
+     "note": "In Gipuzkoa the area test is 120 m2 built or 96 m2 usable; Álava and Bizkaia give 2.5% for 120 m2 or large family. Price cap not read.",
+     "sources": [
+      {
+       "title": "Basque Government, list of ITP and AJD regulations",
+       "url": "https://www.euskadi.eus/impuestos-de-transmisiones-patrimoniales-y-actos-juridicos-documentados/web01-s2oga/es/"
+      },
+      {
+       "title": "Norma Foral 11/2003, Álava, updated text (Diputación Foral de Álava)",
+       "url": "https://web.araba.eus/documents/d/araba/indice_norma-foral-itp-ajd-cas-2-pdf"
+      }
+     ]
+    },
+    "canary-islands": {
+     "reduced_rate": "yes",
+     "itp_rate": "1%",
+     "price_cap": null,
+     "conditions": "Income up to €46,455 (arts. 32, 33, 33 bis; also disability, single-parent families); no other home (guide).",
+     "answer": "The Canary Islands tax a large family's home at 1% (arts. 32, 33, 33 bis) with an income cap of €46,455, against a general rate of 6.5%.",
+     "note": "The guide adds an income supplement per child and the no-other-home test; the report gives only the €46,455 figure. Price cap not read for the 1% rate.",
+     "sources": [
+      {
+       "title": "Decreto Legislativo 1/2009, Canary Islands, arts. 31, 35 (BOE)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOC-j-2009-90008"
+      }
+     ]
+    },
+    "cantabria": {
+     "reduced_rate": "yes",
+     "itp_rate": "4%",
+     "price_cap": "€300,000 (reduced rate only on the first €300,000)",
+     "conditions": "Large or single-parent family (art. 9.3).",
+     "answer": "Cantabria taxes a large family's purchase at 4% on the first €300,000 of value, against a general rate of 9%.",
+     "note": "Reduced rates are limited to the first €300,000 (art. 9.7).",
+     "sources": [
+      {
+       "title": "Decreto Legislativo 62/2008, Cantabria, art. 9 (BOE)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOCT-c-2008-90028"
+      }
+     ]
+    },
+    "castile-and-leon": {
+     "reduced_rate": "yes",
+     "itp_rate": "4%",
+     "price_cap": null,
+     "conditions": "Main home; income cap €31,500, or €37,800 for large families plus €6,000 per member (art. 28).",
+     "answer": "Castile and León taxes a large family's main home at 4% instead of 8% and 10%, with an income cap of €37,800 plus €6,000 per member.",
+     "note": "Settled on arts. 25.3.a and 28.2 (BOE consolidated text last updated 14/05/2024, read 15 Oct. 2026): if the buyer already owns a home, it must be sold within one year of buying the new one; no price cap in these articles.",
+     "sources": [
+      {
+       "title": "Decreto Legislativo 1/2013, Castile and León, arts. 25, 28 (BOE)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOCL-h-2013-90254"
+      }
+     ]
+    },
+    "castilla-la-mancha": {
+     "reduced_rate": "yes",
+     "itp_rate": "5%",
+     "price_cap": null,
+     "conditions": "Large or single-parent family, or disability of 65% or more (Ley 1/2026).",
+     "answer": "Castilla-La Mancha taxes a first main home bought by a large-family member, a single-parent family member or a person with disability of 65% or more at 5% instead of the general 9%, when the value is up to €240,000 and the purchase is financed more than 50% by a mortgage.",
+     "note": "Settled on Ley 1/2026, art. 18 amending art. 19.6 of Ley 8/2013 (DOCM 30 March 2026, in force 31 March 2026; not yet in the BOE consolidated text). Value must also be at least the mortgage valuation where no reference value exists, and the declared value at least the reference value.",
+     "sources": [
+      {
+       "title": "Ley 1/2026, Castilla-La Mancha, art. 18 (DOCM 30/03/2026, BOE copy)",
+       "url": "https://www.boe.es/ccaa/docm/2026/061/q10660-10683.pdf"
+      }
+     ]
+    },
+    "catalonia": {
+     "reduced_rate": "yes",
+     "itp_rate": "5%",
+     "price_cap": null,
+     "conditions": "Art. 641-2: main home; sum of the general and savings bases less personal and family minimums of the family members in the last income tax return at most €36,000, plus €14,000 per child above the legal minimum for large-family status.",
+     "answer": "Catalonia taxes a large family's main home at 5% instead of 10% to 13%, if family income is at most €36,000 plus €14,000 per child above the legal minimum.",
+     "note": "Settled on art. 641-2 (BOE consolidated text, read 15 Oct. 2026); the article sets no price cap.",
+     "sources": [
+      {
+       "title": "Decreto Legislativo 1/2024, Catalonia, art. 641-2 (BOE)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2024-6951"
+      }
+     ]
+    },
+    "ceuta": {
+     "reduced_rate": "no",
+     "itp_rate": null,
+     "price_cap": null,
+     "conditions": null,
+     "answer": "Ceuta has no own large-family rate in the report: the national 6% rate with a 50% bonus gives an effective 3% for every buyer.",
+     "note": "The report gives no own regional rates.",
+     "sources": [
+      {
+       "title": "Real Decreto Legislativo 1/1993, consolidated ITPAJD text (BOE)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-1993-25359"
+      },
+      {
+       "title": "AEAT, Base imponible y tipos Ceuta y Melilla",
+       "url": "https://sede.agenciatributaria.gob.es/Sede/declaraciones-informativas-otros-impuestos-tasas/impuesto-sobre-transmisiones-patrimoniales-actos-juridicos/itp-ajd-transmisiones-derechos-reales-fianzas/base-imponible-tipos-ceuta-melilla.html"
+      }
+     ]
+    },
+    "community-of-madrid": {
+     "reduced_rate": "yes",
+     "itp_rate": "4%",
+     "price_cap": null,
+     "conditions": "Art. 29: buyer holds the large-family title and the property is the family's main home; if the previous main home belonged to a holder, it must be sold within two years before or after (waived when the new property is joined to the old home).",
+     "answer": "The Community of Madrid taxes large families at 4% instead of the general 6%.",
+     "note": "Settled on art. 29 (BOE consolidated text, read 15 Oct. 2026); the article sets no price cap or income cap.",
+     "sources": [
+      {
+       "title": "Decreto Legislativo 1/2010, Community of Madrid, arts. 30 bis, 38 bis (BOE)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOCM-m-2010-90068"
+      }
+     ]
+    },
+    "extremadura": {
+     "reduced_rate": "yes",
+     "itp_rate": "4%",
+     "price_cap": "€200,000",
+     "conditions": "Main home; income up to €30,000 (€55,000 joint) (art. 41).",
+     "answer": "Extremadura taxes a large family's main home at 4% instead of the general 8% to 11%, up to €200,000 of value and €30,000 of income (€55,000 joint).",
+     "note": "Art. 41 conditions are the same as art. 40.",
+     "sources": [
+      {
+       "title": "Decreto Legislativo 1/2018, Extremadura, arts. 40, 41 (BOE)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2018-8159"
+      }
+     ]
+    },
+    "galicia": {
+     "reduced_rate": "yes",
+     "itp_rate": "3%",
+     "price_cap": "€400,000",
+     "conditions": null,
+     "answer": "Galicia taxes a large family's main home at 3% instead of the general 8%, when the price and the family's assets do not exceed €400,000 plus €50,000 per member above the minimum for large-family status.",
+     "note": "Settled on the BOE consolidated text of DLeg 1/2011, art. 14.Cuatro (read 15 Oct. 2026): main home of the family, valid large-family title, deed stating the purpose; cap on purchase price and on the family's assets of €400,000 plus €50,000 per member above the minimum.",
+     "sources": [
+      {
+       "title": "Decreto Legislativo 1/2011, Galicia, art. 14 (BOE)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2011-18161"
+      }
+     ]
+    },
+    "la-rioja": {
+     "reduced_rate": "yes",
+     "itp_rate": "5% (3% under conditions)",
+     "price_cap": null,
+     "conditions": "Art. 45.1: 5% in general. 3% if all of these hold: purchase within five years of the family becoming large (or of each birth or adoption); previous main home sold in that period; usable area at least 10% larger than the previous home; combined taxable bases of everyone living there, after the personal and family minimum, at most €30,600.",
+     "answer": "La Rioja taxes large families at 5%, or 3% under conditions, instead of the general 7%.",
+     "note": "Settled on art. 45.1 (BOE consolidated text, read 15 Oct. 2026); the article sets no price cap.",
+     "sources": [
+      {
+       "title": "Ley 10/2017, La Rioja, art. 45 (BOE)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2017-13750"
+      }
+     ]
+    },
+    "melilla": {
+     "reduced_rate": "no",
+     "itp_rate": null,
+     "price_cap": null,
+     "conditions": null,
+     "answer": "Melilla has no own large-family rate in the report: the national 6% rate with a 50% bonus gives an effective 3% for every buyer.",
+     "note": "The report gives no own regional rates.",
+     "sources": [
+      {
+       "title": "Real Decreto Legislativo 1/1993, consolidated ITPAJD text (BOE)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-1993-25359"
+      },
+      {
+       "title": "AEAT, Base imponible y tipos Ceuta y Melilla",
+       "url": "https://sede.agenciatributaria.gob.es/Sede/declaraciones-informativas-otros-impuestos-tasas/impuesto-sobre-transmisiones-patrimoniales-actos-juridicos/itp-ajd-transmisiones-derechos-reales-fianzas/base-imponible-tipos-ceuta-melilla.html"
+      }
+     ]
+    },
+    "murcia": {
+     "reduced_rate": "yes",
+     "itp_rate": "3%",
+     "price_cap": null,
+     "conditions": "Art. 6.5: first main home of the family (or previous home sold within two years either side, and usable area at least 10% larger); general base less personal minimum under €44,000, plus €6,000 per child above the minimum for large-family status.",
+     "answer": "The Region of Murcia taxes a large family's purchase at 3% instead of 7.75% when income is below €44,000.",
+     "note": "Settled on art. 6.5 (BOE consolidated text, read 15 Oct. 2026); the article sets no price cap.",
+     "sources": [
+      {
+       "title": "Decreto Legislativo 1/2010, Region of Murcia, art. 6 (BOE)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2011-10542"
+      }
+     ]
+    },
+    "navarre": {
+     "reduced_rate": "yes",
+     "itp_rate": "5%",
+     "price_cap": "€180,304",
+     "conditions": "Families with at least 2 children; main home; no other home above 25% in Navarre.",
+     "answer": "Navarre taxes a main home bought by a family with at least two children at 5% instead of 6%, up to a base of €180,304.",
+     "note": "The report words this as families with two children or more, not as the large-family title.",
+     "sources": [
+      {
+       "title": "Decreto Foral Legislativo 129/1999, Navarre, consolidated ITPAJD text (BOE)",
+       "url": "https://www.boe.es/buscar/act.php?id=BON-n-1999-90001"
+      }
+     ]
+    },
+    "valencian-community": {
+     "reduced_rate": "yes",
+     "itp_rate": "4% above €180,000; 3% up to €180,000",
+     "price_cap": "€180,000 (rate threshold)",
+     "conditions": "Main home of the large or single-parent family; income ceiling set by art. 4.Cuatro according to the family category and the type of return.",
+     "answer": "The Valencian Community taxes a large family's main home at 3% when the value is €180,000 or less and at 4% above that, instead of the general 9%, if the family's income stays under the ceiling of art. 4.Cuatro.",
+     "note": "Settled on the BOE consolidated text of Ley 13/1997, art. 13.Cuatro and Cinco (last update 10/08/2026, read 15 Oct. 2026). The income ceilings of art. 4.Cuatro were not read.",
+     "sources": [
+      {
+       "title": "Ley 13/1997, Valencian Community, arts. 4, 13 (BOE)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-1998-8202"
+      }
+     ]
+    }
+   }
+  },
+  "new-home-taxes": {
+   "compiled": "2026-10-15",
+   "url": "https://payotte.com/spain/by-region/new-home-taxes",
+   "regions": {
+    "andalusia": {
+     "indirect_tax": "VAT",
+     "indirect_rate": "10%",
+     "ajd_rate": "1.2%",
+     "total_300k": "€33,801",
+     "answer": "In Andalusia, a new home bought from the developer pays VAT at 10% and stamp duty on the deed (AJD) of 1.2%: €33,801 with land registry fees on €300,000.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Ley 5/2021 (Andalucía)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2021-17915"
+      },
+      {
+       "title": "Ley 37/1992, del Impuesto sobre el Valor Añadido (consolidated text)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-1992-28740"
+      }
+     ]
+    },
+    "aragon": {
+     "indirect_tax": "VAT",
+     "indirect_rate": "10%",
+     "ajd_rate": "1.5%",
+     "total_300k": "€34,701",
+     "answer": "In Aragon, a new home bought from the developer pays VAT at 10% and stamp duty on the deed (AJD) of 1.5%: €34,701 with land registry fees on €300,000.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Decreto Legislativo 1/2005 (Aragón)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOA-d-2005-90006"
+      },
+      {
+       "title": "Ley 37/1992, del Impuesto sobre el Valor Añadido (consolidated text)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-1992-28740"
+      }
+     ]
+    },
+    "asturias": {
+     "indirect_tax": "VAT",
+     "indirect_rate": "10%",
+     "ajd_rate": "1.2%",
+     "total_300k": "€33,801",
+     "answer": "In Asturias, a new home bought from the developer pays VAT at 10% and stamp duty on the deed (AJD) of 1.2%: €33,801 with land registry fees on €300,000.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Decreto Legislativo 2/2014 (Asturias)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2015-945"
+      },
+      {
+       "title": "Ley 37/1992, del Impuesto sobre el Valor Añadido (consolidated text)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-1992-28740"
+      }
+     ]
+    },
+    "balearic-islands": {
+     "indirect_tax": "VAT",
+     "indirect_rate": "10%",
+     "ajd_rate": "1.5% up to €1,000,000, 2% above €1,000,000, one rate on the whole value",
+     "total_300k": "€34,701",
+     "answer": "In the Balearic Islands, a new home bought from the developer pays VAT at 10% and stamp duty on the deed (AJD) of 1.5% up to €1,000,000, 2% above €1,000,000, one rate on the whole value: €34,701 with land registry fees on €300,000.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Decreto Legislativo 1/2014 (Illes Balears)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2014-6925"
+      },
+      {
+       "title": "Ley 37/1992, del Impuesto sobre el Valor Añadido (consolidated text)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-1992-28740"
+      }
+     ]
+    },
+    "basque-country": {
+     "indirect_tax": "VAT",
+     "indirect_rate": "10%",
+     "ajd_rate": "0.5%",
+     "total_300k": "€31,701",
+     "answer": "In the Basque Country, a new home bought from the developer pays VAT at 10% and stamp duty on the deed (AJD) of 0.5%: €31,701 with land registry fees on €300,000.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Normas forales del ITPAJD de Álava (NF 11/2003), Bizkaia (NF 1/2011) y Gipuzkoa (NF 18/1987)",
+       "url": "https://www.euskadi.eus/impuestos-de-transmisiones-patrimoniales-y-actos-juridicos-documentados/web01-s2oga/es/"
+      },
+      {
+       "title": "Ley 37/1992, del Impuesto sobre el Valor Añadido (consolidated text)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-1992-28740"
+      }
+     ]
+    },
+    "canary-islands": {
+     "indirect_tax": "IGIC",
+     "indirect_rate": "7%",
+     "ajd_rate": "1%",
+     "total_300k": "€24,201",
+     "answer": "In the Canary Islands, a new home bought from the developer pays IGIC at 7% and stamp duty on the deed (AJD) of 1%: €24,201 with land registry fees on €300,000.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Decreto Legislativo 1/2009 (Canarias)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOC-j-2009-90008"
+      },
+      {
+       "title": "Decreto Legislativo 1/2025, de 13 de octubre, texto refundido IGIC y AIEM (Canarias)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOC-j-2025-90249"
+      }
+     ]
+    },
+    "cantabria": {
+     "indirect_tax": "VAT",
+     "indirect_rate": "10%",
+     "ajd_rate": "1.5%",
+     "total_300k": "€34,701",
+     "answer": "In Cantabria, a new home bought from the developer pays VAT at 10% and stamp duty on the deed (AJD) of 1.5%: €34,701 with land registry fees on €300,000.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Decreto Legislativo 62/2008 (Cantabria)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOCT-c-2008-90028"
+      },
+      {
+       "title": "Ley 37/1992, del Impuesto sobre el Valor Añadido (consolidated text)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-1992-28740"
+      }
+     ]
+    },
+    "castile-and-leon": {
+     "indirect_tax": "VAT",
+     "indirect_rate": "10%",
+     "ajd_rate": "1.5%",
+     "total_300k": "€34,701",
+     "answer": "In Castile and León, a new home bought from the developer pays VAT at 10% and stamp duty on the deed (AJD) of 1.5%: €34,701 with land registry fees on €300,000.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Decreto Legislativo 1/2013 (Castilla y León)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOCL-h-2013-90254"
+      },
+      {
+       "title": "Ley 37/1992, del Impuesto sobre el Valor Añadido (consolidated text)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-1992-28740"
+      }
+     ]
+    },
+    "castilla-la-mancha": {
+     "indirect_tax": "VAT",
+     "indirect_rate": "10%",
+     "ajd_rate": "1.5%",
+     "total_300k": "€34,701",
+     "answer": "In Castilla-La Mancha, a new home bought from the developer pays VAT at 10% and stamp duty on the deed (AJD) of 1.5%: €34,701 with land registry fees on €300,000.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Ley 8/2013 (Castilla-La Mancha)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2014-1368"
+      },
+      {
+       "title": "Ley 37/1992, del Impuesto sobre el Valor Añadido (consolidated text)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-1992-28740"
+      }
+     ]
+    },
+    "catalonia": {
+     "indirect_tax": "VAT",
+     "indirect_rate": "10%",
+     "ajd_rate": "1.5%",
+     "total_300k": "€34,701",
+     "answer": "In Catalonia, a new home bought from the developer pays VAT at 10% and stamp duty on the deed (AJD) of 1.5%: €34,701 with land registry fees on €300,000.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Decreto Legislativo 1/2024 (Cataluña)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2024-6951"
+      },
+      {
+       "title": "Ley 37/1992, del Impuesto sobre el Valor Añadido (consolidated text)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-1992-28740"
+      }
+     ]
+    },
+    "ceuta": {
+     "indirect_tax": "IPSI",
+     "indirect_rate": null,
+     "ajd_rate": "0.25%",
+     "total_300k": "at least €951",
+     "answer": "In Ceuta, a new home pays IPSI, whose rate could not be read at an official source, plus stamp duty (AJD) of 0.25%: €750 on €300,000.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Real Decreto Legislativo 1/1993 (TRLITPAJD)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-1993-25359"
+      },
+      {
+       "title": "Ley 8/1991 (IPSI)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-1991-7645"
+      }
+     ]
+    },
+    "community-of-madrid": {
+     "indirect_tax": "VAT",
+     "indirect_rate": "10%",
+     "ajd_rate": "0.4% up to €120,000, 0.5% up to €180,000, 0.75% above €180,000, one rate on the whole value, smoothed at each threshold",
+     "total_300k": "€32,451",
+     "answer": "In the Community of Madrid, a new home bought from the developer pays VAT at 10% and stamp duty on the deed (AJD) of 0.4% up to €120,000, 0.5% up to €180,000, 0.75% above €180,000, one rate on the whole value, smoothed at each threshold: €32,451 with land registry fees on €300,000.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Decreto Legislativo 1/2010 (Madrid)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOCM-m-2010-90068"
+      },
+      {
+       "title": "Ley 37/1992, del Impuesto sobre el Valor Añadido (consolidated text)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-1992-28740"
+      }
+     ]
+    },
+    "extremadura": {
+     "indirect_tax": "VAT",
+     "indirect_rate": "10%",
+     "ajd_rate": "1.5%",
+     "total_300k": "€34,701",
+     "answer": "In Extremadura, a new home bought from the developer pays VAT at 10% and stamp duty on the deed (AJD) of 1.5%: €34,701 with land registry fees on €300,000.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Decreto Legislativo 1/2018 (Extremadura)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2018-8159"
+      },
+      {
+       "title": "Ley 37/1992, del Impuesto sobre el Valor Añadido (consolidated text)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-1992-28740"
+      }
+     ]
+    },
+    "galicia": {
+     "indirect_tax": "VAT",
+     "indirect_rate": "10%",
+     "ajd_rate": "1.5%",
+     "total_300k": "€34,701",
+     "answer": "In Galicia, a new home bought from the developer pays VAT at 10% and stamp duty on the deed (AJD) of 1.5%: €34,701 with land registry fees on €300,000.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Decreto Legislativo 1/2011 (Galicia)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2011-18161"
+      },
+      {
+       "title": "Ley 37/1992, del Impuesto sobre el Valor Añadido (consolidated text)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-1992-28740"
+      }
+     ]
+    },
+    "la-rioja": {
+     "indirect_tax": "VAT",
+     "indirect_rate": "10%",
+     "ajd_rate": "1%",
+     "total_300k": "€33,201",
+     "answer": "In La Rioja, a new home bought from the developer pays VAT at 10% and stamp duty on the deed (AJD) of 1%: €33,201 with land registry fees on €300,000.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Ley 10/2017 (La Rioja)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2017-13750"
+      },
+      {
+       "title": "Ley 37/1992, del Impuesto sobre el Valor Añadido (consolidated text)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-1992-28740"
+      }
+     ]
+    },
+    "melilla": {
+     "indirect_tax": "IPSI",
+     "indirect_rate": "4%",
+     "ajd_rate": "0.25%",
+     "total_300k": "€12,951",
+     "answer": "In Melilla, a new home bought from the developer pays IPSI at 4% and stamp duty on the deed (AJD) of 0.25%: €12,951 with land registry fees on €300,000.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Real Decreto Legislativo 1/1993 (TRLITPAJD)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-1993-25359"
+      },
+      {
+       "title": "Ordenanza fiscal del IPSI (operaciones interiores) de la Ciudad de Melilla, Anexo 1 (BOME nº 5857, 4 mai 2021, p. 1300, Decreto nº 584 du 30/04/2021)",
+       "url": "https://bomemelilla.es/bome/descargar/BOME-P-2021-1300.pdf"
+      }
+     ]
+    },
+    "murcia": {
+     "indirect_tax": "VAT",
+     "indirect_rate": "10%",
+     "ajd_rate": "1.5%",
+     "total_300k": "€34,701",
+     "answer": "In the Region of Murcia, a new home bought from the developer pays VAT at 10% and stamp duty on the deed (AJD) of 1.5%: €34,701 with land registry fees on €300,000.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Decreto Legislativo 1/2010 (Murcia)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2011-10542"
+      },
+      {
+       "title": "Ley 37/1992, del Impuesto sobre el Valor Añadido (consolidated text)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-1992-28740"
+      }
+     ]
+    },
+    "navarre": {
+     "indirect_tax": "VAT",
+     "indirect_rate": "10%",
+     "ajd_rate": "0.5%",
+     "total_300k": "€31,701",
+     "answer": "In Navarre, a new home bought from the developer pays VAT at 10% and stamp duty on the deed (AJD) of 0.5%: €31,701 with land registry fees on €300,000.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Decreto Foral Legislativo 129/1999 (Navarra)",
+       "url": "https://www.boe.es/buscar/act.php?id=BON-n-1999-90001"
+      },
+      {
+       "title": "Ley 37/1992, del Impuesto sobre el Valor Añadido (consolidated text)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-1992-28740"
+      }
+     ]
+    },
+    "valencian-community": {
+     "indirect_tax": "VAT",
+     "indirect_rate": "10%",
+     "ajd_rate": "1.4%",
+     "total_300k": "€34,401",
+     "answer": "In the Valencian Community, a new home bought from the developer pays VAT at 10% and stamp duty on the deed (AJD) of 1.4%: €34,401 with land registry fees on €300,000.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Ley 13/1997 (Comunitat Valenciana)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-1998-8202"
+      },
+      {
+       "title": "Ley 37/1992, del Impuesto sobre el Valor Añadido (consolidated text)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-1992-28740"
+      }
+     ]
+    }
+   }
+  },
+  "purchase-tax": {
+   "compiled": "2026-10-15",
+   "url": "https://payotte.com/spain/by-region/purchase-tax",
+   "regions": {
+    "andalusia": {
+     "general_rate": "7%",
+     "regime": "common",
+     "reference_value": "yes",
+     "tax_300k": "€21,000",
+     "total_300k": "€21,201",
+     "tax_500k": "€35,000",
+     "answer": "In Andalusia, transfer tax (ITP) on a resale home is 7%, on the higher of the price and the Catastro reference value: €21,000 on €300,000, €21,201 with land registry fees.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Ley 5/2021, de 20 de octubre, de Tributos Cedidos de la Comunidad Autónoma de Andalucía",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2021-17915"
+      }
+     ]
+    },
+    "aragon": {
+     "general_rate": "8% up to €400,000, 8.5% up to €450,000, 9% up to €500,000, 9.5% up to €750,000, 10% above €750,000, each band at its own rate",
+     "regime": "common",
+     "reference_value": "yes",
+     "tax_300k": "€24,000",
+     "total_300k": "€24,201",
+     "tax_500k": "€40,750",
+     "answer": "In Aragon, transfer tax (ITP) on a resale home is 8% up to €400,000, 8.5% up to €450,000, 9% up to €500,000, 9.5% up to €750,000, 10% above €750,000, each band at its own rate, on the higher of the price and the Catastro reference value: €24,000 on €300,000, €24,201 with land registry fees.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Decreto Legislativo 1/2005, texto refundido tributos cedidos de Aragón",
+       "url": "https://www.boe.es/buscar/act.php?id=BOA-d-2005-90006"
+      }
+     ]
+    },
+    "asturias": {
+     "general_rate": "8% up to €300,000, 9% up to €500,000, 10% above €500,000, one rate on the whole value",
+     "regime": "common",
+     "reference_value": "yes",
+     "tax_300k": "€24,000",
+     "total_300k": "€24,201",
+     "tax_500k": "€45,000",
+     "answer": "In Asturias, transfer tax (ITP) on a resale home is 8% up to €300,000, 9% up to €500,000, 10% above €500,000, one rate on the whole value, on the higher of the price and the Catastro reference value: €24,000 on €300,000, €24,201 with land registry fees.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Decreto Legislativo 2/2014, texto refundido tributos cedidos del Principado de Asturias",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2015-945"
+      }
+     ]
+    },
+    "balearic-islands": {
+     "general_rate": "8% up to €400,000, 9% up to €600,000, 10% up to €1,000,000, 12% up to €2,000,000, 13% above €2,000,000: the scale gives an average rate applied to the whole value",
+     "regime": "common",
+     "reference_value": "yes",
+     "tax_300k": "€24,000",
+     "total_300k": "€24,201",
+     "tax_500k": "€41,000",
+     "answer": "In the Balearic Islands, transfer tax (ITP) on a resale home is 8% up to €400,000, 9% up to €600,000, 10% up to €1,000,000, 12% up to €2,000,000, 13% above €2,000,000: the scale gives an average rate applied to the whole value, on the higher of the price and the Catastro reference value: €24,000 on €300,000, €24,201 with land registry fees.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Decreto Legislativo 1/2014, texto refundido tributos cedidos de las Illes Balears",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2014-6925"
+      }
+     ]
+    },
+    "basque-country": {
+     "general_rate": "4%",
+     "regime": "foral",
+     "reference_value": "no",
+     "tax_300k": "€12,000",
+     "total_300k": "€12,201",
+     "tax_500k": "€20,000",
+     "answer": "In the Basque Country, transfer tax (ITP) on a resale home is 4%, on the real value under the foral rules: €12,000 on €300,000, €12,201 with land registry fees.",
+     "note": "4% if the buyer holds no more than five homes, 6% otherwise.",
+     "sources": [
+      {
+       "title": "Normas forales del ITPAJD de Álava (NF 11/2003), Bizkaia (NF 1/2011) y Gipuzkoa (NF 18/1987)",
+       "url": "https://www.euskadi.eus/impuestos-de-transmisiones-patrimoniales-y-actos-juridicos-documentados/web01-s2oga/es/"
+      }
+     ]
+    },
+    "canary-islands": {
+     "general_rate": "6.5%",
+     "regime": "common",
+     "reference_value": "yes",
+     "tax_300k": "€19,500",
+     "total_300k": "€19,701",
+     "tax_500k": "€32,500",
+     "answer": "In the Canary Islands, transfer tax (ITP) on a resale home is 6.5%, on the higher of the price and the Catastro reference value: €19,500 on €300,000, €19,701 with land registry fees.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Decreto Legislativo 1/2009, texto refundido tributos cedidos de Canarias",
+       "url": "https://www.boe.es/buscar/act.php?id=BOC-j-2009-90008"
+      }
+     ]
+    },
+    "cantabria": {
+     "general_rate": "9%",
+     "regime": "common",
+     "reference_value": "yes",
+     "tax_300k": "€27,000",
+     "total_300k": "€27,201",
+     "tax_500k": "€45,000",
+     "answer": "In Cantabria, transfer tax (ITP) on a resale home is 9%, on the higher of the price and the Catastro reference value: €27,000 on €300,000, €27,201 with land registry fees.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Decreto Legislativo 62/2008, texto refundido Ley de Medidas Fiscales en materia de Tributos cedidos (Cantabria)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOCT-c-2008-90028"
+      }
+     ]
+    },
+    "castile-and-leon": {
+     "general_rate": "8% up to €250,000, 10% above €250,000, each band at its own rate",
+     "regime": "common",
+     "reference_value": "yes",
+     "tax_300k": "€25,000",
+     "total_300k": "€25,201",
+     "tax_500k": "€45,000",
+     "answer": "In Castile and León, transfer tax (ITP) on a resale home is 8% up to €250,000, 10% above €250,000, each band at its own rate, on the higher of the price and the Catastro reference value: €25,000 on €300,000, €25,201 with land registry fees.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Decreto Legislativo 1/2013, texto refundido tributos propios y cedidos de Castilla y León",
+       "url": "https://www.boe.es/buscar/act.php?id=BOCL-h-2013-90254"
+      }
+     ]
+    },
+    "castilla-la-mancha": {
+     "general_rate": "9%",
+     "regime": "common",
+     "reference_value": "yes",
+     "tax_300k": "€27,000",
+     "total_300k": "€27,201",
+     "tax_500k": "€45,000",
+     "answer": "In Castilla-La Mancha, transfer tax (ITP) on a resale home is 9%, on the higher of the price and the Catastro reference value: €27,000 on €300,000, €27,201 with land registry fees.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Ley 8/2013, de 21 de noviembre, de Medidas Tributarias de Castilla-La Mancha",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2014-1368"
+      }
+     ]
+    },
+    "catalonia": {
+     "general_rate": "10% up to €600,000, 11% up to €900,000, 12% up to €1,500,000, 13% above €1,500,000: the scale gives an average rate applied to the whole value",
+     "regime": "common",
+     "reference_value": "yes",
+     "tax_300k": "€30,000",
+     "total_300k": "€30,201",
+     "tax_500k": "€50,000",
+     "answer": "In Catalonia, transfer tax (ITP) on a resale home is 10% up to €600,000, 11% up to €900,000, 12% up to €1,500,000, 13% above €1,500,000: the scale gives an average rate applied to the whole value, on the higher of the price and the Catastro reference value: €30,000 on €300,000, €30,201 with land registry fees.",
+     "note": "20% if the buyer is a large holder.",
+     "sources": [
+      {
+       "title": "Decreto Legislativo 1/2024, libro sexto del Código tributario de Catalunya",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2024-6951"
+      }
+     ]
+    },
+    "ceuta": {
+     "general_rate": "3%",
+     "regime": "common",
+     "reference_value": "yes",
+     "tax_300k": "€9,000",
+     "total_300k": "€9,201",
+     "tax_500k": "€15,000",
+     "answer": "In Ceuta, transfer tax (ITP) on a resale home is 3%, on the higher of the price and the Catastro reference value: €9,000 on €300,000, €9,201 with land registry fees.",
+     "note": "State rate of 6% with the 50% rebate of art. 57 bis TRLITPAJD.",
+     "sources": [
+      {
+       "title": "Real Decreto Legislativo 1/1993 (TRLITPAJD)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-1993-25359"
+      }
+     ]
+    },
+    "community-of-madrid": {
+     "general_rate": "6%",
+     "regime": "common",
+     "reference_value": "yes",
+     "tax_300k": "€18,000",
+     "total_300k": "€18,201",
+     "tax_500k": "€30,000",
+     "answer": "In the Community of Madrid, transfer tax (ITP) on a resale home is 6%, on the higher of the price and the Catastro reference value: €18,000 on €300,000, €18,201 with land registry fees.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Decreto Legislativo 1/2010, texto refundido tributos cedidos de la Comunidad de Madrid",
+       "url": "https://www.boe.es/buscar/act.php?id=BOCM-m-2010-90068"
+      }
+     ]
+    },
+    "extremadura": {
+     "general_rate": "8% up to €360,000, 10% up to €600,000, 11% above €600,000, each band at its own rate",
+     "regime": "common",
+     "reference_value": "yes",
+     "tax_300k": "€24,000",
+     "total_300k": "€24,201",
+     "tax_500k": "€42,800",
+     "answer": "In Extremadura, transfer tax (ITP) on a resale home is 8% up to €360,000, 10% up to €600,000, 11% above €600,000, each band at its own rate, on the higher of the price and the Catastro reference value: €24,000 on €300,000, €24,201 with land registry fees.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Decreto Legislativo 1/2018, texto refundido tributos cedidos de Extremadura",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2018-8159"
+      }
+     ]
+    },
+    "galicia": {
+     "general_rate": "8%",
+     "regime": "common",
+     "reference_value": "yes",
+     "tax_300k": "€24,000",
+     "total_300k": "€24,201",
+     "tax_500k": "€40,000",
+     "answer": "In Galicia, transfer tax (ITP) on a resale home is 8%, on the higher of the price and the Catastro reference value: €24,000 on €300,000, €24,201 with land registry fees.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Decreto Legislativo 1/2011, texto refundido tributos cedidos de Galicia",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2011-18161"
+      }
+     ]
+    },
+    "la-rioja": {
+     "general_rate": "7%",
+     "regime": "common",
+     "reference_value": "yes",
+     "tax_300k": "€21,000",
+     "total_300k": "€21,201",
+     "tax_500k": "€35,000",
+     "answer": "In La Rioja, transfer tax (ITP) on a resale home is 7%, on the higher of the price and the Catastro reference value: €21,000 on €300,000, €21,201 with land registry fees.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Ley 10/2017, de 27 de octubre, disposiciones legales de La Rioja en materia de impuestos propios y tributos cedidos",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2017-13750"
+      }
+     ]
+    },
+    "melilla": {
+     "general_rate": "3%",
+     "regime": "common",
+     "reference_value": "yes",
+     "tax_300k": "€9,000",
+     "total_300k": "€9,201",
+     "tax_500k": "€15,000",
+     "answer": "In Melilla, transfer tax (ITP) on a resale home is 3%, on the higher of the price and the Catastro reference value: €9,000 on €300,000, €9,201 with land registry fees.",
+     "note": "State rate of 6% with the 50% rebate of art. 57 bis TRLITPAJD.",
+     "sources": [
+      {
+       "title": "Real Decreto Legislativo 1/1993 (TRLITPAJD)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-1993-25359"
+      }
+     ]
+    },
+    "murcia": {
+     "general_rate": "7.75%",
+     "regime": "common",
+     "reference_value": "yes",
+     "tax_300k": "€23,250",
+     "total_300k": "€23,451",
+     "tax_500k": "€38,750",
+     "answer": "In the Region of Murcia, transfer tax (ITP) on a resale home is 7.75%, on the higher of the price and the Catastro reference value: €23,250 on €300,000, €23,451 with land registry fees.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Decreto Legislativo 1/2010, texto refundido tributos cedidos de la Región de Murcia",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2011-10542"
+      }
+     ]
+    },
+    "navarre": {
+     "general_rate": "6%",
+     "regime": "foral",
+     "reference_value": "no",
+     "tax_300k": "€18,000",
+     "total_300k": "€18,201",
+     "tax_500k": "€30,000",
+     "answer": "In Navarre, transfer tax (ITP) on a resale home is 6%, on the real value under the foral rules: €18,000 on €300,000, €18,201 with land registry fees.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Decreto Foral Legislativo 129/1999, texto refundido ITPAJD (Navarra)",
+       "url": "https://www.boe.es/buscar/act.php?id=BON-n-1999-90001"
+      }
+     ]
+    },
+    "valencian-community": {
+     "general_rate": "9% up to €1,000,000, 11% above €1,000,000, one rate on the whole value",
+     "regime": "common",
+     "reference_value": "yes",
+     "tax_300k": "€27,000",
+     "total_300k": "€27,201",
+     "tax_500k": "€45,000",
+     "answer": "In the Valencian Community, transfer tax (ITP) on a resale home is 9% up to €1,000,000, 11% above €1,000,000, one rate on the whole value, on the higher of the price and the Catastro reference value: €27,000 on €300,000, €27,201 with land registry fees.",
+     "note": null,
+     "sources": [
+      {
+       "title": "Ley 13/1997, de 23 de diciembre, tramo autonómico del IRPF y restantes tributos cedidos (Comunitat Valenciana)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-1998-8202"
+      }
+     ]
+    }
+   }
+  },
+  "stressed-market-areas": {
+   "compiled": "2026-10-15",
+   "url": "https://payotte.com/spain/by-region/stressed-market-areas",
+   "regions": {
+    "andalusia": {
+     "declared": "not_found",
+     "municipalities": null,
+     "resolution": null,
+     "answer": "No stressed housing market area declaration for Andalusia was found in the BOE quarterly resolutions published up to 15 October 2026.",
+     "note": "Not found in any of the nine quarterly BOE resolutions published from March 2024 to July 2026 (BOE-A-2024-5214, 2024-20576, 2025-1721, 2025-8636, 2025-15728, 2025-21901, 2026-2448, 2026-9175, 2026-16532; every BOE issue up to 15 Oct. 2026 was searched). The third quarter 2026 resolution has not been published yet and the ministry list is blocked, so declarations made since July 2026 would not show here.",
+     "sources": [
+      {
+       "title": "Ley 12/2023 por el derecho a la vivienda, art. 3.k y 18 (BOE, texto consolidado)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2023-12203"
+      },
+      {
+       "title": "Resolución de 24 de julio de 2026, zonas tensionadas del segundo trimestre de 2026 (BOE-A-2026-16532)",
+       "url": "https://www.boe.es/buscar/doc.php?id=BOE-A-2026-16532"
+      }
+     ]
+    },
+    "aragon": {
+     "declared": "not_found",
+     "municipalities": null,
+     "resolution": null,
+     "answer": "No stressed housing market area declaration for Aragon was found in the BOE quarterly resolutions published up to 15 October 2026.",
+     "note": "Not found in any of the nine quarterly BOE resolutions published from March 2024 to July 2026 (BOE-A-2024-5214, 2024-20576, 2025-1721, 2025-8636, 2025-15728, 2025-21901, 2026-2448, 2026-9175, 2026-16532; every BOE issue up to 15 Oct. 2026 was searched). The third quarter 2026 resolution has not been published yet and the ministry list is blocked, so declarations made since July 2026 would not show here.",
+     "sources": [
+      {
+       "title": "Ley 12/2023 por el derecho a la vivienda, art. 3.k y 18 (BOE, texto consolidado)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2023-12203"
+      },
+      {
+       "title": "Resolución de 24 de julio de 2026, zonas tensionadas del segundo trimestre de 2026 (BOE-A-2026-16532)",
+       "url": "https://www.boe.es/buscar/doc.php?id=BOE-A-2026-16532"
+      }
+     ]
+    },
+    "asturias": {
+     "declared": "yes",
+     "municipalities": "Llanes (Llanes, Posada de Llanes, Nueva, Poo, Barro, Celorio), Cabrales (Arenas, Poo), Gijón (La Arena, Cimadevilla), Avilés (La Magdalena), Gozón (Luanco)",
+     "resolution": "BOE-A-2026-16532 (second quarter 2026, 29/07/2026)",
+     "answer": "Asturias has declared stressed areas in parts of Llanes, Cabrales, Gijón, Avilés and Gozón, listed in the second quarter 2026 resolution (BOE-A-2026-16532); the large-holder threshold there is more than ten residential properties or more than 1,500 m².",
+     "note": "Settled on the BOE resolution read on 15 Oct. 2026 (published 29 July 2026): the neighbourhoods are listed in the resolution itself; each declaration lasts three years from the day after publication.",
+     "sources": [
+      {
+       "title": "Resolución de 24 de julio de 2026, zonas tensionadas del segundo trimestre de 2026 (BOE-A-2026-16532)",
+       "url": "https://www.boe.es/buscar/doc.php?id=BOE-A-2026-16532"
+      },
+      {
+       "title": "Ley 12/2023 por el derecho a la vivienda, art. 3.k y 18 (BOE, texto consolidado)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2023-12203"
+      }
+     ]
+    },
+    "balearic-islands": {
+     "declared": "not_found",
+     "municipalities": null,
+     "resolution": null,
+     "answer": "No stressed housing market area declaration for the Balearic Islands was found in the BOE quarterly resolutions published up to 15 October 2026.",
+     "note": "Not found in any of the nine quarterly BOE resolutions published from March 2024 to July 2026 (BOE-A-2024-5214, 2024-20576, 2025-1721, 2025-8636, 2025-15728, 2025-21901, 2026-2448, 2026-9175, 2026-16532; every BOE issue up to 15 Oct. 2026 was searched). The third quarter 2026 resolution has not been published yet and the ministry list is blocked, so declarations made since July 2026 would not show here.",
+     "sources": [
+      {
+       "title": "Ley 12/2023 por el derecho a la vivienda, art. 3.k y 18 (BOE, texto consolidado)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2023-12203"
+      },
+      {
+       "title": "Resolución de 24 de julio de 2026, zonas tensionadas del segundo trimestre de 2026 (BOE-A-2026-16532)",
+       "url": "https://www.boe.es/buscar/doc.php?id=BOE-A-2026-16532"
+      }
+     ]
+    },
+    "basque-country": {
+     "declared": "yes",
+     "municipalities": "Errenteria (BOE-A-2025-1721); Lasarte-Oria, Zumaia, Barakaldo, Irun (BOE-A-2025-8636); Donostia/San Sebastián and Galdakao (district 2) (BOE-A-2025-15728); Astigarraga, Bilbao, Usurbil, Vitoria-Gasteiz except its rural local entities (BOE-A-2025-21901); Hernani, Lezo, Tolosa (BOE-A-2026-2448); Pasaia, Zestoa, Arrasate/Mondragón (BOE-A-2026-9175); Basauri (BOE-A-2026-16532)",
+     "resolution": "BOE-A-2025-1721 (4th quarter 2024); BOE-A-2025-8636 (1st quarter 2025); BOE-A-2025-15728 (2nd quarter 2025); BOE-A-2025-21901 (3rd quarter 2025); BOE-A-2026-2448 (4th quarter 2025); BOE-A-2026-9175 (1st quarter 2026); BOE-A-2026-16532 (2nd quarter 2026)",
+     "answer": "The Basque Country has declared stressed areas in eighteen places listed in the BOE resolutions: Errenteria (fourth quarter 2024); Lasarte-Oria, Zumaia, Barakaldo and Irun (first quarter 2025); Donostia/San Sebastián and district 2 of Galdakao (second quarter 2025); Astigarraga, Bilbao, Usurbil and Vitoria-Gasteiz (third quarter 2025); Hernani, Lezo and Tolosa (fourth quarter 2025); Pasaia, Zestoa and Arrasate/Mondragón (first quarter 2026); Basauri (second quarter 2026).",
+     "note": "Settled by reading the seven BOE resolutions cited (each lists only the declarations of its own quarter). Large-holder threshold: five or more residential properties (Errenteria, Lasarte-Oria, Zumaia, Barakaldo, Irun, Donostia, Galdakao, Astigarraga, Usurbil, Vitoria-Gasteiz, Hernani, Lezo, Tolosa, Arrasate/Mondragón, Basauri); more than ten properties or more than 1,500 m2 (Bilbao, Zestoa); more than five or more than 1,500 m2 (Pasaia). Declarations since July 2026 would appear in the third quarter 2026 resolution, not yet published.",
+     "sources": [
+      {
+       "title": "Resolución, zonas tensionadas, cuarto trimestre de 2024 (BOE-A-2025-1721)",
+       "url": "https://www.boe.es/buscar/doc.php?id=BOE-A-2025-1721"
+      },
+      {
+       "title": "Resolución, zonas tensionadas, primer trimestre de 2025 (BOE-A-2025-8636)",
+       "url": "https://www.boe.es/buscar/doc.php?id=BOE-A-2025-8636"
+      },
+      {
+       "title": "Resolución, zonas tensionadas, segundo trimestre de 2025 (BOE-A-2025-15728)",
+       "url": "https://www.boe.es/buscar/doc.php?id=BOE-A-2025-15728"
+      },
+      {
+       "title": "Resolución, zonas tensionadas, tercer trimestre de 2025 (BOE-A-2025-21901)",
+       "url": "https://www.boe.es/buscar/doc.php?id=BOE-A-2025-21901"
+      },
+      {
+       "title": "Resolución, zonas tensionadas, cuarto trimestre de 2025 (BOE-A-2026-2448)",
+       "url": "https://www.boe.es/buscar/doc.php?id=BOE-A-2026-2448"
+      },
+      {
+       "title": "Resolución, zonas tensionadas, primer trimestre de 2026 (BOE-A-2026-9175)",
+       "url": "https://www.boe.es/buscar/doc.php?id=BOE-A-2026-9175"
+      },
+      {
+       "title": "Resolución, zonas tensionadas, segundo trimestre de 2026 (BOE-A-2026-16532)",
+       "url": "https://www.boe.es/buscar/doc.php?id=BOE-A-2026-16532"
+      }
+     ]
+    },
+    "canary-islands": {
+     "declared": "not_found",
+     "municipalities": null,
+     "resolution": null,
+     "answer": "No stressed housing market area declaration for the Canary Islands was found in the BOE quarterly resolutions published up to 15 October 2026.",
+     "note": "Not found in any of the nine quarterly BOE resolutions published from March 2024 to July 2026 (BOE-A-2024-5214, 2024-20576, 2025-1721, 2025-8636, 2025-15728, 2025-21901, 2026-2448, 2026-9175, 2026-16532; every BOE issue up to 15 Oct. 2026 was searched). The third quarter 2026 resolution has not been published yet and the ministry list is blocked, so declarations made since July 2026 would not show here.",
+     "sources": [
+      {
+       "title": "Ley 12/2023 por el derecho a la vivienda, art. 3.k y 18 (BOE, texto consolidado)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2023-12203"
+      },
+      {
+       "title": "Resolución de 24 de julio de 2026, zonas tensionadas del segundo trimestre de 2026 (BOE-A-2026-16532)",
+       "url": "https://www.boe.es/buscar/doc.php?id=BOE-A-2026-16532"
+      }
+     ]
+    },
+    "cantabria": {
+     "declared": "not_found",
+     "municipalities": null,
+     "resolution": null,
+     "answer": "No stressed housing market area declaration for Cantabria was found in the BOE quarterly resolutions published up to 15 October 2026.",
+     "note": "Not found in any of the nine quarterly BOE resolutions published from March 2024 to July 2026 (BOE-A-2024-5214, 2024-20576, 2025-1721, 2025-8636, 2025-15728, 2025-21901, 2026-2448, 2026-9175, 2026-16532; every BOE issue up to 15 Oct. 2026 was searched). The third quarter 2026 resolution has not been published yet and the ministry list is blocked, so declarations made since July 2026 would not show here.",
+     "sources": [
+      {
+       "title": "Ley 12/2023 por el derecho a la vivienda, art. 3.k y 18 (BOE, texto consolidado)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2023-12203"
+      },
+      {
+       "title": "Resolución de 24 de julio de 2026, zonas tensionadas del segundo trimestre de 2026 (BOE-A-2026-16532)",
+       "url": "https://www.boe.es/buscar/doc.php?id=BOE-A-2026-16532"
+      }
+     ]
+    },
+    "castile-and-leon": {
+     "declared": "not_found",
+     "municipalities": null,
+     "resolution": null,
+     "answer": "No stressed housing market area declaration for Castile and León was found in the BOE quarterly resolutions published up to 15 October 2026.",
+     "note": "Not found in any of the nine quarterly BOE resolutions published from March 2024 to July 2026 (BOE-A-2024-5214, 2024-20576, 2025-1721, 2025-8636, 2025-15728, 2025-21901, 2026-2448, 2026-9175, 2026-16532; every BOE issue up to 15 Oct. 2026 was searched). The third quarter 2026 resolution has not been published yet and the ministry list is blocked, so declarations made since July 2026 would not show here.",
+     "sources": [
+      {
+       "title": "Ley 12/2023 por el derecho a la vivienda, art. 3.k y 18 (BOE, texto consolidado)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2023-12203"
+      },
+      {
+       "title": "Resolución de 24 de julio de 2026, zonas tensionadas del segundo trimestre de 2026 (BOE-A-2026-16532)",
+       "url": "https://www.boe.es/buscar/doc.php?id=BOE-A-2026-16532"
+      }
+     ]
+    },
+    "castilla-la-mancha": {
+     "declared": "not_found",
+     "municipalities": null,
+     "resolution": null,
+     "answer": "No stressed housing market area declaration for Castilla-La Mancha was found in the BOE quarterly resolutions published up to 15 October 2026.",
+     "note": "Not found in any of the nine quarterly BOE resolutions published from March 2024 to July 2026 (BOE-A-2024-5214, 2024-20576, 2025-1721, 2025-8636, 2025-15728, 2025-21901, 2026-2448, 2026-9175, 2026-16532; every BOE issue up to 15 Oct. 2026 was searched). The third quarter 2026 resolution has not been published yet and the ministry list is blocked, so declarations made since July 2026 would not show here.",
+     "sources": [
+      {
+       "title": "Ley 12/2023 por el derecho a la vivienda, art. 3.k y 18 (BOE, texto consolidado)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2023-12203"
+      },
+      {
+       "title": "Resolución de 24 de julio de 2026, zonas tensionadas del segundo trimestre de 2026 (BOE-A-2026-16532)",
+       "url": "https://www.boe.es/buscar/doc.php?id=BOE-A-2026-16532"
+      }
+     ]
+    },
+    "catalonia": {
+     "declared": "yes",
+     "municipalities": "131 municipalities under TER/2408/2024 (BOE-A-2024-20576), in addition to the 140 municipalities listed in BOE-A-2024-5214 (TER/800/2024, which modifies TER/2940/2023), including Barcelona",
+     "resolution": "Resolución TER/2408/2024 (BOE-A-2024-20576); TER/800/2024 modifying TER/2940/2023 (BOE-A-2024-5214)",
+     "answer": "Catalonia has declared stressed areas: 131 municipalities under resolution TER/2408/2024, in addition to a first declaration of 140 municipalities (TER/800/2024, modifying TER/2940/2023); both define a large holder at five or more residential properties.",
+     "note": "Settled on the BOE resolutions read on 15 Oct. 2026: the lists counted in BOE-A-2024-20576 (131 names) and BOE-A-2024-5214 (140 names). The municipality names are in those resolutions and not transcribed here; overlap between the two lists was not checked, so no combined total is given.",
+     "sources": [
+      {
+       "title": "Resolución de 8 de octubre de 2024, zonas tensionadas del tercer trimestre de 2024 (BOE-A-2024-20576)",
+       "url": "https://www.boe.es/buscar/doc.php?id=BOE-A-2024-20576"
+      },
+      {
+       "title": "Ley 12/2023 por el derecho a la vivienda, art. 3.k y 18 (BOE, texto consolidado)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2023-12203"
+      },
+      {
+       "title": "Resolución de 14 de marzo de 2024, zonas tensionadas (BOE-A-2024-5214)",
+       "url": "https://www.boe.es/buscar/doc.php?id=BOE-A-2024-5214"
+      }
+     ]
+    },
+    "ceuta": {
+     "declared": "not_found",
+     "municipalities": null,
+     "resolution": null,
+     "answer": "No stressed housing market area declaration for Ceuta was found in the BOE quarterly resolutions published up to 15 October 2026.",
+     "note": "Not found in any of the nine quarterly BOE resolutions published from March 2024 to July 2026 (BOE-A-2024-5214, 2024-20576, 2025-1721, 2025-8636, 2025-15728, 2025-21901, 2026-2448, 2026-9175, 2026-16532; every BOE issue up to 15 Oct. 2026 was searched). The third quarter 2026 resolution has not been published yet and the ministry list is blocked, so declarations made since July 2026 would not show here.",
+     "sources": [
+      {
+       "title": "Ley 12/2023 por el derecho a la vivienda, art. 3.k y 18 (BOE, texto consolidado)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2023-12203"
+      },
+      {
+       "title": "Resolución de 24 de julio de 2026, zonas tensionadas del segundo trimestre de 2026 (BOE-A-2026-16532)",
+       "url": "https://www.boe.es/buscar/doc.php?id=BOE-A-2026-16532"
+      }
+     ]
+    },
+    "community-of-madrid": {
+     "declared": "not_found",
+     "municipalities": null,
+     "resolution": null,
+     "answer": "No stressed housing market area declaration for the Community of Madrid was found in the BOE quarterly resolutions published up to 15 October 2026.",
+     "note": "Not found in any of the nine quarterly BOE resolutions published from March 2024 to July 2026 (BOE-A-2024-5214, 2024-20576, 2025-1721, 2025-8636, 2025-15728, 2025-21901, 2026-2448, 2026-9175, 2026-16532; every BOE issue up to 15 Oct. 2026 was searched). The third quarter 2026 resolution has not been published yet and the ministry list is blocked, so declarations made since July 2026 would not show here.",
+     "sources": [
+      {
+       "title": "Ley 12/2023 por el derecho a la vivienda, art. 3.k y 18 (BOE, texto consolidado)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2023-12203"
+      },
+      {
+       "title": "Resolución de 24 de julio de 2026, zonas tensionadas del segundo trimestre de 2026 (BOE-A-2026-16532)",
+       "url": "https://www.boe.es/buscar/doc.php?id=BOE-A-2026-16532"
+      }
+     ]
+    },
+    "extremadura": {
+     "declared": "not_found",
+     "municipalities": null,
+     "resolution": null,
+     "answer": "No stressed housing market area declaration for Extremadura was found in the BOE quarterly resolutions published up to 15 October 2026.",
+     "note": "Not found in any of the nine quarterly BOE resolutions published from March 2024 to July 2026 (BOE-A-2024-5214, 2024-20576, 2025-1721, 2025-8636, 2025-15728, 2025-21901, 2026-2448, 2026-9175, 2026-16532; every BOE issue up to 15 Oct. 2026 was searched). The third quarter 2026 resolution has not been published yet and the ministry list is blocked, so declarations made since July 2026 would not show here.",
+     "sources": [
+      {
+       "title": "Ley 12/2023 por el derecho a la vivienda, art. 3.k y 18 (BOE, texto consolidado)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2023-12203"
+      },
+      {
+       "title": "Resolución de 24 de julio de 2026, zonas tensionadas del segundo trimestre de 2026 (BOE-A-2026-16532)",
+       "url": "https://www.boe.es/buscar/doc.php?id=BOE-A-2026-16532"
+      }
+     ]
+    },
+    "galicia": {
+     "declared": "yes",
+     "municipalities": "A Coruña (2025); Santiago de Compostela (second quarter 2026)",
+     "resolution": "BOE-A-2026-16532 (Santiago de Compostela); second quarter 2025 list (A Coruña)",
+     "answer": "Galicia has declared stressed areas in A Coruña (2025) and Santiago de Compostela (second quarter 2026, BOE-A-2026-16532).",
+     "note": "A Coruña from BOE-A-2025-15728 (resolution of 30 May 2025 of the Instituto Gallego de la Vivienda y Suelo); Santiago de Compostela from BOE-A-2026-16532 (large holder: five or more properties). No other Galician municipality appears in the quarterly resolutions up to the second quarter 2026.",
+     "sources": [
+      {
+       "title": "Resolución de 24 de julio de 2026, zonas tensionadas del segundo trimestre de 2026 (BOE-A-2026-16532)",
+       "url": "https://www.boe.es/buscar/doc.php?id=BOE-A-2026-16532"
+      },
+      {
+       "title": "Resolución de 28 de julio de 2025, zonas tensionadas del segundo trimestre de 2025 (BOE-A-2025-15728)",
+       "url": "https://www.boe.es/buscar/doc.php?id=BOE-A-2025-15728"
+      }
+     ]
+    },
+    "la-rioja": {
+     "declared": "not_found",
+     "municipalities": null,
+     "resolution": null,
+     "answer": "No stressed housing market area declaration for La Rioja was found in the BOE quarterly resolutions published up to 15 October 2026.",
+     "note": "Not found in any of the nine quarterly BOE resolutions published from March 2024 to July 2026 (BOE-A-2024-5214, 2024-20576, 2025-1721, 2025-8636, 2025-15728, 2025-21901, 2026-2448, 2026-9175, 2026-16532; every BOE issue up to 15 Oct. 2026 was searched). The third quarter 2026 resolution has not been published yet and the ministry list is blocked, so declarations made since July 2026 would not show here.",
+     "sources": [
+      {
+       "title": "Ley 12/2023 por el derecho a la vivienda, art. 3.k y 18 (BOE, texto consolidado)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2023-12203"
+      },
+      {
+       "title": "Resolución de 24 de julio de 2026, zonas tensionadas del segundo trimestre de 2026 (BOE-A-2026-16532)",
+       "url": "https://www.boe.es/buscar/doc.php?id=BOE-A-2026-16532"
+      }
+     ]
+    },
+    "melilla": {
+     "declared": "not_found",
+     "municipalities": null,
+     "resolution": null,
+     "answer": "No stressed housing market area declaration for Melilla was found in the BOE quarterly resolutions published up to 15 October 2026.",
+     "note": "Not found in any of the nine quarterly BOE resolutions published from March 2024 to July 2026 (BOE-A-2024-5214, 2024-20576, 2025-1721, 2025-8636, 2025-15728, 2025-21901, 2026-2448, 2026-9175, 2026-16532; every BOE issue up to 15 Oct. 2026 was searched). The third quarter 2026 resolution has not been published yet and the ministry list is blocked, so declarations made since July 2026 would not show here.",
+     "sources": [
+      {
+       "title": "Ley 12/2023 por el derecho a la vivienda, art. 3.k y 18 (BOE, texto consolidado)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2023-12203"
+      },
+      {
+       "title": "Resolución de 24 de julio de 2026, zonas tensionadas del segundo trimestre de 2026 (BOE-A-2026-16532)",
+       "url": "https://www.boe.es/buscar/doc.php?id=BOE-A-2026-16532"
+      }
+     ]
+    },
+    "murcia": {
+     "declared": "not_found",
+     "municipalities": null,
+     "resolution": null,
+     "answer": "No stressed housing market area declaration for the Region of Murcia was found in the BOE quarterly resolutions published up to 15 October 2026.",
+     "note": "Not found in any of the nine quarterly BOE resolutions published from March 2024 to July 2026 (BOE-A-2024-5214, 2024-20576, 2025-1721, 2025-8636, 2025-15728, 2025-21901, 2026-2448, 2026-9175, 2026-16532; every BOE issue up to 15 Oct. 2026 was searched). The third quarter 2026 resolution has not been published yet and the ministry list is blocked, so declarations made since July 2026 would not show here.",
+     "sources": [
+      {
+       "title": "Ley 12/2023 por el derecho a la vivienda, art. 3.k y 18 (BOE, texto consolidado)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2023-12203"
+      },
+      {
+       "title": "Resolución de 24 de julio de 2026, zonas tensionadas del segundo trimestre de 2026 (BOE-A-2026-16532)",
+       "url": "https://www.boe.es/buscar/doc.php?id=BOE-A-2026-16532"
+      }
+     ]
+    },
+    "navarre": {
+     "declared": "yes",
+     "municipalities": "Pamplona/Iruña, Tudela, Valle de Egüés/Eguesibar, Burlada/Burlata, Barañáin/Barañain, Zizur Mayor, Estella-Lizarra, Aranguren, Berriozar, Tafalla, Ansoáin/Antsoain, Villava/Atarrabia, Corella, Valle de Elorz/Elortzibar, Cintruénigo, Baztan, Altsasu/Alsasua, Huarte/Uharte, Berrioplano/Berriobeiti, San Adrián, Peralta/Azkoien",
+     "resolution": "Orden Foral 157E/2025 (BOE-A-2025-15728)",
+     "answer": "Navarre has declared 21 municipalities as stressed areas under Orden Foral 157E/2025, including Pamplona/Iruña, Tudela, Burlada/Burlata, Estella-Lizarra and Tafalla.",
+     "note": "Complete list as published in BOE-A-2025-15728 (read 15 Oct. 2026); no later quarterly resolution up to the second quarter 2026 adds a Navarre municipality.",
+     "sources": [
+      {
+       "title": "Resolución de 28 de julio de 2025, zonas tensionadas del segundo trimestre de 2025 (BOE-A-2025-15728)",
+       "url": "https://www.boe.es/buscar/doc.php?id=BOE-A-2025-15728"
+      },
+      {
+       "title": "Ley 12/2023 por el derecho a la vivienda, art. 3.k y 18 (BOE, texto consolidado)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2023-12203"
+      }
+     ]
+    },
+    "valencian-community": {
+     "declared": "not_found",
+     "municipalities": null,
+     "resolution": null,
+     "answer": "No stressed housing market area declaration for the Valencian Community was found in the BOE quarterly resolutions published up to 15 October 2026.",
+     "note": "Not found in any of the nine quarterly BOE resolutions published from March 2024 to July 2026 (BOE-A-2024-5214, 2024-20576, 2025-1721, 2025-8636, 2025-15728, 2025-21901, 2026-2448, 2026-9175, 2026-16532; every BOE issue up to 15 Oct. 2026 was searched). The third quarter 2026 resolution has not been published yet and the ministry list is blocked, so declarations made since July 2026 would not show here.",
+     "sources": [
+      {
+       "title": "Ley 12/2023 por el derecho a la vivienda, art. 3.k y 18 (BOE, texto consolidado)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2023-12203"
+      },
+      {
+       "title": "Resolución de 24 de julio de 2026, zonas tensionadas del segundo trimestre de 2026 (BOE-A-2026-16532)",
+       "url": "https://www.boe.es/buscar/doc.php?id=BOE-A-2026-16532"
+      }
+     ]
+    }
+   }
+  },
+  "young-buyer-rates": {
+   "compiled": "2026-10-15",
+   "url": "https://payotte.com/spain/by-region/young-buyer-rates",
+   "regions": {
+    "andalusia": {
+     "reduced_rate": "yes",
+     "age_limit": "under 35",
+     "itp_rate": "3.5%",
+     "price_cap": "€150,000",
+     "income_cap": null,
+     "conditions": "Main home (vivienda habitual).",
+     "answer": "Andalusia applies a 3.5% transfer tax (ITP) rate to buyers under 35 who buy a main home worth up to €150,000, against the general rate of 7%.",
+     "note": "No income cap read in the report.",
+     "sources": [
+      {
+       "title": "Ley 5/2021, Andalusia, art. 43 (BOE)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2021-17915"
+      }
+     ]
+    },
+    "aragon": {
+     "reduced_rate": "yes",
+     "age_limit": "under 35",
+     "itp_rate": "12.5% off the tax",
+     "price_cap": "€100,000",
+     "income_cap": null,
+     "conditions": "Bonus of 12.5% of the tax (art. 121-4), also for disability of 65% or more and victims of gender violence.",
+     "answer": "Aragon gives buyers under 35 a 12.5% bonus on the transfer tax when the home is worth up to €100,000; the general rate runs from 8% to 10% by value.",
+     "note": "Settled on art. 121-4 (BOE consolidated text, read 15 Oct. 2026): 12.5% bonus on the full tax for buyers under 35, main home, real value of the property not above €100,000; no income cap in the article.",
+     "sources": [
+      {
+       "title": "Decreto Legislativo 1/2005, Aragon, art. 121-4 (BOE)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOA-d-2005-90006"
+      }
+     ]
+    },
+    "asturias": {
+     "reduced_rate": "yes",
+     "age_limit": "up to 35",
+     "itp_rate": "4% up to €150,000, 6% above",
+     "price_cap": null,
+     "income_cap": null,
+     "conditions": "Main home, resale; live there within 6 months and for 3 years (guide). Same article also covers rural areas, large and single-parent families.",
+     "answer": "Asturias taxes a main home bought by a buyer up to 35 at 4% up to €150,000 and 6% above, instead of the general 8% to 10% (art. 32 bis, in force 1 January 2026).",
+     "note": "Price cap null: €150,000 is a rate threshold, not a ceiling. The occupancy deadlines come from the guide only.",
+     "sources": [
+      {
+       "title": "Decreto Legislativo 2/2014, Asturias, art. 32 bis (BOE)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2015-945"
+      }
+     ]
+    },
+    "balearic-islands": {
+     "reduced_rate": "yes",
+     "age_limit": "under 36 (2% rate); under 30 (100% bonus)",
+     "itp_rate": "2% (or 100% bonus)",
+     "price_cap": "€270,151.20",
+     "income_cap": "€52,800 (€84,480 joint), bonus route only",
+     "conditions": "2% route: first home, under 36. Bonus route: under 30 or disability of 33% or more, 3 years' residence, mortgage of 60% or more.",
+     "answer": "The Balearic Islands charge 2% transfer tax to buyers under 36 buying a first home, and give a 100% bonus to buyers under 30 who meet residence, income (€52,800, or €84,480 joint), value (€270,151.20) and mortgage (60% or more) tests; the general rate runs from 8% to 13%.",
+     "note": "Settled on the BOE consolidated text (read 15 Oct. 2026): art. 10.d applies the 2% rate only if all conditions of art. 10.c are met, including the €270,151.20 maximum value, main home, at least 50% acquired and no other home held at 50% or more; the 2% route for a first home needs a buyer under 36 (art. 10.d.1). Art. 14 quater (100% bonus, under 30 or disability of 33% or more) has its own €270,151.20 cap, three years' residence, a first home, income cap and a mortgage of 60% or more of the valuation.",
+     "sources": [
+      {
+       "title": "Decreto Legislativo 1/2014, Balearic Islands, arts. 10, 14 quater (BOE)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2014-6925"
+      }
+     ]
+    },
+    "basque-country": {
+     "reduced_rate": "no",
+     "age_limit": null,
+     "itp_rate": null,
+     "price_cap": null,
+     "income_cap": null,
+     "conditions": null,
+     "answer": "The three Basque territories (Álava, Bizkaia, Gipuzkoa) have no young-buyer rate in their ITP norma foral texts read on 15 Oct. 2026: a home pays 4% whatever the buyer's age, and 2.5% under the area or large-family tests.",
+     "note": "Settled on the texts of Norma Foral 11/2003 (Álava), 1/2011 (Bizkaia) and 18/1987 (Gipuzkoa), searched for any young-buyer (jóvenes) rate: none found.",
+     "sources": [
+      {
+       "title": "Norma Foral 11/2003, Álava, updated text (Diputación Foral de Álava)",
+       "url": "https://web.araba.eus/documents/d/araba/indice_norma-foral-itp-ajd-cas-2-pdf"
+      },
+      {
+       "title": "Norma Foral 1/2011, Bizkaia, consolidated text (Diputación Foral de Bizkaia)",
+       "url": "https://www.bizkaia.eus/documents/880307/15187815/ca_1_2011.pdf/50b78491-3852-b68f-f9d5-2db574a48917?t=1746431731226"
+      },
+      {
+       "title": "Norma Foral 18/1987, Gipuzkoa, information copy (Diputación Foral de Gipuzkoa)",
+       "url": "https://www.gipuzkoa.eus/documents/2456431/2854433/NF+18-1987+(2025).pdf/fd85880e-c8c0-641d-eead-3869889f88ad?t=1747374492563"
+      }
+     ]
+    },
+    "canary-islands": {
+     "reduced_rate": "yes",
+     "age_limit": "40 or under",
+     "itp_rate": "20% off the tax (computed at 5%)",
+     "price_cap": "€200,000",
+     "income_cap": "€46,455 plus €6,825 per dependant",
+     "conditions": "First main home, no property owned (5% rate: main home, base up to €200,000, no other home).",
+     "answer": "The Canary Islands give buyers aged 40 or under a 20% bonus on the transfer tax computed at the 5% main-home rate, for a first main home with value up to €200,000 and income up to €46,455 plus €6,825 per dependant; the general rate is 6.5%.",
+     "note": "The report lists art. 35 as a 20% bonus (40 or under) but its text is cut off; the income cap and the dependant supplement come from the guide only, and the report ties €46,455 to other articles.",
+     "sources": [
+      {
+       "title": "Decreto Legislativo 1/2009, Canary Islands, arts. 31, 35 (BOE)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOC-j-2009-90008"
+      }
+     ]
+    },
+    "cantabria": {
+     "reduced_rate": "yes",
+     "age_limit": "under 40",
+     "itp_rate": "4%",
+     "price_cap": "€300,000 (reduced rate only on the first €300,000)",
+     "income_cap": null,
+     "conditions": "Main home; the excess above €300,000 pays 9%.",
+     "answer": "Cantabria taxes a main home bought by a buyer under 40 at 4% on the first €300,000 of value, with the 9% general rate on any excess.",
+     "note": "Settled on art. 9.3.c (BOE consolidated text, read 15 Oct. 2026): buyer under 40 at the date of purchase, main home; no income cap in that article. The reduced rate is limited to the first €300,000 (art. 9.7).",
+     "sources": [
+      {
+       "title": "Decreto Legislativo 62/2008, Cantabria, art. 9 (BOE)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOCT-c-2008-90028"
+      }
+     ]
+    },
+    "castile-and-leon": {
+     "reduced_rate": "yes",
+     "age_limit": "under 36 (all buyers); 0.01% for under 36 in rural communes",
+     "itp_rate": "4%; 0.01% in rural communes",
+     "price_cap": null,
+     "income_cap": "€31,500",
+     "conditions": "Main home.",
+     "answer": "Castile and León taxes a main home bought by a buyer under 36 at 4% (0.01% in rural communes), with an income cap of €31,500, against the general 8% and 10%.",
+     "note": "Settled on arts. 25.3 and 28.2 (BOE consolidated text last updated 14/05/2024, read 15 Oct. 2026): all buyers under 36 at the date of accrual, main home, first home of each buyer; total taxable bases less personal and family minimum at most €31,500; no price cap in these articles. The rural 0.01% rate applies to housing in a commune listed in art. 7.1.c.",
+     "sources": [
+      {
+       "title": "Decreto Legislativo 1/2013, Castile and León, arts. 25, 28 (BOE)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOCL-h-2013-90254"
+      }
+     ]
+    },
+    "castilla-la-mancha": {
+     "reduced_rate": "yes",
+     "age_limit": "under 36",
+     "itp_rate": "3%",
+     "price_cap": "€240,000",
+     "income_cap": null,
+     "conditions": "First main home; mortgage above 50% of the price (guide). AJD 0.25% for under-36s.",
+     "answer": "Castilla-La Mancha charges 3% transfer tax, instead of 9%, to buyers under 36 of a first main home worth up to €240,000, and 0.25% stamp duty (AJD) on a new home.",
+     "note": "Settled on the text of Ley 1/2026, art. 18 (DOCM 30 March 2026, in force 31 March 2026; not yet in the BOE consolidated text): the €240,000 cap applies to each of the 6% (art. 19.2), 5% (19.6), 3% under-36 (19.9) rates and to the AJD rates (art. 21.2: 0.75%, 0.50%, 0.25%). Also required: mortgage above 50% of the value, value at least the mortgage valuation where no reference value exists, and declared value at least the reference value. Lower rates apply in depopulation-risk municipalities (5%, 4%, 3%).",
+     "sources": [
+      {
+       "title": "Ley 1/2026, Castilla-La Mancha, art. 18 (DOCM 30/03/2026, BOE copy)",
+       "url": "https://www.boe.es/ccaa/docm/2026/061/q10660-10683.pdf"
+      }
+     ]
+    },
+    "catalonia": {
+     "reduced_rate": "yes",
+     "age_limit": "35 or under",
+     "itp_rate": "5%",
+     "price_cap": null,
+     "income_cap": "€36,000",
+     "conditions": "Main home; stamp duty (AJD) 100% bonus for the same group (art. 642-6).",
+     "answer": "Catalonia taxes buyers aged 35 or under at 5% (income up to €36,000) instead of 10% to 13%, and gives them a 100% bonus on stamp duty on a new home.",
+     "note": "Settled on art. 641-5 (BOE consolidated text, read 15 Oct. 2026; rate in force since 27/06/2025): the 5% rate applies to a main home bought by a buyer aged 35 or under at the date of tax accrual, if the sum of the general and savings bases less the personal and family minimum in the last income tax return does not exceed €36,000; the article sets no price cap.",
+     "sources": [
+      {
+       "title": "Decreto Legislativo 1/2024, Catalonia, arts. 641-5, 642-6 (BOE)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2024-6951"
+      }
+     ]
+    },
+    "ceuta": {
+     "reduced_rate": "no",
+     "age_limit": null,
+     "itp_rate": null,
+     "price_cap": null,
+     "income_cap": null,
+     "conditions": null,
+     "answer": "Ceuta has no own transfer tax rates: the national 6% rate applies with a 50% bonus, which gives an effective 3% for every buyer, and no young-buyer rate appears in the report.",
+     "note": "The report gives no own regional rates; the effective 3% is not a young-buyer rate.",
+     "sources": [
+      {
+       "title": "Real Decreto Legislativo 1/1993, consolidated ITPAJD text (BOE)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-1993-25359"
+      },
+      {
+       "title": "AEAT, Base imponible y tipos Ceuta y Melilla",
+       "url": "https://sede.agenciatributaria.gob.es/Sede/declaraciones-informativas-otros-impuestos-tasas/impuesto-sobre-transmisiones-patrimoniales-actos-juridicos/itp-ajd-transmisiones-derechos-reales-fianzas/base-imponible-tipos-ceuta-melilla.html"
+      }
+     ]
+    },
+    "community-of-madrid": {
+     "reduced_rate": "yes",
+     "age_limit": "under 35",
+     "itp_rate": "100% bonus on the tax",
+     "price_cap": "€250,000",
+     "income_cap": null,
+     "conditions": "Only in a municipality with fewer than 2,500 inhabitants; main home. Everyone else gets a 10% bonus on the tax for a main home up to €250,000.",
+     "answer": "The Community of Madrid gives a 100% bonus on the transfer tax to buyers under 35 of a main home worth up to €250,000, but only in a municipality under 2,500 inhabitants; the general rate is 6%.",
+     "note": "Settled on the BOE consolidated text (read 15 Oct. 2026): art. 30 bis (ITP, last update in force 29/11/2024) gives a 10% bonus on the tax to any main-home buyer, and 100% to buyers under 35 in a municipality under 2,500 inhabitants (INE figure at 1 January of the year before); art. 38 bis gives the same on the AJD graduated quota of first copies. Both require a value up to €250,000 (garages and annexes included). There is no reduced rate by age; the only age-based benefit is that 100% bonus.",
+     "sources": [
+      {
+       "title": "Decreto Legislativo 1/2010, Community of Madrid, arts. 30 bis, 38 bis (BOE)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOCM-m-2010-90068"
+      }
+     ]
+    },
+    "extremadura": {
+     "reduced_rate": "yes",
+     "age_limit": "under 36",
+     "itp_rate": "4%",
+     "price_cap": "€200,000",
+     "income_cap": "€30,000 (€55,000 joint)",
+     "conditions": "Main home (art. 41, with the same conditions as art. 40).",
+     "answer": "Extremadura taxes a main home bought by a buyer under 36 at 4% (general 8% to 11%) when the value is up to €200,000 and income up to €30,000, or €55,000 joint.",
+     "note": "Article 40 bis, a young-buyer rate, was repealed from 5 August 2026 by Ley 2/2026.",
+     "sources": [
+      {
+       "title": "Decreto Legislativo 1/2018, Extremadura, arts. 40, 41 (BOE)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2018-8159"
+      }
+     ]
+    },
+    "galicia": {
+     "reduced_rate": "yes",
+     "age_limit": "under 36",
+     "itp_rate": "3%",
+     "price_cap": "€240,000 plus €30,000 per extra household member (price and assets)",
+     "income_cap": null,
+     "conditions": "Main home.",
+     "answer": "Galicia taxes a main home bought by a buyer under 36 at 3% instead of the general 8%.",
+     "note": "Settled on the BOE consolidated text (read 15 Oct. 2026): art. 14.Dos (7% main-home rate) and art. 14.Cinco (3% rate, under 36 at the date of tax accrual) each set the same cap on the purchase price and on the buyers' (and household's) assets: €240,000 plus €30,000 per household member beyond the first. The deed must state the buyer's birth date and the main-home purpose. The cap therefore applies to the 3% rate as well.",
+     "sources": [
+      {
+       "title": "Decreto Legislativo 1/2011, Galicia, art. 14 (BOE)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2011-18161"
+      }
+     ]
+    },
+    "la-rioja": {
+     "reduced_rate": "yes",
+     "age_limit": "under 40",
+     "itp_rate": "4% (3% in listed municipalities)",
+     "price_cap": null,
+     "income_cap": null,
+     "conditions": "First main home.",
+     "answer": "La Rioja taxes a first main home bought by a buyer under 40 at 4%, or 3% in the municipalities of the law's annex I, against the general 7%.",
+     "note": "Settled on art. 45.3 (BOE consolidated text, read 15 Oct. 2026): the 4% rate (3% in annex I municipalities) applies to a first main home bought by a buyer under 40 at the date of purchase; the article sets no price cap and no income cap.",
+     "sources": [
+      {
+       "title": "Ley 10/2017, La Rioja, art. 45 (BOE)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2017-13750"
+      }
+     ]
+    },
+    "melilla": {
+     "reduced_rate": "no",
+     "age_limit": null,
+     "itp_rate": null,
+     "price_cap": null,
+     "income_cap": null,
+     "conditions": null,
+     "answer": "Melilla has no own transfer tax rates: the national 6% rate applies with a 50% bonus, which gives an effective 3% for every buyer, and no young-buyer rate appears in the report.",
+     "note": "The report gives no own regional rates; the effective 3% is not a young-buyer rate.",
+     "sources": [
+      {
+       "title": "Real Decreto Legislativo 1/1993, consolidated ITPAJD text (BOE)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-1993-25359"
+      },
+      {
+       "title": "AEAT, Base imponible y tipos Ceuta y Melilla",
+       "url": "https://sede.agenciatributaria.gob.es/Sede/declaraciones-informativas-otros-impuestos-tasas/impuesto-sobre-transmisiones-patrimoniales-actos-juridicos/itp-ajd-transmisiones-derechos-reales-fianzas/base-imponible-tipos-ceuta-melilla.html"
+      }
+     ]
+    },
+    "murcia": {
+     "reduced_rate": "yes",
+     "age_limit": "40 or under",
+     "itp_rate": "3%",
+     "price_cap": null,
+     "income_cap": "general base less personal minimum under €40,000 (savings base at most €1,800)",
+     "conditions": "Main home.",
+     "answer": "The Region of Murcia taxes a main home bought by a buyer aged 40 or under at 3% instead of 7.75%, if the general taxable base less the personal minimum is under €40,000.",
+     "note": "Settled on art. 6.6 (BOE consolidated text, read 15 Oct. 2026): age 40 or under, main home, general taxable base less personal and family minimum under €40,000 and savings base at most €1,800; the article sets no price cap.",
+     "sources": [
+      {
+       "title": "Decreto Legislativo 1/2010, Region of Murcia, art. 6 (BOE)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2011-10542"
+      }
+     ]
+    },
+    "navarre": {
+     "reduced_rate": "no",
+     "age_limit": null,
+     "itp_rate": null,
+     "price_cap": null,
+     "income_cap": null,
+     "conditions": null,
+     "answer": "Navarre has no young-buyer rate in article 8 of its ITP text (read 15 Oct. 2026): the general rate is 6%, with 5% for families with two children or more and 4% in municipalities at risk of depopulation.",
+     "note": "Settled on article 8 of Decreto Foral Legislativo 129/1999 (consolidated text updated 20/04/2026), read for any rate tied to the buyer's age: none found.",
+     "sources": [
+      {
+       "title": "Decreto Foral Legislativo 129/1999, Navarre, consolidated ITPAJD text (BOE)",
+       "url": "https://www.boe.es/buscar/act.php?id=BON-n-1999-90001"
+      }
+     ]
+    },
+    "valencian-community": {
+     "reduced_rate": "yes",
+     "age_limit": "under 35",
+     "itp_rate": "6% up to €180,000, 8% above",
+     "price_cap": null,
+     "income_cap": "€30,000 individual, €47,000 joint (general case)",
+     "conditions": "First main home.",
+     "answer": "The Valencian Community taxes a first main home bought by a buyer under 35 at 6% up to €180,000 and 8% above, against a general 9%.",
+     "note": "The report gives the 8% and 6% rates with the €180,000 threshold but not which side each applies to; the income figures come from the guide only.",
+     "sources": [
+      {
+       "title": "Ley 13/1997, Valencian Community, arts. 4, 13 (BOE)",
+       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-1998-8202"
+      }
+     ]
+    }
+   }
+  }
+ },
+ "guides": [
+  {
+   "slug": "applying-for-a-nie-from-abroad",
+   "title": "Applying for a NIE from abroad: Canada and the UK",
+   "description": "How to request a Spanish NIE at a consulate in Canada or London: EX-15 form, documents, fees read on 15 October 2026, appointments and the usual delay.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/applying-for-a-nie-from-abroad",
+   "draft": false
+  },
+  {
+   "slug": "arras-deposit-contract",
+   "title": "Arras deposit contract in Spain: if someone walks away",
+   "description": "How the Spanish arras (deposit) contract works under Civil Code art. 1454: losing the deposit, returning it doubled, and what the notaries' council says.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/arras-deposit-contract",
+   "draft": false
+  },
+  {
+   "slug": "buying-a-home-in-spain-step-by-step",
+   "title": "Buying a home in Spain: the steps from NIE to registry",
+   "description": "The order of a Spanish purchase, from the NIE to the land registry: who does what (notary, tax office, registry, town hall) and which step has a legal deadline.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/buying-a-home-in-spain-step-by-step",
+   "draft": false
+  },
+  {
+   "slug": "buying-from-abroad-power-of-attorney",
+   "title": "Buying in Spain without travelling: power of attorney",
+   "description": "How a buyer abroad can sign through a representative: a power granted before a Spanish consul or a foreign notary, the Hague apostille, translation and limits.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/buying-from-abroad-power-of-attorney",
+   "draft": false
+  },
+  {
+   "slug": "buying-off-plan-deposit-guarantees",
+   "title": "Buying off plan in Spain: guarantees on your deposits",
+   "description": "Spain's Ley 38/1999 (LOE, additional provision 1) requires a guarantee and a special account for sums paid on account on a home under construction.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/buying-off-plan-deposit-guarantees",
+   "draft": false
+  },
+  {
+   "slug": "buying-property-in-spain-as-a-foreigner",
+   "title": "Buying property in Spain as a foreigner: the rules",
+   "description": "No general ban on foreign buyers in Spain. The NIE, military zones for non-EU buyers, the €500,000 declaration, cash limits and the end of the golden visa.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/buying-property-in-spain-as-a-foreigner",
+   "draft": false
+  },
+  {
+   "slug": "canary-islands-igic-new-homes",
+   "title": "Canary Islands: IGIC on a new home and ITP on resale",
+   "description": "In the Canary Islands a new home pays IGIC at 7%, or 5%, 3% or zero if conditions are met, plus 1% stamp duty. Resale pays ITP at 6.5% or 5%.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/canary-islands-igic-new-homes",
+   "draft": false
+  },
+  {
+   "slug": "capital-gains-tax-on-a-home-sale-spain",
+   "title": "Capital gains tax on selling a home in Spain",
+   "description": "Capital gains on a home sale in Spain: residents pay 19% to 30% (IRPF), non-residents 19% (IRNR). How the gain is computed, with a worked example.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/capital-gains-tax-on-a-home-sale-spain",
+   "draft": false
+  },
+  {
+   "slug": "cash-payment-limits-property-spain",
+   "title": "Cash limits when paying for property in Spain",
+   "description": "Ley 7/2012 bans cash payments of €1,000 or more when a business is involved (€10,000 for a payer not tax-domiciled in Spain); the deed records how you paid.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/cash-payment-limits-property-spain",
+   "draft": false
+  },
+  {
+   "slug": "catastro-cadastral-reference",
+   "title": "Catastro and the cadastral reference: the 20-character code",
+   "description": "What the Spanish cadastral reference is, where to find it, who must state it in a deed, the €60 to €6,000 fine, and cadastral value versus market value.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/catastro-cadastral-reference",
+   "draft": false
+  },
+  {
+   "slug": "checks-before-buying-a-home-in-spain",
+   "title": "Checks before buying a home in Spain, with sources",
+   "description": "A checklist for a Spanish purchase with the official source of each check: owner, charges, cadastre, IBI, community debts, planning, licences, seller residence.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/checks-before-buying-a-home-in-spain",
+   "draft": false
+  },
+  {
+   "slug": "community-of-owners-debt-certificate",
+   "title": "Community debt certificate: what a Spanish buyer inherits",
+   "description": "LPH art. 9.1.e: the seller's 7-day debt certificate, the buyer's liability for the current year plus 3 years, and the IBI subsidiary liability (art. 64 TRLRHL).",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/community-of-owners-debt-certificate",
+   "draft": false
+  },
+  {
+   "slug": "community-of-owners-fees-and-rules",
+   "title": "Community of owners in Spain: fees, votes and levies",
+   "description": "How the Ley 49/1960 shares costs by cuota, sets a reserve fund of at least 10%, decides votes and levies, and what the seller must state.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/community-of-owners-fees-and-rules",
+   "draft": false
+  },
+  {
+   "slug": "declaring-a-foreign-investment-in-spanish-property",
+   "title": "Declaring a property purchase above €500,000 (form D-2A)",
+   "description": "Non-residents buying Spanish property above €500,000 must declare it on form D-2A within one month; the notary files it for deeds signed in Spain.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/declaring-a-foreign-investment-in-spanish-property",
+   "draft": false
+  },
+  {
+   "slug": "early-repayment-fees-spain",
+   "title": "Early repayment fees on a Spanish mortgage: the legal caps",
+   "description": "Article 23 of Ley 5/2019 caps early repayment charges on Spanish mortgages: variable 0.25% or 0.15%, fixed 2% then 1.5%, switch to fixed 0.05%. Exact text.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/early-repayment-fees-spain",
+   "draft": false
+  },
+  {
+   "slug": "energy-performance-certificate-spain",
+   "title": "Energy performance certificate in Spain: sale rules",
+   "description": "When Spain requires an energy performance certificate (RD 390/2021) to sell a home, annexing it to the sale contract, 10-year validity and the label in adverts.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/energy-performance-certificate-spain",
+   "draft": false
+  },
+  {
+   "slug": "euribor-and-mortgage-rates-spain",
+   "title": "Euribor and Spain's official mortgage reference rates",
+   "description": "The Banco de España's official mortgage reference rates for 2026: 12-month Euribor and average mortgage rate by month, and how a variable rate is revised.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/euribor-and-mortgage-rates-spain",
+   "draft": false
+  },
+  {
+   "slug": "fixed-or-variable-mortgage-spain",
+   "title": "Fixed or variable mortgage in Spain: the legal differences",
+   "description": "What Ley 5/2019 says differently about fixed and variable home loans in Spain: early repayment limits, switching to fixed, the no-floor rule and the paperwork.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/fixed-or-variable-mortgage-spain",
+   "draft": false
+  },
+  {
+   "slug": "gift-tax-on-property-spain",
+   "title": "Gift tax on giving a property in Spain",
+   "description": "Giving a property in Spain triggers gift tax for the recipient, plusvalía municipal and a possible income tax gain for the donor. Deadlines and regional law.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/gift-tax-on-property-spain",
+   "draft": false
+  },
+  {
+   "slug": "golden-visa-spain-ended",
+   "title": "Spain's golden visa has ended: what changed",
+   "description": "Spain's golden visa for a €500,000 property purchase was abolished by LO 1/2025 on 3 April 2025. What the old rule said and what happens to existing visas.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/golden-visa-spain-ended",
+   "draft": false
+  },
+  {
+   "slug": "habitability-certificate-and-first-occupation-licence",
+   "title": "Habitability certificate and occupation licence in Spain",
+   "description": "Spain has no single national rule on the cédula de habitabilidad or occupation licence. What Catalonia and Valencia require; other regions not read.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/habitability-certificate-and-first-occupation-licence",
+   "draft": false
+  },
+  {
+   "slug": "ibi-property-tax-spain",
+   "title": "IBI: Spain's annual property tax explained",
+   "description": "IBI is Spain's yearly municipal property tax: 0.4% to 1.10% of cadastral value on urban homes, owed by the owner on 1 January. Empty-home surcharge, buyer risk.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/ibi-property-tax-spain",
+   "draft": false
+  },
+  {
+   "slug": "ico-guarantee-for-young-buyers",
+   "title": "ICO guarantee for first-home buyers in Spain: conditions",
+   "description": "The ICO guarantee line for a first home in Spain: who qualifies (up to age 35 or families with minors), the 20% or 25% guarantee, limits and the 2027 deadline.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/ico-guarantee-for-young-buyers",
+   "draft": false
+  },
+  {
+   "slug": "inheritance-tax-spain-non-residents",
+   "title": "Inheritance tax in Spain for non-residents",
+   "description": "Spanish inheritance tax (Ley 29/1987) for heirs living abroad: the 7.65% to 34% national scale, regional allowances, and which region's rules apply.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/inheritance-tax-spain-non-residents",
+   "draft": false
+  },
+  {
+   "slug": "land-registry-fees-spain",
+   "title": "Land registry fees in Spain: scale, cap and reductions",
+   "description": "Spain's land registry fee under RD 1427/1989: the scale, the cap, the two 5% reductions, the presentation entry, and why registering protects the buyer.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/land-registry-fees-spain",
+   "draft": false
+  },
+  {
+   "slug": "letting-your-property-in-spain",
+   "title": "Letting your property in Spain: landlord obligations",
+   "description": "What a landlord in Spain must do: written contract terms, deposit, energy label, habitability papers, repairs, advertising rules and where the tax guides start.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/letting-your-property-in-spain",
+   "draft": false
+  },
+  {
+   "slug": "main-home-reinvestment-exemption",
+   "title": "Main home reinvestment exemption in Spain",
+   "description": "A Spanish resident who reinvests a main home sale in a new one within two years can exclude the gain (art. 38 Ley 35/2006). Conditions and who is left out.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/main-home-reinvestment-exemption",
+   "draft": false
+  },
+  {
+   "slug": "military-zones-authorisation-for-foreign-buyers",
+   "title": "Military zones: when non-EU buyers need an authorisation",
+   "description": "Ley 8/1975 and Royal Decree 689/1978: which areas need a Ministry of Defence authorisation for non-EU buyers, the urban exemption and the application steps.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/military-zones-authorisation-for-foreign-buyers",
+   "draft": false
+  },
+  {
+   "slug": "modelo-210-non-resident-tax-return",
+   "title": "Modelo 210: the non-resident tax return explained",
+   "description": "What a non-resident declares on modelo 210: imputed income, rent, sale gains. Deadlines under Orden HAC/623/2026, grouping, refunds and how to file.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/modelo-210-non-resident-tax-return",
+   "draft": false
+  },
+  {
+   "slug": "modelo-720-foreign-assets-declaration",
+   "title": "Modelo 720: declaring foreign property from Spain",
+   "description": "Modelo 720 is Spain's return for assets abroad. Who files, the €50,000 property threshold, 1 January to 31 March, and the changes brought by Ley 5/2022.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/modelo-720-foreign-assets-declaration",
+   "draft": false
+  },
+  {
+   "slug": "mortgage-costs-who-pays-spain",
+   "title": "Who pays the mortgage costs in Spain: lender or borrower",
+   "description": "How Ley 5/2019 splits notary, registry, gestoría, valuation and copy costs on a Spanish mortgage, and who is the taxpayer for the stamp duty (AJD) on the deed.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/mortgage-costs-who-pays-spain",
+   "draft": false
+  },
+  {
+   "slug": "mortgage-for-non-residents-spain",
+   "title": "Getting a Spanish mortgage as a non-resident",
+   "description": "Ley 5/2019 protects any individual borrowing for a home in Spain, resident or not. What the law sets, what lenders decide (no legal LTV cap) and the paperwork.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/mortgage-for-non-residents-spain",
+   "draft": false
+  },
+  {
+   "slug": "mortgage-in-spain-how-it-works",
+   "title": "How a mortgage works in Spain: Ley 5/2019 explained",
+   "description": "The national rules for a Spanish home loan: the FEIN and FiAE offer documents, the 10-day wait, free notary advice, the ban on tied sales and complaints.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/mortgage-in-spain-how-it-works",
+   "draft": false
+  },
+  {
+   "slug": "nie-number-for-property-buyers",
+   "title": "NIE number for property buyers in Spain",
+   "description": "What the NIE is, why a foreign buyer needs it for the deed and taxes, the €9.84 fee in Spain, the five-day term and why silence means refusal.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/nie-number-for-property-buyers",
+   "draft": false
+  },
+  {
+   "slug": "non-resident-property-tax-spain",
+   "title": "Non-resident property tax in Spain: imputed income",
+   "description": "Owning a Spanish home you do not let: annual non-resident tax on 2% or 1.1% of the cadastral value, at 24% or 19%, with a worked example and the 2027 change.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/non-resident-property-tax-spain",
+   "draft": false
+  },
+  {
+   "slug": "nota-simple-land-registry-extract",
+   "title": "Nota simple: the Spanish land registry extract explained",
+   "description": "What a nota simple shows (owner, charges), how to order it from the Colegio de Registradores, the €9.02 fee as read, and why it is not a certificate.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/nota-simple-land-registry-extract",
+   "draft": false
+  },
+  {
+   "slug": "notary-fees-spain",
+   "title": "Notary fees in Spain: the official scale for a sale",
+   "description": "Spanish notary fees under RD 1426/1989: the scale on the price, the 5% rebate, copies and pages, the optional 10% discount, who pays and what the notary checks.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/notary-fees-spain",
+   "draft": false
+  },
+  {
+   "slug": "over-65-home-sale-exemption",
+   "title": "Over-65 exemption on selling a main home in Spain",
+   "description": "Over 65 and selling your main home in Spain: the gain is exempt from income tax (art. 33.4.b Ley 35/2006). Conditions, the annuity route and non-residents.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/over-65-home-sale-exemption",
+   "draft": false
+  },
+  {
+   "slug": "plusvalia-municipal-tax",
+   "title": "Plusvalía municipal: the Spanish land value tax",
+   "description": "How Spain's plusvalía municipal is worked out since RDL 26/2021: objective or real-gain method, the coefficients in force, the 30% cap, who pays and when.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/plusvalia-municipal-tax",
+   "draft": false
+  },
+  {
+   "slug": "property-transfer-tax-itp-spain",
+   "title": "ITP: transfer tax on a resale home in Spain, by region",
+   "description": "ITP is paid by the buyer of a resale home in Spain and the rate is set by each region, from 6% to 13%. Table of the 19 general rates, base and how to read it.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/property-transfer-tax-itp-spain",
+   "draft": false
+  },
+  {
+   "slug": "property-valuation-for-a-mortgage",
+   "title": "Property valuation (tasación) for a Spanish mortgage",
+   "description": "Who may value a home for a Spanish mortgage: valuers approved by the Banco de España, Orden ECO/805/2003, who pays, bringing your own report, validity.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/property-valuation-for-a-mortgage",
+   "draft": false
+  },
+  {
+   "slug": "proposed-tax-on-non-eu-buyers",
+   "title": "Proposed tax on non-EU buyers in Spain: status, not law",
+   "description": "No Spanish law taxes property purchases by non-EU buyers on 15 October 2026. What the BOE and the dissolution of the Cortes mean for any pending proposal.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/proposed-tax-on-non-eu-buyers",
+   "draft": false
+  },
+  {
+   "slug": "reduced-transfer-tax-for-young-buyers",
+   "title": "Reduced transfer tax for young buyers in Spain, by region",
+   "description": "Region-by-region reduced ITP and AJD for young buyers in Spain: age limits, price caps and income caps for 15 regions. Conditions are cumulative.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/reduced-transfer-tax-for-young-buyers",
+   "draft": false
+  },
+  {
+   "slug": "reference-value-catastro",
+   "title": "Catastro reference value: tax base on a Spanish purchase",
+   "description": "In Spain the Catastro's valor de referencia is the tax base for ITP and AJD unless the price is higher. How it is set, published and contested.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/reference-value-catastro",
+   "draft": false
+  },
+  {
+   "slug": "rent-aid-for-young-people-spain",
+   "title": "Rent aid for young people in Spain (Plan 2026-2030)",
+   "description": "Youth rent aid in Spain's housing plan 2026-2030: under 35, income and rent caps, up to €300 a month for 2 years. Basque Country and Navarre are out.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/rent-aid-for-young-people-spain",
+   "draft": false
+  },
+  {
+   "slug": "rent-increases-spain",
+   "title": "Rent increases in Spain: the IRAV index and the 2% rule",
+   "description": "How a Spanish residential rent may be updated: no clause means no increase, the IRAV cap (2.54% in September 2026) and the 2% temporary rule to end-2027.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/rent-increases-spain",
+   "draft": false
+  },
+  {
+   "slug": "rental-agency-fees-landlord-pays",
+   "title": "Letting agency fees in Spain: why the landlord pays",
+   "description": "Article 20.2 of Spain's tenancy law bars passing agency and contract-signing costs to the tenant, directly or indirectly. What it covers and what you still pay.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/rental-agency-fees-landlord-pays",
+   "draft": false
+  },
+  {
+   "slug": "rental-deposit-fianza",
+   "title": "Rental deposit (fianza) in Spain: amount, filing, return",
+   "description": "The Spanish rental deposit is one month's rent by law, plus a capped extra guarantee. Regional bodies hold it: six regions' rules, and getting it back.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/rental-deposit-fianza",
+   "draft": false
+  },
+  {
+   "slug": "rental-income-tax-residents-spain",
+   "title": "Rental income tax for residents of Spain (IRPF)",
+   "description": "How a Spanish tax resident is taxed on home rental income (IRPF): net income, deductible costs and the article 23.2 reductions, 15% to 100%.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/rental-income-tax-residents-spain",
+   "draft": false
+  },
+  {
+   "slug": "renting-a-home-in-spain-tenant-rights",
+   "title": "Renting a home in Spain: tenant rights and contract terms",
+   "description": "How long a Spanish residential lease lasts (5 or 7 years), how extensions work after the October 2026 decree-laws, notice periods and your right to stay.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/renting-a-home-in-spain-tenant-rights",
+   "draft": false
+  },
+  {
+   "slug": "renting-out-as-a-non-resident",
+   "title": "Renting out a Spanish home as a non-resident: tax",
+   "description": "Rent from a Spanish home is taxed at 24% on gross income outside the EU and EEA, and at 19% after expenses for EU and EEA residents. Dates and examples.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/renting-out-as-a-non-resident",
+   "draft": false
+  },
+  {
+   "slug": "selling-a-home-in-spain-costs",
+   "title": "Selling a home in Spain: what the seller pays",
+   "description": "What a seller pays in Spain: plusvalía municipal, income tax on the gain, the buyer's 3% withholding, energy certificate, mortgage cancellation and deed costs.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/selling-a-home-in-spain-costs",
+   "draft": false
+  },
+  {
+   "slug": "selling-as-a-non-resident-3-percent-withholding",
+   "title": "Selling Spanish property as a non-resident: 3% withholding",
+   "description": "A non-resident seller in Spain: the buyer withholds 3% (modelo 211), the gain is taxed at 19% (modelo 210). Reinvestment exemption and who pays plusvalía.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/selling-as-a-non-resident-3-percent-withholding",
+   "draft": false
+  },
+  {
+   "slug": "spain-canada-tax-treaty-property",
+   "title": "Spain-Canada tax treaty and Spanish property",
+   "description": "What the 1976 Canada-Spain tax convention says about rent from and gains on Spanish real estate, and how double tax is eliminated, in plain words.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/spain-canada-tax-treaty-property",
+   "draft": false
+  },
+  {
+   "slug": "spain-uk-tax-treaty-property",
+   "title": "The Spain–UK tax treaty and your Spanish property",
+   "description": "What the 2013 UK–Spain double taxation convention says about rent, sale gains and wealth on Spanish property: articles 4, 6, 13, 21 and 22, with limits.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/spain-uk-tax-treaty-property",
+   "draft": false
+  },
+  {
+   "slug": "spanish-will-and-eu-succession-regulation",
+   "title": "Will and succession law for a Spanish property: EU 650/2012",
+   "description": "Which law governs the estate of an owner of a Spanish home: habitual residence, choice of national law (art. 22), the European Certificate and wills.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/spanish-will-and-eu-succession-regulation",
+   "draft": false
+  },
+  {
+   "slug": "stamp-duty-ajd-on-mortgages",
+   "title": "Stamp duty (AJD) on a Spanish mortgage: the lender pays",
+   "description": "Since November 2018 the lender, not the borrower, is the taxpayer of AJD on a mortgage deed in Spain. What the borrower still pays and regional rates.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/stamp-duty-ajd-on-mortgages",
+   "draft": false
+  },
+  {
+   "slug": "stressed-housing-market-areas",
+   "title": "Stressed housing market areas (zonas tensionadas) in Spain",
+   "description": "What a declared stressed rental zone changes in Spain: rent caps on new leases, longer extensions, tax effects, and regions with zones in the BOE.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/stressed-housing-market-areas",
+   "draft": false
+  },
+  {
+   "slug": "tax-representative-for-non-residents",
+   "title": "Tax representative for non-resident owners in Spain",
+   "description": "When a non-resident owner in Spain must appoint a tax representative under article 10 of the IRNR law, when not, the two-month notice and the €2,000 fixed fine.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/tax-representative-for-non-residents",
+   "draft": false
+  },
+  {
+   "slug": "tax-residency-in-spain-183-days",
+   "title": "Tax residency in Spain: the 183-day rule explained",
+   "description": "When you become tax resident in Spain under article 9 of the IRPF law, how treaty tie-breakers work, and what changes: worldwide income, modelo 720, wealth tax.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/tax-residency-in-spain-183-days",
+   "draft": false
+  },
+  {
+   "slug": "total-buying-costs-spain",
+   "title": "Total buying costs in Spain: every line, who pays",
+   "description": "Every cost of buying a home in Spain: ITP or VAT plus stamp duty, notary, registry, valuation, gestoría. Who pays by default, with a €300,000 worked example.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/total-buying-costs-spain",
+   "draft": false
+  },
+  {
+   "slug": "tourist-rental-registration-spain",
+   "title": "Tourist rental registration in Spain after the 2026 rulings",
+   "description": "Spain's single rental register was struck down in part by the Supreme Court in May-June 2026. What remains: regional tourist registers and local licences.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/tourist-rental-registration-spain",
+   "draft": false
+  },
+  {
+   "slug": "tourist-rentals-and-the-community-of-owners",
+   "title": "Tourist rentals and the community of owners in Spain",
+   "description": "Since 3 April 2025 a Spanish owner needs the community's express approval, by a 3/5 vote, for a tourist let in a flat. Majorities, existing lets, remedies.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/tourist-rentals-and-the-community-of-owners",
+   "draft": false
+  },
+  {
+   "slug": "transfer-tax-andalusia",
+   "title": "Property transfer tax in Andalusia: 7% ITP and AJD",
+   "description": "Andalusia charges a flat 7% ITP on resale homes and 1.2% AJD on new ones. Reduced rates, their price caps, a worked example and notes for non-resident buyers.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/transfer-tax-andalusia",
+   "draft": false
+  },
+  {
+   "slug": "transfer-tax-balearic-islands",
+   "title": "Balearic Islands transfer tax: 8% to 13% and AJD 2%",
+   "description": "Balearic resale homes pay ITP on an average-rate scale from 8% to 13%; AJD is 1.5%, or 2% from €1 million. The 4% and 2% rates, art. 14 quater, examples.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/transfer-tax-balearic-islands",
+   "draft": false
+  },
+  {
+   "slug": "transfer-tax-basque-country-and-navarre",
+   "title": "Basque Country and Navarre: 4% home transfer tax",
+   "description": "Álava, Bizkaia and Gipuzkoa tax a home purchase at 4% (2.5% in some cases); Navarre at 6%. AJD is 0.5%, the base is real value, and VAT is as elsewhere.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/transfer-tax-basque-country-and-navarre",
+   "draft": false
+  },
+  {
+   "slug": "transfer-tax-canary-islands",
+   "title": "Canary Islands purchase taxes: ITP 6.5%, IGIC 7%",
+   "description": "In the Canary Islands a resale home pays 6.5% ITP (5% for a main residence up to €200,000) and a new home pays IGIC, not VAT. Rates, conditions and examples.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/transfer-tax-canary-islands",
+   "draft": false
+  },
+  {
+   "slug": "transfer-tax-catalonia",
+   "title": "Buying in Catalonia: ITP from 10% to 13%, and 20%",
+   "description": "Catalonia taxes resale homes at 10% up to €600,000, rising to 13%, and 20% for large holders. AJD, reduced rates for under-35s, examples and non-resident notes.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/transfer-tax-catalonia",
+   "draft": false
+  },
+  {
+   "slug": "transfer-tax-madrid",
+   "title": "Madrid property tax: 6% ITP and the AJD scale",
+   "description": "Madrid charges 6% ITP on resale homes and a 0.4% to 0.75% AJD scale on new ones. The 10% reduction up to €250,000 and the smoothing rule explained.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/transfer-tax-madrid",
+   "draft": false
+  },
+  {
+   "slug": "transfer-tax-murcia",
+   "title": "Murcia property transfer tax: 7.75% ITP since July 2025",
+   "description": "Murcia charges a flat 7.75% ITP on resale property since 25 July 2025 and 1.5% AJD on new homes. The 3% rate for under-40s, large families and disability.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/transfer-tax-murcia",
+   "draft": false
+  },
+  {
+   "slug": "transfer-tax-valencian-community",
+   "title": "Valencian Community: 9% ITP since June 2026, 11% over €1m",
+   "description": "Resale homes in the Valencian Community pay 9% ITP from 1 June 2026, and 11% on the whole price above €1 million. AJD, young-buyer rates and a worked example.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/transfer-tax-valencian-community",
+   "draft": false
+  },
+  {
+   "slug": "uk-buyers-in-spain-after-brexit",
+   "title": "UK buyers in Spain after Brexit: what changed",
+   "description": "How Brexit changed Spanish rules for UK owners: 24% tax on gross rent, military-zone permits, the 90/180-day limit, and what the Withdrawal Agreement keeps.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/uk-buyers-in-spain-after-brexit",
+   "draft": false
+  },
+  {
+   "slug": "vat-and-stamp-duty-on-new-homes",
+   "title": "VAT and stamp duty on a new home in Spain",
+   "description": "A new home in Spain carries 10% VAT (4% for some protected housing) plus regional stamp duty (AJD) on the deed. Rates by region and the 2026 change.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/vat-and-stamp-duty-on-new-homes",
+   "draft": false
+  },
+  {
+   "slug": "wealth-tax-non-residents-spain",
+   "title": "Wealth tax for non-residents who own Spanish property",
+   "description": "How Spain's wealth tax and the €3m solidarity tax apply to non-resident owners: the €700,000 allowance, regional rules and the compulsory representative.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/guides/wealth-tax-non-residents-spain",
+   "draft": false
+  }
+ ],
+ "professions": [
+  {
+   "slug": "architect",
+   "title": "Architects and technical architects in Spain",
+   "description": "Architects (arquitectos) and technical architects (aparejadores) in Spain: college membership, roles under the LOE, when to use one and how to check.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/professions/architect",
+   "draft": false
+  },
+  {
+   "slug": "mortgage-lender",
+   "title": "Mortgage lenders in Spain: how to check one",
+   "description": "Banks, other mortgage lenders and credit intermediaries in Spain must be registered with the Banco de España or their region. The rules and how to check.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/professions/mortgage-lender",
+   "draft": false
+  },
+  {
+   "slug": "property-lawyer",
+   "title": "Property lawyers in Spain: what they do, how to check",
+   "description": "What an abogado does in a Spanish property purchase, compulsory bar membership, how to check the CGAE census, the notary's separate role. Informational page.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/professions/property-lawyer",
+   "draft": false
+  },
+  {
+   "slug": "property-valuer",
+   "title": "Property valuers in Spain: approved appraisal firms",
+   "description": "A valuation for a Spanish mortgage must come from an approved appraisal firm registered with the Banco de España. What the rules say and how to check one.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/professions/property-valuer",
+   "draft": false
+  },
+  {
+   "slug": "real-estate-agent",
+   "title": "Real estate agents in Spain: registers and fees",
+   "description": "Estate agency is free nationally in Spain, but Catalonia and Valencia require a register entry. What the API title means, how to check, and who pays in a rental.",
+   "answer": "",
+   "checked": "2026-10-15",
+   "url": "https://payotte.com/spain/professions/real-estate-agent",
+   "draft": false
+  }
+ ]
+}
