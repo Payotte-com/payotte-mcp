@@ -1,8 +1,8 @@
 # payotte-mcp
 
 Serveur **MCP** (Model Context Protocol) de Payotte — l'annuaire immobilier canadien de professionnels
-**vérifiés** branché dans les IA, et les données immobilières de 9 pays (Canada, France,
-États-Unis, Royaume-Uni, Australie, Inde, Brésil, Mexique, Espagne).
+**vérifiés** branché dans les IA, et les données immobilières de 10 pays (Canada, France,
+États-Unis, Royaume-Uni, Australie, Inde, Brésil, Mexique, Espagne, Belgique).
 
 - **Hébergement** : Cloudflare Workers, palier gratuit (100 000 requêtes/jour).
 - **Zéro état, zéro maintenance** : le worker lit en direct les feeds statiques de payotte.com
@@ -10,9 +10,9 @@ Serveur **MCP** (Model Context Protocol) de Payotte — l'annuaire immobilier ca
   déploiement normal du site. Rien à mettre à jour ici quand les fiches changent.
 - **Transport** : Streamable HTTP sans état (POST JSON-RPC sur `/mcp`). Aucune dépendance.
 
-## Les 69 outils
+## Les 75 outils
 
-Liste générée depuis `tools/list` (version 1.13.0). Le Canada porte les fiches d'experts ; les autres pays exposent les règles, taxes, frais et prix de leurs sections sur payotte.com.
+Liste générée depuis `tools/list` (version 1.14.0). Le Canada porte les fiches d'experts ; les autres pays exposent les règles, taxes, frais et prix de leurs sections sur payotte.com.
 
 
 ### Canada (14)
@@ -128,6 +128,17 @@ Liste générée depuis `tools/list` (version 1.13.0). Le Canada porte les fiche
 | `compare_regions_es` | Spanish property rules compared across the regions |
 | `guide_es` | Payotte Spain guides: buying as a foreigner, taxes, renting and owning |
 | `check_professional_es` | Who regulates a Spanish property professional, and where to check one |
+
+### Belgique / Belgium (6)
+
+| Outil | Titre |
+|---|---|
+| `purchase_costs_be` | Belgian home purchase costs: registration duty, notary, other costs |
+| `borrowing_capacity_be` | Belgian borrowing capacity and maximum home price |
+| `house_prices_be` | Belgian house and apartment prices (Statbel medians) |
+| `compare_regions_be` | Belgian purchase costs and prices compared across the three Regions |
+| `guide_be` | Payotte Belgium guides: buying, financing, selling, renting and owning (FR, NL, EN) |
+| `check_professional_be` | Who regulates a Belgian property professional, and where to check one |
 
 Chaque réponse porte l'attribution **CC BY 4.0** (citer + lier payotte.com).
 

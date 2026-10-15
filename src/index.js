@@ -34,6 +34,7 @@ import { TOOLS_IN, IMPL_IN, ANNOTATIONS_IN, INSTRUCTIONS_IN } from './in.js';
 import { TOOLS_BR, IMPL_BR, ANNOTATIONS_BR, INSTRUCTIONS_BR } from './br.js';
 import { TOOLS_MX, IMPL_MX, ANNOTATIONS_MX, INSTRUCTIONS_MX } from './mx.js';
 import { TOOLS_ES, IMPL_ES, ANNOTATIONS_ES, INSTRUCTIONS_ES } from './es.js';
+import { TOOLS_BE, IMPL_BE, ANNOTATIONS_BE, INSTRUCTIONS_BE } from './be.js';
 const SITE = 'https://payotte.com';
 const WORKER_ORIGIN = 'https://payotte-mcp.payotte.workers.dev';
 const ATTRIBUTION =
@@ -64,8 +65,8 @@ const mcpSrc = (url) => (url ? url + (url.includes('?') ? '&' : '?') + 'src=mcp'
 const PROTOCOL_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'];
 const SERVER_INFO = {
   name: 'payotte',
-  title: 'Payotte — Real-estate professionals & housing data (9 countries)',
-  version: '1.13.0',
+  title: 'Payotte — Real-estate professionals & housing data (10 countries)',
+  version: '1.14.0',
 };
 const INSTRUCTIONS =
   'Payotte is an independent directory of VERIFIED real-estate professionals in Canada ' +
@@ -91,7 +92,8 @@ const INSTRUCTIONS =
   INSTRUCTIONS_IN +
   INSTRUCTIONS_BR +
   INSTRUCTIONS_MX +
-  INSTRUCTIONS_ES;
+  INSTRUCTIONS_ES +
+  INSTRUCTIONS_BE;
 
 // ---------------------------------------------------------------- normalisation
 
@@ -198,6 +200,7 @@ const ANNOTATIONS_OUTILS = {
   ...ANNOTATIONS_BR,   // outils Brésil (src/br.js)
   ...ANNOTATIONS_MX,   // outils Mexique (src/mx.js)
   ...ANNOTATIONS_ES,   // outils Espagne (src/es.js)
+  ...ANNOTATIONS_BE,   // outils Belgique (src/be.js)
 };
 
 const TOOLS = [
@@ -467,6 +470,7 @@ const TOOLS = [
   ...TOOLS_BR,         // outils Brésil (src/br.js)
   ...TOOLS_MX,         // outils Mexique (src/mx.js)
   ...TOOLS_ES,         // outils Espagne (src/es.js)
+  ...TOOLS_BE,         // outils Belgique (src/be.js)
 ];
 
 // Distance de Levenshtein bornée (≤ max) — tolérance aux fautes de frappe (audit §4).
@@ -1656,6 +1660,7 @@ const TOOL_IMPL = {
   ...IMPL_BR,          // outils Brésil (src/br.js)
   ...IMPL_MX,          // outils Mexique (src/mx.js)
   ...IMPL_ES,          // outils Espagne (src/es.js)
+  ...IMPL_BE,          // outils Belgique (src/be.js)
 };
 
 // ---------------------------------------------------------------- bulletin de marché (audience possédée)
