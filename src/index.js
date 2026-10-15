@@ -32,6 +32,7 @@ import { TOOLS_UK, IMPL_UK, ANNOTATIONS_UK, INSTRUCTIONS_UK } from './uk.js';
 import { TOOLS_AU, IMPL_AU, ANNOTATIONS_AU, INSTRUCTIONS_AU } from './au.js';
 import { TOOLS_IN, IMPL_IN, ANNOTATIONS_IN, INSTRUCTIONS_IN } from './in.js';
 import { TOOLS_BR, IMPL_BR, ANNOTATIONS_BR, INSTRUCTIONS_BR } from './br.js';
+import { TOOLS_MX, IMPL_MX, ANNOTATIONS_MX, INSTRUCTIONS_MX } from './mx.js';
 const SITE = 'https://payotte.com';
 const WORKER_ORIGIN = 'https://payotte-mcp.payotte.workers.dev';
 const ATTRIBUTION =
@@ -87,7 +88,8 @@ const INSTRUCTIONS =
   INSTRUCTIONS_UK +
   INSTRUCTIONS_AU +
   INSTRUCTIONS_IN +
-  INSTRUCTIONS_BR;
+  INSTRUCTIONS_BR +
+  INSTRUCTIONS_MX;
 
 // ---------------------------------------------------------------- normalisation
 
@@ -192,6 +194,7 @@ const ANNOTATIONS_OUTILS = {
   ...ANNOTATIONS_AU,   // outils Australie (src/au.js)
   ...ANNOTATIONS_IN,   // outils Inde (src/in.js)
   ...ANNOTATIONS_BR,   // outils Brésil (src/br.js)
+  ...ANNOTATIONS_MX,   // outils Mexique (src/mx.js)
 };
 
 const TOOLS = [
@@ -459,6 +462,7 @@ const TOOLS = [
   ...TOOLS_AU,         // outils Australie (src/au.js)
   ...TOOLS_IN,         // outils Inde (src/in.js)
   ...TOOLS_BR,         // outils Brésil (src/br.js)
+  ...TOOLS_MX,         // outils Mexique (src/mx.js)
 ];
 
 // Distance de Levenshtein bornée (≤ max) — tolérance aux fautes de frappe (audit §4).
@@ -1646,6 +1650,7 @@ const TOOL_IMPL = {
   ...IMPL_AU,          // outils Australie (src/au.js)
   ...IMPL_IN,          // outils Inde (src/in.js)
   ...IMPL_BR,          // outils Brésil (src/br.js)
+  ...IMPL_MX,          // outils Mexique (src/mx.js)
 };
 
 // ---------------------------------------------------------------- bulletin de marché (audience possédée)
