@@ -1,7 +1,8 @@
 # payotte-mcp
 
-Serveur **MCP** (Model Context Protocol) de Payotte — le premier annuaire immobilier canadien
-de professionnels **vérifiés** branché dans les IA.
+Serveur **MCP** (Model Context Protocol) de Payotte — l'annuaire immobilier canadien de professionnels
+**vérifiés** branché dans les IA, et les données immobilières de 10 pays (Canada, France, Belgique,
+États-Unis, Royaume-Uni, Australie, Inde, Brésil, Mexique, Espagne).
 
 - **Hébergement** : Cloudflare Workers, palier gratuit (100 000 requêtes/jour).
 - **Zéro état, zéro maintenance** : le worker lit en direct les feeds statiques de payotte.com
@@ -9,18 +10,124 @@ de professionnels **vérifiés** branché dans les IA.
   déploiement normal du site. Rien à mettre à jour ici quand les fiches changent.
 - **Transport** : Streamable HTTP sans état (POST JSON-RPC sur `/mcp`). Aucune dépendance.
 
-## Les 8 outils
+## Les 69 outils
 
-| Outil | Ce qu'il fait |
+Liste générée depuis `tools/list` (version 1.13.0). Le Canada porte les fiches d'experts ; les autres pays exposent les règles, taxes, frais et prix de leurs sections sur payotte.com.
+
+
+### Canada (14)
+
+| Outil | Titre |
 |---|---|
-| `trouver_expert` | L'expert vérifié Payotte pour une ville/secteur × métier (score /100, n° de permis + lien registre, URL de la fiche). FR/EN. |
-| `verifier_titre` | Qui régule ce métier dans cette province, et où vérifier le permis (matrice du pilier licence). |
-| `stats_marche` | Chiffres du marché par ville (prix repère/médian, variation annuelle, ventes, inventaire, DOM) + verdict acheteurs/équilibré/vendeurs (convention < 4 / 4-6 / > 6 mois). |
-| `taux_courants` | Taux canadiens en direct à la Banque du Canada (directeur, préférentiel, hypothécaires moyens), décisions récentes et prochaines annonces. |
-| `taxe_mutation` | La taxe de mutation calculée par tranches aux barèmes OFFICIELS (validés à la source) — ON + double MLTT de Toronto, QC (grille de base, majoration municipale signalée), BC, MB, N.-B., Halifax ; AB/SK = frais d'enregistrement seulement. Prix fourni ou prix de référence de la ville. Î.-P.-É./T.-N. : refus honnête. |
-| `acheter_ou_louer` | Louer vs acheter dans une ville : loyer 2 chambres SCHL vs coût de possession au taux fixe 5 ans COURANT (hypothèses publiées, double lecture cash/économique — même méthode que le dossier du site). |
-| `salaire_requis` | Le revenu ménage requis pour se qualifier sur la propriété de référence de la ville, au test de résistance fédéral en vigueur (même méthode que le dossier salaire/ville). |
-| `contacter_expert` | **Le rail agentique** : relaie la demande de contact d'un client (via son assistant IA, avec consentement explicite) au pro vérifié, par courriel (Reply-To = le client). Payotte ne conserve RIEN du contenu — compteurs agrégés seulement (KV), même philosophie que lead.php. Plafonds : 40/jour global, 3/jour/expert. |
+| `evaluation_adresse` | Évaluation foncière à une adresse / Property assessment at an address |
+| `taxe_bienvenue_adresse` | Taxe de bienvenue à une adresse / Land transfer tax at an address |
+| `risques_annee_construction` | Risques selon l’année de construction / Risks by construction year |
+| `trouver_expert` | Trouver un expert immobilier vérifié / Find a verified real-estate expert |
+| `verifier_titre` | Vérifier un titre professionnel / Which regulator governs this title |
+| `stats_marche` | Statistiques du marché immobilier par ville / Per-city housing-market stats |
+| `taux_courants` | Taux d'intérêt canadiens courants / Current Canadian interest rates |
+| `taxe_mutation` | Calculer la taxe de mutation / Compute the land transfer tax |
+| `acheter_ou_louer` | Acheter ou louer ? / Rent vs buy in a city |
+| `salaire_requis` | Salaire requis pour acheter / Income needed to buy in a city |
+| `contacter_expert` | Contacter l'expert vérifié / Contact the verified expert |
+| `fenetre_revision` | Échéance pour contester son évaluation foncière / Property-assessment appeal deadline (Canada) |
+| `frais_revision` | Frais d'une demande de révision / Assessment review filing fee (Canada) |
+| `estimer_economie` | Économie de taxes d'une baisse d'évaluation / Tax saving of an assessment reduction (Quebec) |
+
+### France (4)
+
+| Outil | Titre |
+|---|---|
+| `frais_notaire_fr` | Frais de notaire en France / French notary fees |
+| `stats_marche_fr` | Prix immobiliers DVF en France / French property prices (DVF) |
+| `trouver_professionnel_fr` | Trouver un professionnel en France / Find a French real-estate firm |
+| `verifier_titre_fr` | Vérifier le titre d’un professionnel en France / Check a French professional’s credential |
+
+### États-Unis / United States (16)
+
+| Outil | Titre |
+|---|---|
+| `transfer_tax_us` | US real estate transfer tax by state |
+| `property_tax_us` | US property tax by state |
+| `property_tax_appeal_us` | US property tax appeal deadline by state |
+| `attorney_at_closing_us` | Is an attorney required at closing? (US, by state) |
+| `foreclosure_us` | US foreclosure process by state |
+| `seller_disclosure_us` | US seller disclosure law by state |
+| `closing_costs_us` | US closing costs by state (items set by law) |
+| `first_time_buyer_programs_us` | US first-time home buyer programs by state |
+| `home_prices_us` | US median home value by state and main city |
+| `community_property_us` | US community property states |
+| `title_insurance_us` | US title insurance rates by state |
+| `natural_hazards_us` | US natural hazards and home insurance by state |
+| `verify_license_us` | Verify a US real estate professional’s license |
+| `compare_states_us` | Compare the 50 US states on one rule |
+| `state_overview_us` | Buying a home in a US state: key facts |
+| `federal_guide_us` | US federal home-buying guides |
+
+### Royaume-Uni / United Kingdom (5)
+
+| Outil | Titre |
+|---|---|
+| `purchase_tax_uk` | UK purchase tax on a home: SDLT, LBTT or LTT |
+| `house_prices_uk` | UK average house prices (UK House Price Index) |
+| `compare_nations_uk` | UK property rules compared across the four nations |
+| `guide_uk` | Payotte UK guides: buying, renting and owning a home |
+| `check_professional_uk` | Who regulates a UK property professional, and where to check one |
+
+### Australie / Australia (5)
+
+| Outil | Titre |
+|---|---|
+| `purchase_duty_au` | Australian transfer (stamp) duty on a home, by state |
+| `house_prices_au` | Australian dwelling prices (ABS) |
+| `compare_states_au` | Australian property rules compared across the states |
+| `guide_au` | Payotte Australia guides: buying, renting and owning a home |
+| `check_professional_au` | Who regulates an Australian property professional, and where to check one |
+
+### Inde / India (6)
+
+| Outil | Titre |
+|---|---|
+| `stamp_duty_in` | Indian stamp duty and registration on a home, by state |
+| `home_loan_emi_in` | Indian home loan EMI |
+| `house_prices_in` | Indian house price indices (RBI, NHB RESIDEX) |
+| `compare_states_in` | Indian property rules compared across the states |
+| `guide_in` | Payotte India guides: buying, NRIs, renting and owning a home |
+| `check_professional_in` | Who regulates an Indian property professional, and where to check one |
+
+### Brésil / Brazil (6)
+
+| Outil | Titre |
+|---|---|
+| `purchase_costs_br` | Brazilian home purchase costs: ITBI, notary deed, registration |
+| `mortgage_payment_br` | Brazilian mortgage payment, SAC and Price |
+| `capital_gains_tax_br` | Brazilian capital gains tax on selling a home |
+| `compare_states_br` | Brazilian property costs and figures compared across the states |
+| `guide_br` | Payotte Brazil guides: foreign buyers, buying, financing, selling, renting, owning |
+| `check_professional_br` | Who regulates a Brazilian property professional, and where to check one |
+
+### Mexique / Mexico (6)
+
+| Outil | Titre |
+|---|---|
+| `closing_costs_mx` | Mexican property acquisition tax and recording fee, by municipality |
+| `mortgage_payment_mx` | Mexican fixed-rate mortgage payment |
+| `home_prices_mx` | Mexican home appraisal values and price index (SHF) |
+| `compare_states_mx` | Mexican property rules and figures compared across the states |
+| `guide_mx` | Payotte Mexico guides: foreign buyers, buying, selling, renting |
+| `check_professional_mx` | Who regulates a Mexican property professional, and where to check one |
+
+### Espagne / Spain (7)
+
+| Outil | Titre |
+|---|---|
+| `purchase_costs_es` | Spanish purchase taxes and fees on a home, by region |
+| `mortgage_payment_es` | Spanish mortgage monthly payment |
+| `non_resident_tax_es` | Spanish non-resident tax on a home that is not let |
+| `house_prices_es` | Spanish home values by city and region |
+| `compare_regions_es` | Spanish property rules compared across the regions |
+| `guide_es` | Payotte Spain guides: buying as a foreigner, taxes, renting and owning |
+| `check_professional_es` | Who regulates a Spanish property professional, and where to check one |
 
 Chaque réponse porte l'attribution **CC BY 4.0** (citer + lier payotte.com).
 
