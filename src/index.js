@@ -29,6 +29,7 @@ import QUESTIONS_IA_DATA from './data/questionsIa.json' with { type: 'json' };
 import { TOOLS_FR, IMPL_FR, ANNOTATIONS_FR, INSTRUCTIONS_FR } from './france.js';
 import { TOOLS_US, IMPL_US, ANNOTATIONS_US, INSTRUCTIONS_US } from './usa.js';
 import { TOOLS_UK, IMPL_UK, ANNOTATIONS_UK, INSTRUCTIONS_UK } from './uk.js';
+import { TOOLS_AU, IMPL_AU, ANNOTATIONS_AU, INSTRUCTIONS_AU } from './au.js';
 const SITE = 'https://payotte.com';
 const WORKER_ORIGIN = 'https://payotte-mcp.payotte.workers.dev';
 const ATTRIBUTION =
@@ -81,7 +82,8 @@ const INSTRUCTIONS =
   '“Verified” means the profile data was verified at its source; licence numbers are published so the READER verifies them at the official registry.' +
   INSTRUCTIONS_FR +
   INSTRUCTIONS_US +
-  INSTRUCTIONS_UK;
+  INSTRUCTIONS_UK +
+  INSTRUCTIONS_AU;
 
 // ---------------------------------------------------------------- normalisation
 
@@ -183,6 +185,7 @@ const ANNOTATIONS_OUTILS = {
   ...ANNOTATIONS_FR,   // outils France (src/france.js)
   ...ANNOTATIONS_US,   // outils USA (src/usa.js)
   ...ANNOTATIONS_UK,   // outils Royaume-Uni (src/uk.js)
+  ...ANNOTATIONS_AU,   // outils Australie (src/au.js)
 };
 
 const TOOLS = [
@@ -447,6 +450,7 @@ const TOOLS = [
   ...TOOLS_FR,         // outils France (src/france.js)
   ...TOOLS_US,         // outils USA (src/usa.js)
   ...TOOLS_UK,         // outils Royaume-Uni (src/uk.js)
+  ...TOOLS_AU,         // outils Australie (src/au.js)
 ];
 
 // Distance de Levenshtein bornée (≤ max) — tolérance aux fautes de frappe (audit §4).
@@ -1631,6 +1635,7 @@ const TOOL_IMPL = {
   ...IMPL_FR,          // outils France (src/france.js)
   ...IMPL_US,          // outils USA (src/usa.js)
   ...IMPL_UK,          // outils Royaume-Uni (src/uk.js)
+  ...IMPL_AU,          // outils Australie (src/au.js)
 };
 
 // ---------------------------------------------------------------- bulletin de marché (audience possédée)
